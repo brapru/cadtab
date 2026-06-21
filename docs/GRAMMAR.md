@@ -283,7 +283,9 @@ it uses is `[CORE]` above:
 
 ## 7. Open items (resolve in lock-step with T1.2 / T1.4)
 
-- **Tuplet syntax** (D11 TBD) — §3 / §5 row 3′. **Owner: T1.2d.**
+- **Tuplet syntax** (D11 TBD) — §3 / §5 row 3′. **Owner: T1.4 (duration assembly).** The lexer
+  emits an atomic `_` regardless of the chosen form, so the decision defers to where durations are
+  actually parsed; only a `tuplet(…)`-block form would later add a lexer keyword.
 - **`r` as keyword vs. contextual** — §1 keywords. **Owner: T1.2c/T1.2d.**
 - ~~**Block-comment nesting** — §1. **Owner: T1.2b.**~~ → resolved **non-nesting** (C-style, first `*/` closes); now `[CORE]`.
 - **Space-before-mark** (`chord.0 .t`) — §6 note. **Owner: T1.4e.**

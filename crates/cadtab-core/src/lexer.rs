@@ -61,7 +61,11 @@ impl<'a> Lexer<'a> {
                 b'"' => self.string(start),
                 b if b.is_ascii_digit() => self.number(),
                 b if b.is_ascii_alphabetic() => self.ident(start),
-                // Music tokens, delimiters, operators: not yet scanned.
+                b':' => self.single(TokenKind::Colon),
+                b'_' => self.single(TokenKind::Underscore),
+                b'~' => self.single(TokenKind::Tilde),
+                b'/' => self.single(TokenKind::Slash),
+                // Delimiters, `.`/`...`, `,`, `=`: not yet scanned.
                 _ => self.unknown_char(),
             };
             tokens.push(LexToken::new(kind, Span::new(start, self.pos as u32)));
@@ -118,6 +122,12 @@ impl<'a> Lexer<'a> {
             }
         }
         TokenKind::Comment
+    }
+
+    /// Emit a single-byte token and advance past it.
+    fn single(&mut self, kind: TokenKind) -> TokenKind {
+        self.pos += 1;
+        kind
     }
 
     /// A run of ASCII digits.
@@ -310,14 +320,14 @@ mod tests {
 
     #[test]
     fn underscore_does_not_start_an_identifier() {
-        // `_8` is the duration suffix, not an identifier; `_` is unhandled here.
+        // `_8` is the duration lead + int, not an identifier `_8`.
         let lexed = lex("_8 g_chord");
         assert_eq!(
             kinds(&lexed),
             vec![
-                TokenKind::Error, // `_` (Underscore arrives in a later sub-task)
-                TokenKind::Int,   // 8
-                TokenKind::Ident, // g_chord (contains, not leads, `_`)
+                TokenKind::Underscore, // `_`
+                TokenKind::Int,        // 8
+                TokenKind::Ident,      // g_chord (contains, not leads, `_`)
                 TokenKind::Eof,
             ]
         );
@@ -370,6 +380,94 @@ mod tests {
     #[test]
     fn metadata_header_snapshot() {
         let lexed = lex("title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130");
+        assert!(lexed.diagnostics.is_empty());
+        insta::assert_debug_snapshot!(lexed.tokens);
+    }
+
+    #[test]
+    fn note_literal_and_duration() {
+        let lexed = lex("3:0 5:2_8");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Int,        // 3
+                TokenKind::Colon,      // :
+                TokenKind::Int,        // 0
+                TokenKind::Int,        // 5
+                TokenKind::Colon,      // :
+                TokenKind::Int,        // 2
+                TokenKind::Underscore, // _
+                TokenKind::Int,        // 8
+                TokenKind::Eof,
+            ]
+        );
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn tie_operator() {
+        let lexed = lex("3:2 ~ 3:2");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Int,
+                TokenKind::Colon,
+                TokenKind::Int,
+                TokenKind::Tilde,
+                TokenKind::Int,
+                TokenKind::Colon,
+                TokenKind::Int,
+                TokenKind::Eof,
+            ]
+        );
+        assert_eq!(lexed.tokens[3].span, Span::new(4, 5)); // `~`
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn underscore_is_its_own_token() {
+        // `_8` is two tokens; the underscore no longer falls through to Error.
+        let lexed = lex("_8");
+        assert_eq!(
+            kinds(&lexed),
+            vec![TokenKind::Underscore, TokenKind::Int, TokenKind::Eof]
+        );
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn time_signature_slash_vs_comments() {
+        // A lone `/` is Slash; `//` and `/*` still scan as comments.
+        let lexed = lex("4/4");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Int,
+                TokenKind::Slash,
+                TokenKind::Int,
+                TokenKind::Eof
+            ]
+        );
+        assert_eq!(lexed.tokens[1].span, Span::new(1, 2)); // `/`
+
+        assert_eq!(
+            kinds(&lex("a // c")),
+            vec![TokenKind::Ident, TokenKind::Comment, TokenKind::Eof]
+        );
+        assert_eq!(
+            kinds(&lex("a /* c */ b")),
+            vec![
+                TokenKind::Ident,
+                TokenKind::Comment,
+                TokenKind::Ident,
+                TokenKind::Eof
+            ]
+        );
+    }
+
+    #[test]
+    fn music_line_snapshot() {
+        let lexed = lex("time 4/4\n3:2 ~ 3:2 5:0_8");
         assert!(lexed.diagnostics.is_empty());
         insta::assert_debug_snapshot!(lexed.tokens);
     }

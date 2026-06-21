@@ -1,0 +1,127 @@
+---
+source: crates/cadtab-core/src/lexer.rs
+expression: lexed.tokens
+---
+[
+    LexToken {
+        kind: Keyword(
+            Time,
+        ),
+        span: Span {
+            start: 0,
+            end: 4,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 5,
+            end: 6,
+        },
+    },
+    LexToken {
+        kind: Slash,
+        span: Span {
+            start: 6,
+            end: 7,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 7,
+            end: 8,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 9,
+            end: 10,
+        },
+    },
+    LexToken {
+        kind: Colon,
+        span: Span {
+            start: 10,
+            end: 11,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 11,
+            end: 12,
+        },
+    },
+    LexToken {
+        kind: Tilde,
+        span: Span {
+            start: 13,
+            end: 14,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 15,
+            end: 16,
+        },
+    },
+    LexToken {
+        kind: Colon,
+        span: Span {
+            start: 16,
+            end: 17,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 17,
+            end: 18,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 19,
+            end: 20,
+        },
+    },
+    LexToken {
+        kind: Colon,
+        span: Span {
+            start: 20,
+            end: 21,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 21,
+            end: 22,
+        },
+    },
+    LexToken {
+        kind: Underscore,
+        span: Span {
+            start: 22,
+            end: 23,
+        },
+    },
+    LexToken {
+        kind: Int,
+        span: Span {
+            start: 23,
+            end: 24,
+        },
+    },
+    LexToken {
+        kind: Eof,
+        span: Span {
+            start: 24,
+            end: 24,
+        },
+    },
+]
