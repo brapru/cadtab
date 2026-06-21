@@ -4,6 +4,7 @@ pub mod ast;
 pub mod diagnostics;
 pub mod layout;
 pub mod lexer;
+pub mod parser;
 pub mod render;
 pub mod source;
 pub mod span;

@@ -52,6 +52,30 @@ pub enum Keyword {
 }
 
 impl Keyword {
+    /// The source spelling of this keyword.
+    pub fn as_str(self) -> &'static str {
+        use Keyword::*;
+        match self {
+            Title => "title",
+            Composer => "composer",
+            Tempo => "tempo",
+            Instrument => "instrument",
+            Tuning => "tuning",
+            Capo => "capo",
+            Import => "import",
+            Score => "score",
+            Time => "time",
+            Default => "default",
+            Pickup => "pickup",
+            Repeat => "repeat",
+            Ending => "ending",
+            Loop => "loop",
+            Measure => "measure",
+            Def => "def",
+            Let => "let",
+        }
+    }
+
     /// Map an identifier spelling to a keyword, if it is one.
     pub fn from_ident(text: &str) -> Option<Keyword> {
         use Keyword::*;
@@ -174,6 +198,13 @@ mod tests {
         assert_eq!(Keyword::from_ident("r"), None);
         assert_eq!(Keyword::from_ident("hammer"), None);
         assert_eq!(Keyword::from_ident("Score"), None); // case-sensitive
+    }
+
+    #[test]
+    fn keyword_as_str_round_trips() {
+        for kw in [Keyword::Score, Keyword::Loop, Keyword::Def, Keyword::Ending] {
+            assert_eq!(Keyword::from_ident(kw.as_str()), Some(kw));
+        }
     }
 
     #[test]
