@@ -1,0 +1,28 @@
+---
+source: crates/cadtab-core/src/eval.rs
+expression: check_bar_fills(&measures)
+---
+[
+    Diagnostic {
+        severity: Warning,
+        span: Span {
+            start: 24,
+            end: 41,
+        },
+        message: "this bar is over-full",
+        help: Some(
+            "a 4/4 bar holds 1/1, but this one holds 5/4",
+        ),
+    },
+    Diagnostic {
+        severity: Warning,
+        span: Span {
+            start: 44,
+            end: 53,
+        },
+        message: "this bar is under-full",
+        help: Some(
+            "a 4/4 bar holds 1/1, but this one holds 1/2",
+        ),
+    },
+]

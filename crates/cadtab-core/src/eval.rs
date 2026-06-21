@@ -639,6 +639,46 @@ fn flush_run(
     measures.append(&mut barred);
 }
 
+/// Warn about bars whose events don't sum to their meter. Pickups (partial bars
+/// by design) and empty measures are exempt; the running meter is read from the
+/// measures' meter stamps. The tab still renders, so these are warnings.
+pub fn check_bar_fills(measures: &[Measure]) -> Vec<Diagnostic> {
+    let mut diagnostics = Vec::new();
+    let mut meter: Option<TimeSig> = None;
+    for m in measures {
+        if let Some(t) = m.meter {
+            meter = Some(t);
+        }
+        if m.is_pickup {
+            continue;
+        }
+        let Some(t) = meter else { continue };
+        let (Some(first), Some(last)) = (m.events.first(), m.events.last()) else {
+            continue;
+        };
+        let expected = t.bar_len();
+        let filled = m
+            .events
+            .iter()
+            .fold(Duration::zero(), |acc, e| acc.plus(e.duration()));
+        if filled == expected {
+            continue;
+        }
+        let kind = if filled < expected { "under" } else { "over" };
+        diagnostics.push(
+            Diagnostic::warning(
+                first.span.merge(last.span),
+                format!("this bar is {kind}-full"),
+            )
+            .with_help(format!(
+                "a {}/{} bar holds {}/{}, but this one holds {}/{}",
+                t.num, t.den, expected.num, expected.den, filled.num, filled.den
+            )),
+        );
+    }
+    diagnostics
+}
+
 /// The position of a call's `i`th argument, if it is one. Non-position or
 /// missing arguments yield `None` (the type checker reports the misuse).
 fn position_arg(args: &[Option<Value>], i: usize) -> Option<Position> {
@@ -745,6 +785,7 @@ mod tests {
 mod event_eval_tests {
     use super::*;
     use crate::ast::{ItemKind, ScoreItemKind};
+    use crate::diagnostics::Severity;
     use crate::model::{EventKind, Finger, Measure, RightHand, Technique, TimeSig};
     use crate::parser::parse;
 
@@ -1567,5 +1608,80 @@ score {
 }",
         );
         insta::assert_debug_snapshot!(measures);
+    }
+
+    /// The fill-check diagnostics for a score, as messages.
+    fn fills(src: &str) -> Vec<String> {
+        let (measures, _) = barred(src);
+        check_bar_fills(&measures)
+            .into_iter()
+            .map(|d| d.message)
+            .collect()
+    }
+
+    #[test]
+    fn a_full_bar_is_clean() {
+        assert!(fills("score { default 1/4\n 3:0 2:0 1:0 5:0 }").is_empty());
+    }
+
+    #[test]
+    fn an_under_full_bar_is_warned() {
+        let (measures, _) = barred("score { default 1/4\n 3:0 2:0 }");
+        let diags = check_bar_fills(&measures);
+        assert_eq!(diags.len(), 1);
+        assert_eq!(diags[0].severity, Severity::Warning);
+        assert!(diags[0].message.contains("under-full"));
+        // 1/2 of a 4/4 bar.
+        assert!(
+            diags[0]
+                .help
+                .as_deref()
+                .unwrap()
+                .contains("holds 1/1, but this one holds 1/2")
+        );
+    }
+
+    #[test]
+    fn an_over_full_bar_is_warned() {
+        // Three quarters then a half note overflows the 4/4 bar.
+        let diags = fills("score { default 1/4\n 3:0 2:0 1:0 3:2_2 }");
+        assert_eq!(diags, vec!["this bar is over-full".to_string()]);
+    }
+
+    #[test]
+    fn a_pickup_is_exempt_from_the_fill_check() {
+        // The pickup is a partial bar; the following bar is full → no warnings.
+        assert!(
+            fills("score { time 4/4\n default 1/4\n pickup { 1:0 }\n 3:0 2:0 1:0 5:0 }").is_empty()
+        );
+    }
+
+    #[test]
+    fn the_fill_check_follows_meter_changes() {
+        // Three quarters fill a 3/4 bar; under the old 4/4 they would be short.
+        assert!(
+            fills("score { time 4/4\n default 1/4\n 3:0 2:0 1:0 5:0\n time 3/4\n 3:0 2:0 1:0 }")
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn an_explicit_measure_is_fill_checked() {
+        let diags = fills("score { default 1/4\n measure { 3:0 2:0 } }");
+        assert_eq!(diags, vec!["this bar is under-full".to_string()]);
+    }
+
+    #[test]
+    fn fill_diagnostics_snapshot() {
+        // A half note overflows bar 1 (over-full); the two quarters after leave a
+        // short final bar (under-full).
+        let (measures, _) = barred(
+            "score {
+  default 1/4
+  3:0 2:0 1:0 3:2_2
+  3:0_4 2:0
+}",
+        );
+        insta::assert_debug_snapshot!(check_bar_fills(&measures));
     }
 }

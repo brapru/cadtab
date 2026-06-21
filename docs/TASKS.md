@@ -142,13 +142,13 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T2.4e — Phrase indexing `.N` + `len`; spread `...` (D17).
   - [x] T2.4f — Technique fns → `Technique` annotations w/ target-note rules (D8); `~` → `tie` flag (D36).
   - *Tests:* `source → model` snapshots across the feature matrix.
-- [ ] **T2.5 — Auto-barring + pickup + repeats.**
+- [x] **T2.5 — Auto-barring + pickup + repeats.**
   - [x] T2.5a — Beat accumulator over the event stream (rational time, per `time`).
   - [x] T2.5b — Bar splitting into `Measure`s + barline insertion (D12).
   - [x] T2.5c — Explicit `measure {}` override interplay.
   - [x] T2.5d — `pickup {}`: excluded from fill check, offset flag (D33).
   - [x] T2.5e — `repeat {}` → `repeat_start/end`; `ending(n){}` → volta routing + `ending` attrs (D32); meter changes.
-  - [ ] T2.5f — Over/under-full diagnostics with `help`.
+  - [x] T2.5f — Over/under-full diagnostics with `help`.
   - *Tests:* barring corpus — pickups, meter changes, over/under-full errors.
 - [ ] **T2.6 — Metadata (D34).** `title`/`composer`/`tempo` → `ScoreMeta`.
 - [ ] **T2.7 — Stdlib licks.** Forward/backward/alt-thumb/Foggy Mountain embedded via
