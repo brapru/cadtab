@@ -6,9 +6,9 @@
 //! are added incrementally.
 
 use crate::ast::{
-    Block, Chord, ChordNote, Duration, Ending, Event, EventKind, Expr, ExprKind, Fraction, Ident,
-    IntLit, Item, ItemKind, Mark, MarkKind, Note, Position, Program, Repeat, Rest, Score,
-    ScoreItem, ScoreItemKind, StringLit, Tie, TimeSig,
+    Block, Chord, ChordNote, Def, Duration, Ending, Event, EventKind, Expr, ExprKind, Fraction,
+    Ident, IntLit, Item, ItemKind, Let, LoopBlock, Mark, MarkKind, Note, Position, Program, Repeat,
+    Rest, Score, ScoreItem, ScoreItemKind, StringLit, Tie, TimeSig,
 };
 use crate::diagnostics::Diagnostic;
 use crate::lexer::lex;
@@ -206,10 +206,63 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.parse_score()
             }
-            // Not yet: def/let (T1.4f).
+            Keyword::Def => {
+                self.bump();
+                self.parse_def()
+            }
+            Keyword::Let => {
+                self.bump();
+                self.parse_let()
+            }
+            // Score-level keywords are not valid at top level.
             _ => return None,
         };
         Some(Item::new(kind, self.span_from(start)))
+    }
+
+    /// `def IDENT ( params ) { body }` (the `def` keyword is consumed).
+    fn parse_def(&mut self) -> ItemKind {
+        let Some(name) = self.parse_ident() else {
+            return ItemKind::Error;
+        };
+        let params = self.parse_params();
+        let body = self.parse_block();
+        ItemKind::Def(Def { name, params, body })
+    }
+
+    /// `( IDENT ( , IDENT )* )`, possibly empty.
+    fn parse_params(&mut self) -> Vec<Ident> {
+        let mut params = Vec::new();
+        if !self.eat(TokenKind::LParen) {
+            self.error_at(
+                self.peek().span,
+                format!("expected `(`, found {}", token_label(self.peek_kind())),
+            );
+            return params;
+        }
+        if self.eat(TokenKind::RParen) {
+            return params;
+        }
+        while let Some(id) = self.parse_ident() {
+            params.push(id);
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+        }
+        self.expect(TokenKind::RParen);
+        params
+    }
+
+    /// `let IDENT = expr` (the `let` keyword is consumed).
+    fn parse_let(&mut self) -> ItemKind {
+        let Some(name) = self.parse_ident() else {
+            return ItemKind::Error;
+        };
+        if !self.expect(TokenKind::Eq) {
+            return ItemKind::Error;
+        }
+        let value = self.parse_expr();
+        ItemKind::Let(Let { name, value })
     }
 
     /// `<keyword> STRING` → `f(string)`, or an error node if the string is
@@ -357,8 +410,14 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.parse_repeat()
             }
-            // `loop` is T1.4f; anything else is an event.
-            TokenKind::Keyword(Keyword::Loop) => return None,
+            TokenKind::Keyword(Keyword::Loop) => {
+                self.bump();
+                let count = self
+                    .parse_int_lit()
+                    .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+                let body = self.parse_block();
+                ScoreItemKind::Loop(LoopBlock { count, body })
+            }
             _ => {
                 return self.parse_event().map(|ev| {
                     let span = ev.span;
@@ -1433,6 +1492,107 @@ mod tests {
     fn expression_event_snapshot() {
         let parsed = parse("score { forward_roll(...g_chord) chord.0 .t len(g_chord) }");
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        insta::assert_debug_snapshot!(parsed.program);
+    }
+
+    // --- T1.4f: def / let / loop ------------------------------------------
+
+    #[test]
+    fn def_with_params_and_body() {
+        let parsed = parse("def forward_roll(chord) { chord.0 .t chord.1 .i chord.2 .m }");
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        match &parsed.program.items[0].kind {
+            ItemKind::Def(d) => {
+                assert_eq!(d.name.name, "forward_roll");
+                assert_eq!(d.params.len(), 1);
+                assert_eq!(d.params[0].name, "chord");
+                assert_eq!(d.body.events.len(), 3);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn def_with_empty_params() {
+        let parsed = parse("def alt() { 3:2 }");
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        match &parsed.program.items[0].kind {
+            ItemKind::Def(d) => assert!(d.params.is_empty()),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn let_binds_a_chord_value() {
+        let parsed = parse("let g_chord = [3:0 2:0 1:0]");
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        match &parsed.program.items[0].kind {
+            ItemKind::Let(l) => {
+                assert_eq!(l.name.name, "g_chord");
+                match &l.value.kind {
+                    ExprKind::Chord(c) => assert_eq!(c.notes.len(), 3),
+                    other => panic!("{other:?}"),
+                }
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn let_missing_eq_reports() {
+        let parsed = parse("let x 3");
+        assert!(matches!(parsed.program.items[0].kind, ItemKind::Error));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected `=`"))
+        );
+    }
+
+    #[test]
+    fn loop_unroll_block() {
+        let items = score_items("score { loop 2 { 3:2 3:4 } }");
+        match &items[0].kind {
+            ScoreItemKind::Loop(l) => {
+                assert_eq!(l.count.value, 2);
+                assert_eq!(l.body.events.len(), 2);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn def_call_loop_program_round_trips() {
+        let parsed = parse(
+            "def forward_roll(chord) { chord.0 .t chord.1 .i chord.2 .m }\n\
+             let g_chord = [3:0 2:0 1:0]\n\
+             score {\n  default 1/8\n  forward_roll(g_chord)\n  \
+             loop 3 { forward_roll(g_chord) }\n  forward_roll(...g_chord)\n}",
+        );
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert_eq!(parsed.program.items.len(), 3);
+    }
+
+    // --- valid-program capstone: the §6 example -------------------------
+
+    const CRIPPLE_CREEK: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/cripple_creek.ctab"
+    ));
+
+    #[test]
+    fn cripple_creek_parses_cleanly() {
+        let parsed = parse(CRIPPLE_CREEK);
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        // No error nodes anywhere a top-level item or score item.
+        assert!(
+            parsed
+                .program
+                .items
+                .iter()
+                .all(|it| !matches!(it.kind, ItemKind::Error))
+        );
         insta::assert_debug_snapshot!(parsed.program);
     }
 }
