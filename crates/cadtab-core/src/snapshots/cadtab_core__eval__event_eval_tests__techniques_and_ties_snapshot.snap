@@ -1,0 +1,117 @@
+---
+source: crates/cadtab-core/src/eval.rs
+expression: phrase
+---
+Phrase {
+    events: [
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 24,
+                end: 40,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 2,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: Some(
+                        HammerOn,
+                    ),
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 24,
+                end: 40,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 1,
+                        fret: 7,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: Some(
+                        Bend,
+                    ),
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 43,
+                end: 52,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 2,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: true,
+                },
+            ),
+            span: Span {
+                start: 55,
+                end: 58,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 2,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 61,
+                end: 64,
+            },
+        },
+    ],
+}

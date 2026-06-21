@@ -10,6 +10,7 @@ use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
     Chord, ChordNote, Duration, Event, EventKind, Finger, Note, Phrase, Position, RightHand, Strum,
+    Technique,
 };
 use crate::span::Span;
 
@@ -207,6 +208,8 @@ impl Evaluator {
             // A bare expression event splices a phrase value at the call site.
             ast::EventKind::Phrase(expr) => match self.eval_expr(expr) {
                 Some(Value::Phrase(ph)) => out.events.extend(ph.events),
+                // A single-note technique value becomes one note event.
+                Some(Value::Note(note)) => out.push(Event::new(EventKind::Note(note), expr.span)),
                 // A bare indexed element re-times to a note at the sticky duration.
                 Some(Value::Position(pos)) => out.push(Event::new(
                     EventKind::Note(Note {
@@ -220,8 +223,8 @@ impl Evaluator {
                 )),
                 _ => {}
             },
-            // Ties (the `~` tie flag) and error nodes are lowered by later passes.
-            ast::EventKind::Tie(_) | ast::EventKind::Error => {}
+            ast::EventKind::Tie(tie) => self.eval_tie_into(tie, out),
+            ast::EventKind::Error => {}
         }
     }
 
@@ -261,6 +264,24 @@ impl Evaluator {
     fn eval_rest(&mut self, rest: &ast::Rest, span: Span) -> Event {
         let dur = self.resolve_duration(rest.duration.as_ref());
         Event::new(EventKind::Rest(dur), span)
+    }
+
+    /// Lower a `~` tie: both sides are emitted, and the last note of the left
+    /// side is flagged as tying into the right (left-associative chains nest).
+    fn eval_tie_into(&mut self, tie: &ast::Tie, out: &mut Phrase) {
+        let mut left = Phrase::new();
+        self.eval_event_into(&tie.left, &mut left);
+        if let Some(EventKind::Note(n)) = left
+            .events
+            .iter_mut()
+            .rev()
+            .map(|e| &mut e.kind)
+            .find(|k| matches!(k, EventKind::Note(_)))
+        {
+            n.tie = true;
+        }
+        out.events.append(&mut left.events);
+        self.eval_event_into(&tie.right, out);
     }
 
     /// Evaluate an expression to a value. Indexing and spread are lowered by a
@@ -325,7 +346,7 @@ impl Evaluator {
             self.call_depth -= 1;
             return Some(Value::Phrase(phrase));
         }
-        self.eval_builtin(name, &arg_values)
+        self.eval_builtin(name, &arg_values, span)
     }
 
     /// Evaluate a call's arguments in the caller's scope, expanding each `...`
@@ -348,15 +369,62 @@ impl Evaluator {
         values
     }
 
-    /// Evaluate a builtin function. Only `len` (a general primitive) for now;
-    /// technique builtins are lowered by a later pass.
-    fn eval_builtin(&mut self, name: &str, args: &[Option<Value>]) -> Option<Value> {
+    /// Evaluate a builtin function: `len` (a general primitive) or a technique
+    /// that lowers to a `Technique` annotation. An unknown name yields `None`.
+    fn eval_builtin(&mut self, name: &str, args: &[Option<Value>], span: Span) -> Option<Value> {
         match name {
             "len" => match args.first() {
                 Some(Some(Value::Phrase(ph))) => Some(Value::Int(ph.events.len() as u32)),
                 _ => None,
             },
+            // Connecting techniques annotate the target (second) note.
+            "hammer" => self.connecting_technique(Technique::HammerOn, args, span),
+            "pull" => self.connecting_technique(Technique::PullOff, args, span),
+            "slide" => self.connecting_technique(Technique::SlideTo, args, span),
+            // Single-note techniques annotate the one note.
+            "bend" => self.single_technique(Technique::Bend, args),
+            "choke" => self.single_technique(Technique::Choke, args),
+            "ghost" => self.single_technique(Technique::Ghost, args),
             _ => None,
+        }
+    }
+
+    /// `hammer/pull/slide(from, to)`: a phrase of the two notes (at the sticky
+    /// duration), with the technique mark on the target note.
+    fn connecting_technique(
+        &self,
+        technique: Technique,
+        args: &[Option<Value>],
+        span: Span,
+    ) -> Option<Value> {
+        let from = position_arg(args, 0)?;
+        let to = position_arg(args, 1)?;
+        let mut phrase = Phrase::new();
+        phrase.push(Event::new(
+            EventKind::Note(self.technique_note(from, None)),
+            span,
+        ));
+        phrase.push(Event::new(
+            EventKind::Note(self.technique_note(to, Some(technique))),
+            span,
+        ));
+        Some(Value::Phrase(phrase))
+    }
+
+    /// `bend/choke/ghost(pos)`: one note (at the sticky duration) carrying the
+    /// technique mark.
+    fn single_technique(&self, technique: Technique, args: &[Option<Value>]) -> Option<Value> {
+        let pos = position_arg(args, 0)?;
+        Some(Value::Note(self.technique_note(pos, Some(technique))))
+    }
+
+    fn technique_note(&self, pos: Position, technique: Option<Technique>) -> Note {
+        Note {
+            pos,
+            dur: self.sticky,
+            right_hand: None,
+            technique,
+            tie: false,
         }
     }
 
@@ -431,6 +499,15 @@ impl Evaluator {
             return None;
         }
         Some(Duration::from_denominator(d.denom.value).dotted(d.dots))
+    }
+}
+
+/// The position of a call's `i`th argument, if it is one. Non-position or
+/// missing arguments yield `None` (the type checker reports the misuse).
+fn position_arg(args: &[Option<Value>], i: usize) -> Option<Position> {
+    match args.get(i) {
+        Some(Some(Value::Position(p))) => Some(*p),
+        _ => None,
     }
 }
 
@@ -531,7 +608,7 @@ mod tests {
 mod event_eval_tests {
     use super::*;
     use crate::ast::{ItemKind, ScoreItemKind};
-    use crate::model::{EventKind, Finger, RightHand};
+    use crate::model::{EventKind, Finger, RightHand, Technique};
     use crate::parser::parse;
 
     /// Evaluate the events of a `score { … }` body in source order, applying any
@@ -1020,6 +1097,113 @@ score {
   default 1/8
   forward_roll(g)
   loop 2 { forward_roll(g) }
+}",
+        );
+        insta::assert_debug_snapshot!(phrase);
+    }
+
+    /// The techniques on a phrase's notes, in order.
+    fn techniques(phrase: &Phrase) -> Vec<Option<Technique>> {
+        phrase
+            .events
+            .iter()
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some(n.technique),
+                _ => None,
+            })
+            .collect()
+    }
+
+    /// The tie flags on a phrase's notes, in order.
+    fn ties(phrase: &Phrase) -> Vec<bool> {
+        phrase
+            .events
+            .iter()
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some(n.tie),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn hammer_marks_the_target_note() {
+        // Two notes at the sticky duration; the hammer lands on the second.
+        let (phrase, diags) = eval_score("score { default 1/8\n hammer(3:0, 3:2) }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            positions(&phrase),
+            vec![Position::new(3, 0), Position::new(3, 2)]
+        );
+        assert_eq!(techniques(&phrase), vec![None, Some(Technique::HammerOn)]);
+        assert_eq!(durs(&phrase), vec![Duration::new(1, 8); 2]);
+    }
+
+    #[test]
+    fn pull_and_slide_mark_the_target_note() {
+        let (pull, _) = eval_score("score { pull(1:2, 1:0) }");
+        assert_eq!(techniques(&pull), vec![None, Some(Technique::PullOff)]);
+        let (slide, _) = eval_score("score { slide(2:5, 2:7) }");
+        assert_eq!(techniques(&slide), vec![None, Some(Technique::SlideTo)]);
+    }
+
+    #[test]
+    fn single_note_techniques_annotate_the_one_note() {
+        let (bend, diags) = eval_score("score { default 1/8\n bend(1:7) }");
+        assert!(diags.is_empty());
+        assert_eq!(positions(&bend), vec![Position::new(1, 7)]);
+        assert_eq!(techniques(&bend), vec![Some(Technique::Bend)]);
+        assert_eq!(durs(&bend), vec![Duration::new(1, 8)]);
+
+        let (choke, _) = eval_score("score { choke(1:5) }");
+        assert_eq!(techniques(&choke), vec![Some(Technique::Choke)]);
+        let (ghost, _) = eval_score("score { ghost(3:0) }");
+        assert_eq!(techniques(&ghost), vec![Some(Technique::Ghost)]);
+    }
+
+    #[test]
+    fn a_def_may_override_a_technique_builtin() {
+        // A user `def hammer` shadows the builtin (the override mechanism).
+        let (phrase, _) = eval_score("def hammer() { 5:0.t }\nscore { hammer() }");
+        assert_eq!(positions(&phrase), vec![Position::new(5, 0)]);
+        assert_eq!(techniques(&phrase), vec![None]);
+    }
+
+    #[test]
+    fn tie_flags_the_first_note() {
+        let (phrase, diags) = eval_score("score { default 1/8\n 3:2 ~ 3:2 }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            positions(&phrase),
+            vec![Position::new(3, 2), Position::new(3, 2)]
+        );
+        assert_eq!(ties(&phrase), vec![true, false]);
+    }
+
+    #[test]
+    fn a_tie_chain_flags_every_note_but_the_last() {
+        let (phrase, _) = eval_score("score { 3:2 ~ 3:2 ~ 3:2 }");
+        assert_eq!(ties(&phrase), vec![true, true, false]);
+    }
+
+    #[test]
+    fn a_rest_then_a_tie_threads_the_sticky_duration() {
+        // The shape of a first ending: a rest, then a tied pair.
+        let (phrase, diags) = eval_score("score { default 1/8\n r_8  3:2 ~ 3:2 }");
+        assert!(diags.is_empty());
+        assert!(matches!(phrase.events[0].kind, EventKind::Rest(_)));
+        assert_eq!(ties(&phrase), vec![true, false]);
+        assert_eq!(durs(&phrase), vec![Duration::new(1, 8); 3]);
+    }
+
+    #[test]
+    fn techniques_and_ties_snapshot() {
+        let (phrase, _) = eval_score(
+            "score {
+  default 1/8
+  hammer(3:0, 3:2)
+  bend(1:7)
+  3:2 ~ 3:2
 }",
         );
         insta::assert_debug_snapshot!(phrase);
