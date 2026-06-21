@@ -6,8 +6,9 @@
 //! are added incrementally.
 
 use crate::ast::{
-    Block, Ending, Event, Fraction, Ident, IntLit, Item, ItemKind, Program, Repeat, Score,
-    ScoreItem, ScoreItemKind, StringLit, TimeSig,
+    Block, Chord, ChordNote, Duration, Ending, Event, EventKind, Expr, ExprKind, Fraction, Ident,
+    IntLit, Item, ItemKind, Mark, MarkKind, Note, Position, Program, Repeat, Rest, Score,
+    ScoreItem, ScoreItemKind, StringLit, Tie, TimeSig,
 };
 use crate::diagnostics::Diagnostic;
 use crate::lexer::lex;
@@ -356,8 +357,14 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.parse_repeat()
             }
-            // `loop` (T1.4f) and events (T1.4d) are not handled yet.
-            _ => return None,
+            // `loop` is T1.4f; anything else is an event.
+            TokenKind::Keyword(Keyword::Loop) => return None,
+            _ => {
+                return self.parse_event().map(|ev| {
+                    let span = ev.span;
+                    ScoreItem::new(ScoreItemKind::Event(ev), span)
+                });
+            }
         };
         Some(ScoreItem::new(kind, self.span_from(start)))
     }
@@ -457,9 +464,174 @@ impl<'a> Parser<'a> {
         events
     }
 
-    /// Parse one event. Productions land in T1.4d.
+    // --- events -----------------------------------------------------------
+
+    /// `unit (~ unit)*` — a tie chain, left-associative. Returns `None` if the
+    /// current token does not begin an event (so callers can dispatch/recover).
     fn parse_event(&mut self) -> Option<Event> {
-        None
+        let mut node = self.parse_unit()?;
+        while self.at(TokenKind::Tilde) {
+            self.bump(); // `~`
+            let right = self.parse_unit().unwrap_or_else(|| {
+                let tok = self.peek();
+                self.error_at(
+                    tok.span,
+                    format!("expected a note after `~`, found {}", token_label(tok.kind)),
+                );
+                Event::new(EventKind::Error, Span::point(tok.span.start))
+            });
+            let span = node.span.merge(right.span);
+            node = Event::new(
+                EventKind::Tie(Tie {
+                    left: Box::new(node),
+                    right: Box::new(right),
+                }),
+                span,
+            );
+        }
+        Some(node)
+    }
+
+    /// `note | chord | rest`. Calls and expression-headed notes are T1.4e.
+    fn parse_unit(&mut self) -> Option<Event> {
+        let start = self.peek().span.start;
+        match self.peek_kind() {
+            TokenKind::Int => {
+                let note = self.parse_note();
+                Some(Event::new(EventKind::Note(note), self.span_from(start)))
+            }
+            TokenKind::LBracket => {
+                let chord = self.parse_chord();
+                Some(Event::new(EventKind::Chord(chord), self.span_from(start)))
+            }
+            TokenKind::Ident if self.text(self.peek().span) == "r" => {
+                self.bump(); // `r`
+                let duration = self.parse_opt_duration();
+                Some(Event::new(
+                    EventKind::Rest(Rest { duration }),
+                    self.span_from(start),
+                ))
+            }
+            _ => None,
+        }
+    }
+
+    /// `position mark? duration?` with the position as the note head.
+    fn parse_note(&mut self) -> Note {
+        let position = self.parse_position();
+        let head = Expr::new(ExprKind::Position(position.clone()), position.span);
+        let mark = self.parse_opt_mark();
+        let duration = self.parse_opt_duration();
+        Note {
+            head,
+            mark,
+            duration,
+        }
+    }
+
+    /// `INT ":" INT`.
+    fn parse_position(&mut self) -> Position {
+        let start = self.peek().span.start;
+        let string = self
+            .parse_int_lit()
+            .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+        self.expect(TokenKind::Colon);
+        let fret = self
+            .parse_int_lit()
+            .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+        Position {
+            string,
+            fret,
+            span: self.span_from(start),
+        }
+    }
+
+    /// `[ chord_note+ ] duration?`.
+    fn parse_chord(&mut self) -> Chord {
+        self.bump(); // `[`
+        let mut notes = Vec::new();
+        while !self.at_eof() && !self.at(TokenKind::RBracket) {
+            let before = self.pos;
+            if self.at(TokenKind::Int) {
+                notes.push(self.parse_chord_note());
+            } else {
+                let tok = self.peek();
+                self.error_at(
+                    tok.span,
+                    format!("expected a note in chord, found {}", token_label(tok.kind)),
+                );
+                self.bump();
+            }
+            if self.pos == before {
+                self.bump();
+            }
+        }
+        self.expect(TokenKind::RBracket);
+        let duration = self.parse_opt_duration();
+        Chord { notes, duration }
+    }
+
+    fn parse_chord_note(&mut self) -> ChordNote {
+        let start = self.peek().span.start;
+        let position = self.parse_position();
+        let mark = self.parse_opt_mark();
+        ChordNote {
+            position,
+            mark,
+            span: self.span_from(start),
+        }
+    }
+
+    /// `. mark_kind` where mark_kind ∈ {t,i,m,d,u}; absent or non-mark → `None`.
+    fn parse_opt_mark(&mut self) -> Option<Mark> {
+        if !(self.at(TokenKind::Dot) && matches!(self.peek2_kind(), TokenKind::Ident)) {
+            return None;
+        }
+        let dot = self.bump(); // `.`
+        let tok = self.bump(); // mark letter
+        let label = self.text(tok.span).to_string();
+        let kind = match label.as_str() {
+            "t" => MarkKind::Thumb,
+            "i" => MarkKind::Index,
+            "m" => MarkKind::Middle,
+            "d" => MarkKind::StrumDown,
+            "u" => MarkKind::StrumUp,
+            _ => {
+                self.error_at(tok.span, format!("unknown mark `.{label}`"));
+                return None;
+            }
+        };
+        Some(Mark {
+            kind,
+            span: dot.span.merge(tok.span),
+        })
+    }
+
+    /// `_ INT ("."...)` — denominator plus trailing augmentation dots.
+    fn parse_opt_duration(&mut self) -> Option<Duration> {
+        if !self.at(TokenKind::Underscore) {
+            return None;
+        }
+        let start = self.peek().span.start;
+        self.bump(); // `_`
+        let denom = self
+            .parse_int_lit()
+            .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+        // Augmentation dots; `..` lexes as one `DotDot`, so count it as two.
+        let mut dots = 0u8;
+        loop {
+            match self.peek_kind() {
+                TokenKind::Dot => dots = dots.saturating_add(1),
+                TokenKind::DotDot => dots = dots.saturating_add(2),
+                _ => break,
+            }
+            self.bump();
+        }
+        Some(Duration {
+            denom,
+            dots,
+            span: self.span_from(start),
+        })
     }
 }
 
@@ -853,6 +1025,178 @@ mod tests {
             "score {\n  time 4/4\n  default 1/8\n  pickup { }\n  \
              repeat { ending(1) { } ending(2) { } }\n  measure { }\n}",
         );
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        insta::assert_debug_snapshot!(parsed.program);
+    }
+
+    // --- T1.4d: events (notes, chords, rests, ties) -----------------------
+
+    use crate::ast::{EventKind, ExprKind, MarkKind};
+
+    fn body_events(body: &str) -> Vec<Event> {
+        let src = format!("score {{ {body} }}");
+        let parsed = parse(&src);
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        match parsed.program.items.into_iter().next().unwrap().kind {
+            ItemKind::Score(s) => s
+                .items
+                .into_iter()
+                .map(|it| match it.kind {
+                    ScoreItemKind::Event(ev) => ev,
+                    other => panic!("non-event: {other:?}"),
+                })
+                .collect(),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    fn one_event(body: &str) -> Event {
+        let mut v = body_events(body);
+        assert_eq!(v.len(), 1);
+        v.pop().unwrap()
+    }
+
+    #[test]
+    fn bare_note_literal() {
+        match one_event("3:2").kind {
+            EventKind::Note(n) => {
+                assert!(n.mark.is_none());
+                assert!(n.duration.is_none());
+                match n.head.kind {
+                    ExprKind::Position(p) => assert_eq!((p.string.value, p.fret.value), (3, 2)),
+                    other => panic!("{other:?}"),
+                }
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn note_with_mark_and_duration() {
+        match one_event("3:2.t_8").kind {
+            EventKind::Note(n) => {
+                assert_eq!(n.mark.unwrap().kind, MarkKind::Thumb);
+                let d = n.duration.unwrap();
+                assert_eq!(d.denom.value, 8);
+                assert_eq!(d.dots, 0);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn dotted_durations_count_dots() {
+        for (src, want) in [("3:2_4.", 1u8), ("3:2_4..", 2)] {
+            match one_event(src).kind {
+                EventKind::Note(n) => assert_eq!(n.duration.unwrap().dots, want),
+                other => panic!("{other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn strum_marks() {
+        for (src, want) in [("1:0.d", MarkKind::StrumDown), ("1:0.u", MarkKind::StrumUp)] {
+            match one_event(src).kind {
+                EventKind::Note(n) => assert_eq!(n.mark.unwrap().kind, want),
+                other => panic!("{other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn chord_with_members_and_duration() {
+        match one_event("[1:0.m 5:0.t]_4").kind {
+            EventKind::Chord(c) => {
+                assert_eq!(c.notes.len(), 2);
+                assert_eq!(c.notes[0].mark.as_ref().unwrap().kind, MarkKind::Middle);
+                assert_eq!(c.notes[1].mark.as_ref().unwrap().kind, MarkKind::Thumb);
+                assert_eq!(c.duration.unwrap().denom.value, 4);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn rest_with_and_without_duration() {
+        assert!(matches!(
+            one_event("r").kind,
+            EventKind::Rest(r) if r.duration.is_none()
+        ));
+        match one_event("r_8").kind {
+            EventKind::Rest(r) => assert_eq!(r.duration.unwrap().denom.value, 8),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn tie_joins_two_notes() {
+        match one_event("3:2 ~ 3:2").kind {
+            EventKind::Tie(t) => {
+                assert!(matches!(t.left.kind, EventKind::Note(_)));
+                assert!(matches!(t.right.kind, EventKind::Note(_)));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn tie_chains_are_left_associative() {
+        // a ~ b ~ c  =>  Tie(Tie(a, b), c)
+        match one_event("3:2 ~ 3:4 ~ 3:5").kind {
+            EventKind::Tie(outer) => {
+                assert!(matches!(outer.left.kind, EventKind::Tie(_)));
+                assert!(matches!(outer.right.kind, EventKind::Note(_)));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn events_parse_inside_blocks() {
+        // The pickup block now holds real events.
+        let items = score_items("score { pickup { 2:0.i 1:0.t } }");
+        match &items[0].kind {
+            ScoreItemKind::Pickup(b) => assert_eq!(b.events.len(), 2),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn unknown_mark_reports() {
+        let parsed = parse("score { 3:2.x }");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("unknown mark"))
+        );
+    }
+
+    #[test]
+    fn tie_without_rhs_reports_and_makes_error_node() {
+        let parsed = parse("score { 3:2 ~ }");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("after `~`"))
+        );
+        match &parsed.program.items[0].kind {
+            ItemKind::Score(s) => match &s.items[0].kind {
+                ScoreItemKind::Event(ev) => match &ev.kind {
+                    EventKind::Tie(t) => assert!(matches!(t.right.kind, EventKind::Error)),
+                    other => panic!("{other:?}"),
+                },
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn events_body_snapshot() {
+        let parsed = parse("score { 3:0.t [1:0.m 5:0.t]_4 r_8 3:2 ~ 3:2 }");
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         insta::assert_debug_snapshot!(parsed.program);
     }

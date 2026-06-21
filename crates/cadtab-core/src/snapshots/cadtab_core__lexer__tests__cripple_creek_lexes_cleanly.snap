@@ -93,7 +93,9 @@ LParen 447..448
 Int 448..449
 RParen 449..450
 LBrace 451..452
-Ident 453..456
+Ident 453..454
+Underscore 454..455
+Int 455..456
 Int 458..459
 Colon 459..460
 Int 460..461

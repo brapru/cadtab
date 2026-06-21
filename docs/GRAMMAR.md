@@ -36,7 +36,7 @@ highlighting *and* diagnostics, D27), and never bails (error tokens, D19).
 ```
 INT     = DIGIT { DIGIT }                          // unsigned decimal
 STRING  = '"' { CHAR_NO_DQ_NL | '\\' ANY } '"'     // double-quoted, single-line, backslash escapes
-IDENT   = ALPHA { ALPHA | DIGIT | "_" }            // no leading "_"; keyword recognition is post-scan
+IDENT   = ALPHA { ALPHA | DIGIT | ("_" ALPHA) }    // no leading "_"; "_" joins only before a letter
 COMMENT = "//" { ANY_NO_NL }                       // line comment        (whitespace)
         | "/*" { ANY } "*/"                         // block comment       (whitespace; non-nesting [CORE])
 WS      = SP | TAB | NL | CR                        // insignificant
@@ -52,7 +52,8 @@ Punctuation / operator tokens:
   `".."` is reserved (no current use) so a stray `..` lexes as one token, not two `.`.
 - `"_"` is always the duration-suffix lead token (`Underscore`). Identifiers may *contain* `_`
   (`forward_roll`) but never *start* with one, so `_8` lexes as `Underscore` `Int`, never as an
-  identifier.
+  identifier. Inside a name, `_` joins only when followed by a **letter**; `_` before a digit is a
+  duration, so `r_8` lexes as `r` then `_8` (rest + eighth) and a name cannot contain `_<digit>`.
 - Strings are **single-line**: a newline (or EOF) before the closing `"` is an unterminated-string
   diagnostic; the `\`-escape is scanned but not decoded by the lexer.
 - `"."` carries three surface meanings disambiguated by what follows (parser, not lexer):

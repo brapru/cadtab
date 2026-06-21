@@ -1,0 +1,318 @@
+---
+source: crates/cadtab-core/src/parser.rs
+expression: parsed.program
+---
+Program {
+    items: [
+        Item {
+            kind: Score(
+                Score {
+                    items: [
+                        ScoreItem {
+                            kind: Event(
+                                Event {
+                                    kind: Note(
+                                        Note {
+                                            head: Expr {
+                                                kind: Position(
+                                                    Position {
+                                                        string: IntLit {
+                                                            value: 3,
+                                                            span: Span {
+                                                                start: 8,
+                                                                end: 9,
+                                                            },
+                                                        },
+                                                        fret: IntLit {
+                                                            value: 0,
+                                                            span: Span {
+                                                                start: 10,
+                                                                end: 11,
+                                                            },
+                                                        },
+                                                        span: Span {
+                                                            start: 8,
+                                                            end: 11,
+                                                        },
+                                                    },
+                                                ),
+                                                span: Span {
+                                                    start: 8,
+                                                    end: 11,
+                                                },
+                                            },
+                                            mark: Some(
+                                                Mark {
+                                                    kind: Thumb,
+                                                    span: Span {
+                                                        start: 11,
+                                                        end: 13,
+                                                    },
+                                                },
+                                            ),
+                                            duration: None,
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 8,
+                                        end: 13,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 8,
+                                end: 13,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Event(
+                                Event {
+                                    kind: Chord(
+                                        Chord {
+                                            notes: [
+                                                ChordNote {
+                                                    position: Position {
+                                                        string: IntLit {
+                                                            value: 1,
+                                                            span: Span {
+                                                                start: 15,
+                                                                end: 16,
+                                                            },
+                                                        },
+                                                        fret: IntLit {
+                                                            value: 0,
+                                                            span: Span {
+                                                                start: 17,
+                                                                end: 18,
+                                                            },
+                                                        },
+                                                        span: Span {
+                                                            start: 15,
+                                                            end: 18,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Middle,
+                                                            span: Span {
+                                                                start: 18,
+                                                                end: 20,
+                                                            },
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 15,
+                                                        end: 20,
+                                                    },
+                                                },
+                                                ChordNote {
+                                                    position: Position {
+                                                        string: IntLit {
+                                                            value: 5,
+                                                            span: Span {
+                                                                start: 21,
+                                                                end: 22,
+                                                            },
+                                                        },
+                                                        fret: IntLit {
+                                                            value: 0,
+                                                            span: Span {
+                                                                start: 23,
+                                                                end: 24,
+                                                            },
+                                                        },
+                                                        span: Span {
+                                                            start: 21,
+                                                            end: 24,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Thumb,
+                                                            span: Span {
+                                                                start: 24,
+                                                                end: 26,
+                                                            },
+                                                        },
+                                                    ),
+                                                    span: Span {
+                                                        start: 21,
+                                                        end: 26,
+                                                    },
+                                                },
+                                            ],
+                                            duration: Some(
+                                                Duration {
+                                                    denom: IntLit {
+                                                        value: 4,
+                                                        span: Span {
+                                                            start: 28,
+                                                            end: 29,
+                                                        },
+                                                    },
+                                                    dots: 0,
+                                                    span: Span {
+                                                        start: 27,
+                                                        end: 29,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 14,
+                                        end: 29,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 14,
+                                end: 29,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Event(
+                                Event {
+                                    kind: Rest(
+                                        Rest {
+                                            duration: Some(
+                                                Duration {
+                                                    denom: IntLit {
+                                                        value: 8,
+                                                        span: Span {
+                                                            start: 32,
+                                                            end: 33,
+                                                        },
+                                                    },
+                                                    dots: 0,
+                                                    span: Span {
+                                                        start: 31,
+                                                        end: 33,
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 30,
+                                        end: 33,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 30,
+                                end: 33,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Event(
+                                Event {
+                                    kind: Tie(
+                                        Tie {
+                                            left: Event {
+                                                kind: Note(
+                                                    Note {
+                                                        head: Expr {
+                                                            kind: Position(
+                                                                Position {
+                                                                    string: IntLit {
+                                                                        value: 3,
+                                                                        span: Span {
+                                                                            start: 34,
+                                                                            end: 35,
+                                                                        },
+                                                                    },
+                                                                    fret: IntLit {
+                                                                        value: 2,
+                                                                        span: Span {
+                                                                            start: 36,
+                                                                            end: 37,
+                                                                        },
+                                                                    },
+                                                                    span: Span {
+                                                                        start: 34,
+                                                                        end: 37,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            span: Span {
+                                                                start: 34,
+                                                                end: 37,
+                                                            },
+                                                        },
+                                                        mark: None,
+                                                        duration: None,
+                                                    },
+                                                ),
+                                                span: Span {
+                                                    start: 34,
+                                                    end: 37,
+                                                },
+                                            },
+                                            right: Event {
+                                                kind: Note(
+                                                    Note {
+                                                        head: Expr {
+                                                            kind: Position(
+                                                                Position {
+                                                                    string: IntLit {
+                                                                        value: 3,
+                                                                        span: Span {
+                                                                            start: 40,
+                                                                            end: 41,
+                                                                        },
+                                                                    },
+                                                                    fret: IntLit {
+                                                                        value: 2,
+                                                                        span: Span {
+                                                                            start: 42,
+                                                                            end: 43,
+                                                                        },
+                                                                    },
+                                                                    span: Span {
+                                                                        start: 40,
+                                                                        end: 43,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            span: Span {
+                                                                start: 40,
+                                                                end: 43,
+                                                            },
+                                                        },
+                                                        mark: None,
+                                                        duration: None,
+                                                    },
+                                                ),
+                                                span: Span {
+                                                    start: 40,
+                                                    end: 43,
+                                                },
+                                            },
+                                        },
+                                    ),
+                                    span: Span {
+                                        start: 34,
+                                        end: 43,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 34,
+                                end: 43,
+                            },
+                        },
+                    ],
+                },
+            ),
+            span: Span {
+                start: 0,
+                end: 45,
+            },
+        },
+    ],
+    span: Span {
+        start: 0,
+        end: 45,
+    },
+}

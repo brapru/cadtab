@@ -162,11 +162,20 @@ impl<'a> Lexer<'a> {
         TokenKind::Int
     }
 
-    /// An identifier starting with an ASCII letter, then letters/digits/`_`.
-    /// Recognized keywords lower to [`TokenKind::Keyword`].
+    /// An identifier starting with an ASCII letter, then letters/digits, plus
+    /// `_` only when followed by a letter (so `_<digit>` stays a duration suffix
+    /// and `r_8` lexes as `r` then `_8`). Recognized keywords lower to
+    /// [`TokenKind::Keyword`].
     fn ident(&mut self, start: u32) -> TokenKind {
-        while matches!(self.peek(), Some(b) if b == b'_' || b.is_ascii_alphanumeric()) {
-            self.pos += 1;
+        self.pos += 1; // leading letter
+        loop {
+            match self.peek() {
+                Some(b) if b.is_ascii_alphanumeric() => self.pos += 1,
+                Some(b'_') if matches!(self.peek_at(1), Some(c) if c.is_ascii_alphabetic()) => {
+                    self.pos += 1;
+                }
+                _ => break,
+            }
         }
         let text = &self.src[start as usize..self.pos];
         match Keyword::from_ident(text) {
@@ -452,6 +461,30 @@ mod tests {
         );
         assert_eq!(lexed.tokens[2].span, Span::new(12, 24)); // forward_roll
         assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn underscore_joins_idents_only_before_a_letter() {
+        // `_letter` joins the name; `_digit` is a duration suffix.
+        assert_eq!(
+            kinds(&lex("forward_roll")),
+            vec![TokenKind::Ident, TokenKind::Eof]
+        );
+        assert_eq!(
+            kinds(&lex("g_chord")),
+            vec![TokenKind::Ident, TokenKind::Eof]
+        );
+        let rest = lex("r_8");
+        assert_eq!(
+            kinds(&rest),
+            vec![
+                TokenKind::Ident,
+                TokenKind::Underscore,
+                TokenKind::Int,
+                TokenKind::Eof
+            ]
+        );
+        assert_eq!(rest.tokens[0].span, Span::new(0, 1)); // just `r`
     }
 
     #[test]
