@@ -492,14 +492,12 @@ impl<'a> Parser<'a> {
         Some(node)
     }
 
-    /// `note | chord | rest`. Calls and expression-headed notes are T1.4e.
+    /// `unit = chord | rest | (expr mark? duration?)`. A position head, or any
+    /// head with a mark/duration, is a note; a bare call/ident/index is a phrase
+    /// splice. Returns `None` if no event begins here.
     fn parse_unit(&mut self) -> Option<Event> {
         let start = self.peek().span.start;
         match self.peek_kind() {
-            TokenKind::Int => {
-                let note = self.parse_note();
-                Some(Event::new(EventKind::Note(note), self.span_from(start)))
-            }
             TokenKind::LBracket => {
                 let chord = self.parse_chord();
                 Some(Event::new(EventKind::Chord(chord), self.span_from(start)))
@@ -512,20 +510,23 @@ impl<'a> Parser<'a> {
                     self.span_from(start),
                 ))
             }
+            TokenKind::Int | TokenKind::Ident | TokenKind::LParen => {
+                let head = self.parse_expr();
+                let is_position = matches!(head.kind, ExprKind::Position(_));
+                let mark = self.parse_opt_mark();
+                let duration = self.parse_opt_duration();
+                let kind = if is_position || mark.is_some() || duration.is_some() {
+                    EventKind::Note(Note {
+                        head,
+                        mark,
+                        duration,
+                    })
+                } else {
+                    EventKind::Phrase(head)
+                };
+                Some(Event::new(kind, self.span_from(start)))
+            }
             _ => None,
-        }
-    }
-
-    /// `position mark? duration?` with the position as the note head.
-    fn parse_note(&mut self) -> Note {
-        let position = self.parse_position();
-        let head = Expr::new(ExprKind::Position(position.clone()), position.span);
-        let mark = self.parse_opt_mark();
-        let duration = self.parse_opt_duration();
-        Note {
-            head,
-            mark,
-            duration,
         }
     }
 
@@ -632,6 +633,125 @@ impl<'a> Parser<'a> {
             dots,
             span: self.span_from(start),
         })
+    }
+
+    // --- expressions (Pratt) ---------------------------------------------
+
+    /// An expression: a primary followed by `.N` index / `(args)` call postfixes.
+    fn parse_expr(&mut self) -> Expr {
+        let start = self.peek().span.start;
+        let mut e = self.parse_primary();
+        loop {
+            match self.peek_kind() {
+                // `.N` index — only when a number follows; `.mark` is note-level.
+                TokenKind::Dot if matches!(self.peek2_kind(), TokenKind::Int) => {
+                    self.bump(); // `.`
+                    let index = self
+                        .parse_int_lit()
+                        .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+                    e = Expr::new(
+                        ExprKind::Index {
+                            base: Box::new(e),
+                            index,
+                        },
+                        self.span_from(start),
+                    );
+                }
+                TokenKind::LParen => {
+                    self.bump(); // `(`
+                    let args = self.parse_args();
+                    self.expect(TokenKind::RParen);
+                    e = Expr::new(
+                        ExprKind::Call {
+                            callee: Box::new(e),
+                            args,
+                        },
+                        self.span_from(start),
+                    );
+                }
+                _ => break,
+            }
+        }
+        e
+    }
+
+    fn parse_primary(&mut self) -> Expr {
+        let start = self.peek().span.start;
+        match self.peek_kind() {
+            TokenKind::Int => {
+                let int = self
+                    .parse_int_lit()
+                    .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+                if self.eat(TokenKind::Colon) {
+                    let fret = self
+                        .parse_int_lit()
+                        .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+                    let span = self.span_from(start);
+                    Expr::new(
+                        ExprKind::Position(Position {
+                            string: int,
+                            fret,
+                            span,
+                        }),
+                        span,
+                    )
+                } else {
+                    Expr::new(ExprKind::Int(int.value), int.span)
+                }
+            }
+            TokenKind::Str => {
+                let value = self.parse_string_lit().map(|s| s.value).unwrap_or_default();
+                Expr::new(ExprKind::Str(value), self.span_from(start))
+            }
+            TokenKind::Ident => {
+                let tok = self.bump();
+                Expr::new(ExprKind::Ident(self.text(tok.span).to_string()), tok.span)
+            }
+            TokenKind::LBracket => {
+                let chord = self.parse_chord();
+                Expr::new(ExprKind::Chord(chord), self.span_from(start))
+            }
+            TokenKind::LParen => {
+                self.bump(); // `(`
+                let inner = self.parse_expr();
+                self.expect(TokenKind::RParen);
+                Expr::new(ExprKind::Paren(Box::new(inner)), self.span_from(start))
+            }
+            _ => {
+                let tok = self.peek();
+                self.error_at(
+                    tok.span,
+                    format!("expected an expression, found {}", token_label(tok.kind)),
+                );
+                Expr::new(ExprKind::Error, Span::point(start))
+            }
+        }
+    }
+
+    /// Comma-separated call arguments, each optionally `...`-spread.
+    fn parse_args(&mut self) -> Vec<Expr> {
+        let mut args = Vec::new();
+        if self.at(TokenKind::RParen) {
+            return args;
+        }
+        loop {
+            args.push(self.parse_arg());
+            if !self.eat(TokenKind::Comma) {
+                break;
+            }
+        }
+        args
+    }
+
+    fn parse_arg(&mut self) -> Expr {
+        if self.at(TokenKind::Ellipsis) {
+            let start = self.peek().span.start;
+            self.bump(); // `...`
+            let inner = self.parse_expr();
+            Expr::new(ExprKind::Spread(Box::new(inner)), self.span_from(start))
+        } else {
+            self.parse_expr()
+        }
     }
 }
 
@@ -1197,6 +1317,121 @@ mod tests {
     #[test]
     fn events_body_snapshot() {
         let parsed = parse("score { 3:0.t [1:0.m 5:0.t]_4 r_8 3:2 ~ 3:2 }");
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        insta::assert_debug_snapshot!(parsed.program);
+    }
+
+    // --- T1.4e: expressions (calls, index, spread) ------------------------
+
+    /// The ident name of an expression, or `None`.
+    fn ident_name(e: &Expr) -> Option<&str> {
+        match &e.kind {
+            ExprKind::Ident(n) => Some(n.as_str()),
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn call_event_with_position_args() {
+        match one_event("hammer(3:0, 3:2)").kind {
+            EventKind::Phrase(e) => match e.kind {
+                ExprKind::Call { callee, args } => {
+                    assert_eq!(ident_name(&callee), Some("hammer"));
+                    assert_eq!(args.len(), 2);
+                    assert!(matches!(args[0].kind, ExprKind::Position(_)));
+                    assert!(matches!(args[1].kind, ExprKind::Position(_)));
+                }
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn call_with_no_args() {
+        match one_event("bend(1:7)").kind {
+            EventKind::Phrase(e) => match e.kind {
+                ExprKind::Call { args, .. } => assert_eq!(args.len(), 1),
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn spread_argument() {
+        match one_event("forward_roll(...g_chord)").kind {
+            EventKind::Phrase(e) => match e.kind {
+                ExprKind::Call { args, .. } => {
+                    assert_eq!(args.len(), 1);
+                    match &args[0].kind {
+                        ExprKind::Spread(inner) => assert_eq!(ident_name(inner), Some("g_chord")),
+                        other => panic!("{other:?}"),
+                    }
+                }
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn index_headed_note_with_mark() {
+        // `chord.0 .t` → a note whose head is the index expression.
+        match one_event("chord.0 .t").kind {
+            EventKind::Note(n) => {
+                assert_eq!(n.mark.unwrap().kind, MarkKind::Thumb);
+                assert!(matches!(n.head.kind, ExprKind::Index { .. }));
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn bare_index_is_a_phrase() {
+        match one_event("chord.0").kind {
+            EventKind::Phrase(e) => match e.kind {
+                ExprKind::Index { base, index } => {
+                    assert_eq!(ident_name(&base), Some("chord"));
+                    assert_eq!(index.value, 0);
+                }
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn bare_ident_is_a_phrase() {
+        match one_event("g_chord").kind {
+            EventKind::Phrase(e) => assert_eq!(ident_name(&e), Some("g_chord")),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn len_is_just_a_call() {
+        match one_event("len(g_chord)").kind {
+            EventKind::Phrase(e) => match e.kind {
+                ExprKind::Call { callee, .. } => assert_eq!(ident_name(&callee), Some("len")),
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn measure_with_technique_calls() {
+        let items = score_items("score { measure { hammer(3:0, 3:2) bend(1:7) } }");
+        match &items[0].kind {
+            ScoreItemKind::Measure(b) => assert_eq!(b.events.len(), 2),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn expression_event_snapshot() {
+        let parsed = parse("score { forward_roll(...g_chord) chord.0 .t len(g_chord) }");
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         insta::assert_debug_snapshot!(parsed.program);
     }
