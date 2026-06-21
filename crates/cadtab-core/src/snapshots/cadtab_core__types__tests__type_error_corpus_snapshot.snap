@@ -1,0 +1,72 @@
+---
+source: crates/cadtab-core/src/types.rs
+expression: typed.diagnostics
+---
+[
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 73,
+            end: 79,
+        },
+        message: "`roll` expects 1 argument, got 0",
+        help: Some(
+            "check the call against the definition's parameters",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 82,
+            end: 92,
+        },
+        message: "`roll` expects 1 argument, got 2",
+        help: Some(
+            "check the call against the definition's parameters",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 99,
+            end: 100,
+        },
+        message: "argument 1 to `len` should be a phrase, found an integer",
+        help: Some(
+            "pass a value of the expected kind",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 111,
+            end: 112,
+        },
+        message: "argument 1 to `hammer` should be a position, found a phrase",
+        help: Some(
+            "pass a value of the expected kind",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 121,
+            end: 122,
+        },
+        message: "cannot index into an integer",
+        help: Some(
+            "indexing `.N` works on a phrase or chord",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 127,
+            end: 128,
+        },
+        message: "a phrase is not callable",
+        help: Some(
+            "only `def`s and builtin functions can be called",
+        ),
+    },
+]

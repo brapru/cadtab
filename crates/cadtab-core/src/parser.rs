@@ -163,8 +163,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse one top-level item. `score`/`def`/`let` are added in later
-    /// sub-tasks; until then they fall through to the caller's recovery path.
+    /// Parse one top-level item. Returns `None` when the current token begins
+    /// no item, so the caller can run its recovery path.
     fn parse_item(&mut self) -> Option<Item> {
         let start = self.peek().span.start;
         let TokenKind::Keyword(kw) = self.peek_kind() else {
@@ -499,8 +499,8 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse events until `}`, EOF, or any token in `stop`. Event productions
-    /// land in T1.4d; for now any event token is reported and skipped.
+    /// Parse events until `}`, EOF, or any token in `stop`. A token that begins
+    /// no event is reported and skipped, so parsing recovers within the block.
     fn parse_events_until(&mut self, stop: &[TokenKind]) -> Vec<Event> {
         let mut events = Vec::new();
         while !self.at_eof() && !self.at(TokenKind::RBrace) && !stop.contains(&self.peek_kind()) {
@@ -1003,7 +1003,7 @@ mod tests {
         assert_eq!(p.text(tok.span), "banjo");
     }
 
-    // --- T1.4b: top-level declarations ------------------------------------
+    // --- top-level declarations ------------------------------------
 
     use crate::ast::IntLit;
 
@@ -1112,7 +1112,7 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- T1.4c: score / pickup / repeat / measure / endings ---------------
+    // --- score / pickup / repeat / measure / endings ---------------
 
     use crate::ast::{ScoreItemKind, TimeSig};
 
@@ -1212,7 +1212,7 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- T1.4d: events (notes, chords, rests, ties) -----------------------
+    // --- events (notes, chords, rests, ties) -----------------------
 
     use crate::ast::{EventKind, ExprKind, MarkKind};
 
@@ -1384,7 +1384,7 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- T1.4e: expressions (calls, index, spread) ------------------------
+    // --- expressions (calls, index, spread) ------------------------
 
     /// The ident name of an expression, or `None`.
     fn ident_name(e: &Expr) -> Option<&str> {
@@ -1499,7 +1499,7 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- T1.4f: def / let / loop ------------------------------------------
+    // --- def / let / loop ------------------------------------------
 
     #[test]
     fn def_with_params_and_body() {
@@ -1578,7 +1578,7 @@ mod tests {
         assert_eq!(parsed.program.items.len(), 3);
     }
 
-    // --- valid-program capstone: the §6 example -------------------------
+    // --- valid-program capstone: the Cripple Creek example -------------------------
 
     const CRIPPLE_CREEK: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -1600,7 +1600,7 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- T1.4g: error-recovery corpus + multi-diagnostics -----------------
+    // --- error-recovery corpus + multi-diagnostics -----------------
 
     fn diag_messages(src: &str) -> Vec<String> {
         parse(src)

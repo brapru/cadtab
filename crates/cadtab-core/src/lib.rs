@@ -12,6 +12,7 @@ pub mod resolve;
 pub mod source;
 pub mod span;
 pub mod token;
+pub mod types;
 
 use serde::{Deserialize, Serialize};
 

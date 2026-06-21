@@ -17,12 +17,12 @@ use crate::ast::{
 use crate::diagnostics::Diagnostic;
 use crate::span::Span;
 
-/// Builtin functions always in scope: techniques (D8) plus phrase utilities.
+/// Builtin functions always in scope: techniques plus phrase utilities.
 const BUILTINS: &[&str] = &["hammer", "pull", "slide", "bend", "choke", "ghost", "len"];
 
 /// Names exported by importable modules, keyed by import path. Injected so the
 /// pure core stays IO-free: the desktop build populates it from the filesystem,
-/// the web build from the embedded stdlib (D38). Empty by default.
+/// the web build from the embedded stdlib. Empty by default.
 #[derive(Debug, Clone, Default)]
 pub struct ImportEnv {
     modules: HashMap<String, Vec<String>>,
