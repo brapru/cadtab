@@ -74,7 +74,7 @@ impl<'a> Lexer<'a> {
                 b'}' => self.single(TokenKind::RBrace),
                 b'(' => self.single(TokenKind::LParen),
                 b')' => self.single(TokenKind::RParen),
-                _ => self.unknown_char(),
+                _ => self.error_run(start),
             };
             tokens.push(LexToken::new(kind, Span::new(start, self.pos as u32)));
         }
@@ -209,14 +209,48 @@ impl<'a> Lexer<'a> {
         TokenKind::Str
     }
 
-    /// Consume one whole UTF-8 char as an `Error` token; advancing by a full
-    /// char keeps spans on char boundaries.
-    fn unknown_char(&mut self) -> TokenKind {
-        let len = self.src[self.pos..]
-            .chars()
-            .next()
-            .map_or(1, char::len_utf8);
-        self.pos += len;
+    /// True for any byte that begins a recognized token (mirrors the dispatch).
+    fn is_token_start(b: u8) -> bool {
+        b.is_ascii_alphanumeric()
+            || matches!(
+                b,
+                b'/' | b'"'
+                    | b':'
+                    | b'_'
+                    | b'~'
+                    | b'.'
+                    | b','
+                    | b'='
+                    | b'['
+                    | b']'
+                    | b'{'
+                    | b'}'
+                    | b'('
+                    | b')'
+            )
+    }
+
+    /// Consume a run of unrecognized characters into one `Error` token + one
+    /// diagnostic. Stops at whitespace or the next valid token start; advances
+    /// by whole UTF-8 chars so spans stay on char boundaries.
+    fn error_run(&mut self, start: u32) -> TokenKind {
+        while let Some(b) = self.peek() {
+            if b.is_ascii_whitespace() || Self::is_token_start(b) {
+                break;
+            }
+            let len = self.src[self.pos..]
+                .chars()
+                .next()
+                .map_or(1, char::len_utf8);
+            self.pos += len;
+        }
+        let span = Span::new(start, self.pos as u32);
+        let text = &self.src[start as usize..self.pos];
+        let plural = if text.chars().count() > 1 { "s" } else { "" };
+        self.diagnostics.push(
+            Diagnostic::error(span, format!("unexpected character{plural} `{text}`"))
+                .with_help("remove or replace the unexpected input"),
+        );
         TokenKind::Error
     }
 }
@@ -224,6 +258,7 @@ impl<'a> Lexer<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::diagnostics::Severity;
 
     fn kinds(lexed: &Lexed) -> Vec<TokenKind> {
         lexed.tokens.iter().map(|t| t.kind).collect()
@@ -307,6 +342,73 @@ mod tests {
         let lexed = lex("é");
         assert_eq!(kinds(&lexed), vec![TokenKind::Error, TokenKind::Eof]);
         assert_eq!(lexed.tokens[0].span, Span::new(0, 2));
+    }
+
+    #[test]
+    fn unexpected_char_reports_diagnostic() {
+        let lexed = lex("@");
+        assert_eq!(kinds(&lexed), vec![TokenKind::Error, TokenKind::Eof]);
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 1));
+        assert_eq!(lexed.diagnostics.len(), 1);
+        assert_eq!(lexed.diagnostics[0].severity, Severity::Error);
+        assert_eq!(lexed.diagnostics[0].message, "unexpected character `@`");
+        assert!(lexed.diagnostics[0].help.is_some());
+    }
+
+    #[test]
+    fn unexpected_char_run_coalesces() {
+        // A contiguous garbage run is one Error token + one diagnostic.
+        let lexed = lex("@$%");
+        assert_eq!(kinds(&lexed), vec![TokenKind::Error, TokenKind::Eof]);
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 3));
+        assert_eq!(lexed.diagnostics.len(), 1);
+        assert_eq!(lexed.diagnostics[0].message, "unexpected characters `@$%`");
+    }
+
+    #[test]
+    fn error_run_stops_at_whitespace_and_token_starts() {
+        // `@ $` → two runs; `@3` → one run then an Int.
+        let split = lex("@ $");
+        assert_eq!(
+            kinds(&split),
+            vec![TokenKind::Error, TokenKind::Error, TokenKind::Eof]
+        );
+        assert_eq!(split.diagnostics.len(), 2);
+
+        let abuts = lex("@3");
+        assert_eq!(
+            kinds(&abuts),
+            vec![TokenKind::Error, TokenKind::Int, TokenKind::Eof]
+        );
+        assert_eq!(abuts.tokens[0].span, Span::new(0, 1)); // stopped at the digit
+        assert_eq!(abuts.diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn error_run_keeps_multibyte_char_boundaries() {
+        // '€' is three bytes; one run, one diagnostic, boundary-aligned span.
+        let lexed = lex("€");
+        assert_eq!(kinds(&lexed), vec![TokenKind::Error, TokenKind::Eof]);
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 3));
+        assert_eq!(lexed.diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn lexer_stays_resilient_amid_errors() {
+        // Valid tokens around garbage still lex; the stream reaches Eof.
+        let lexed = lex("score @ 3:0");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Keyword(Keyword::Score),
+                TokenKind::Error,
+                TokenKind::Int,
+                TokenKind::Colon,
+                TokenKind::Int,
+                TokenKind::Eof,
+            ]
+        );
+        assert_eq!(lexed.diagnostics.len(), 1);
     }
 
     #[test]

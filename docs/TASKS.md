@@ -98,13 +98,13 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T1.1 — Source & diagnostics infra.** `Span` (byte offsets) + source map; `Diagnostic
       { severity, span, message, help }` (D31). Spans are mandatory on all nodes (D20).
   - *Tests:* span arithmetic property tests.
-- [ ] **T1.2 — Hand-rolled lexer.** Emits classified tokens (for highlighting, D27) + spans.
+- [x] **T1.2 — Hand-rolled lexer.** Emits classified tokens (for highlighting, D27) + spans.
   - [x] T1.2a — `Token`/`TokenKind` enum with highlight classification + span.
   - [x] T1.2b — Scanner skeleton: cursor, whitespace, `//` + `/* */` comments, span emission.
   - [x] T1.2c — Literals (ints, strings), identifiers + keyword recognition.
   - [x] T1.2d — Music tokens: `:` separator, `_dur` suffix (incl. tuplet marker per T1.0), marks `.t/.i/.m/.d/.u`, `~`.
   - [x] T1.2e — Delimiters/operators: `[] {} ()`, `...`, index `.` (`repeat`/`ending`/`loop` are keywords, T1.2c).
-  - [ ] T1.2f — Error tokens + lexer diagnostics.
+  - [x] T1.2f — Error tokens + lexer diagnostics.
   - *Tests:* snapshot lex of §6 + edge/error cases per sub-task.
 - [ ] **T1.3 — AST types.** All node kinds, every node span-bearing.
 - [ ] **T1.4 — Recursive-descent parser (+ Pratt).** Resilient → partial AST + multiple diagnostics (D19).

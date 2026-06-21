@@ -289,7 +289,8 @@ it uses is `[CORE]` above:
 - **`r` as keyword vs. contextual** — §1 keywords. **Owner: T1.2c/T1.2d.**
 - ~~**Block-comment nesting** — §1. **Owner: T1.2b.**~~ → resolved **non-nesting** (C-style, first `*/` closes); now `[CORE]`.
 - **Space-before-mark** (`chord.0 .t`) — §6 note. **Owner: T1.4e.**
-- **`..` reserved token** — §1; currently no use. Drop or assign. **Owner: T1.2e.**
+- ~~**`..` reserved token** — §1; currently no use. **Owner: T1.2e.**~~ → lexes as `DotDot`, kept
+  reserved (no parser use yet); revisit if a range/slice construct ever needs it.
 
 Each becomes `[CORE]` (with a snapshot fixture) the moment its construct is implemented and
 green.
