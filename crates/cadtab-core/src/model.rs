@@ -7,6 +7,7 @@ use std::cmp::Ordering;
 
 use serde::{Deserialize, Serialize};
 
+use crate::instrument::Instrument;
 use crate::span::Span;
 
 /// A MIDI-style semitone number (C4 = 60, A4 = 69). Tab needs no enharmonic
@@ -294,6 +295,26 @@ impl Measure {
             is_pickup: false,
         }
     }
+}
+
+/// Song metadata rendered into the sheet header.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScoreMeta {
+    pub title: Option<String>,
+    pub composer: Option<String>,
+    pub tempo: Option<u16>,
+}
+
+/// A fully evaluated score: metadata, the resolved instrument, display-only capo
+/// labels, and the barred measures. The layout engine is a pure function of it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Score {
+    pub meta: ScoreMeta,
+    pub instrument: Instrument,
+    pub capo: Vec<String>,
+    pub measures: Vec<Measure>,
 }
 
 /// Where an event falls in barred time: the bar it starts in and its onset (the

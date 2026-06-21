@@ -150,7 +150,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T2.5e — `repeat {}` → `repeat_start/end`; `ending(n){}` → volta routing + `ending` attrs (D32); meter changes.
   - [x] T2.5f — Over/under-full diagnostics with `help`.
   - *Tests:* barring corpus — pickups, meter changes, over/under-full errors.
-- [ ] **T2.6 — Metadata (D34).** `title`/`composer`/`tempo` → `ScoreMeta`.
+- [x] **T2.6 — Metadata (D34).** `title`/`composer`/`tempo` → `ScoreMeta`.
 - [ ] **T2.7 — Stdlib licks.** Forward/backward/alt-thumb/Foggy Mountain embedded via
       `include_str!` (D16, D29); available by default.
   - *Tests:* each stdlib lick expands correctly.

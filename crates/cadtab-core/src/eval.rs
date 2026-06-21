@@ -10,7 +10,7 @@ use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
     Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Position,
-    RightHand, Strum, Technique, TimeSig, split_measures,
+    RightHand, Score, ScoreMeta, Strum, Technique, TimeSig, split_measures,
 };
 use crate::span::Span;
 
@@ -621,6 +621,97 @@ impl Evaluator {
     }
 }
 
+/// Evaluate a whole program into a musical `Score`: resolve the instrument and
+/// any tuning override, gather metadata and capo labels, then assemble the score
+/// body into barred measures. Returns the score and every diagnostic produced
+/// (instrument, metadata, evaluation, and bar-fill).
+pub fn eval_program(program: &Program) -> (Score, Vec<Diagnostic>) {
+    let mut diagnostics = Vec::new();
+    let instrument = resolve_instrument(program, &mut diagnostics);
+    let meta = eval_meta(program, &mut diagnostics);
+    let capo: Vec<String> = program
+        .items
+        .iter()
+        .filter_map(|it| match &it.kind {
+            ItemKind::Capo(label) => Some(label.value.clone()),
+            _ => None,
+        })
+        .collect();
+
+    let mut ev = Evaluator::new(instrument.clone());
+    ev.load(program);
+    let measures = program
+        .items
+        .iter()
+        .find_map(|it| match &it.kind {
+            ItemKind::Score(score) => Some(ev.eval_score_body(&score.items)),
+            _ => None,
+        })
+        .unwrap_or_default();
+
+    let fill = check_bar_fills(&measures);
+    diagnostics.extend(ev.into_diagnostics());
+    diagnostics.extend(fill);
+
+    (
+        Score {
+            meta,
+            instrument,
+            capo,
+            measures,
+        },
+        diagnostics,
+    )
+}
+
+/// Resolve the instrument from the `instrument` declaration (defaulting to
+/// banjo) and apply any `tuning` override, diagnosing unknown names.
+fn resolve_instrument(program: &Program, diagnostics: &mut Vec<Diagnostic>) -> Instrument {
+    let mut resolved = None;
+    for item in &program.items {
+        if let ItemKind::Instrument(ident) = &item.kind {
+            match Instrument::builtin(&ident.name) {
+                Some(i) => resolved = Some(i),
+                None => diagnostics.push(
+                    Diagnostic::error(ident.span, format!("unknown instrument `{}`", ident.name))
+                        .with_help("the builtin instruments are banjo and guitar"),
+                ),
+            }
+        }
+    }
+    let mut instrument =
+        resolved.unwrap_or_else(|| Instrument::builtin("banjo").expect("banjo is a builtin"));
+    for item in &program.items {
+        if let ItemKind::Tuning(ident) = &item.kind {
+            match instrument.with_tuning(&ident.name, ident.span) {
+                Ok(i) => instrument = i,
+                Err(d) => diagnostics.push(d),
+            }
+        }
+    }
+    instrument
+}
+
+/// Gather `title`/`composer`/`tempo` into `ScoreMeta`; a later declaration wins.
+fn eval_meta(program: &Program, diagnostics: &mut Vec<Diagnostic>) -> ScoreMeta {
+    let mut meta = ScoreMeta::default();
+    for item in &program.items {
+        match &item.kind {
+            ItemKind::Title(s) => meta.title = Some(s.value.clone()),
+            ItemKind::Composer(s) => meta.composer = Some(s.value.clone()),
+            ItemKind::Tempo(n) => match u16::try_from(n.value) {
+                Ok(t) => meta.tempo = Some(t),
+                Err(_) => diagnostics.push(
+                    Diagnostic::error(n.span, format!("tempo {} is too high", n.value))
+                        .with_help("tempo is in beats per minute (up to 65535)"),
+                ),
+            },
+            _ => {}
+        }
+    }
+    meta
+}
+
 /// Auto-bar a run of pending events under `time`, appending the measures and
 /// stamping the meter on the first one if a change is pending. Clears the run.
 fn flush_run(
@@ -786,7 +877,9 @@ mod event_eval_tests {
     use super::*;
     use crate::ast::{ItemKind, ScoreItemKind};
     use crate::diagnostics::Severity;
-    use crate::model::{EventKind, Finger, Measure, RightHand, Technique, TimeSig};
+    use crate::model::{
+        EventKind, Finger, Measure, RightHand, Score, ScoreMeta, Technique, TimeSig,
+    };
     use crate::parser::parse;
 
     /// Assemble every `score { … }` body into measures.
@@ -1683,5 +1776,114 @@ score {
 }",
         );
         insta::assert_debug_snapshot!(check_bar_fills(&measures));
+    }
+
+    /// Evaluate a whole program into a score.
+    fn program_score(src: &str) -> (Score, Vec<Diagnostic>) {
+        let parsed = parse(src);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "source should parse cleanly: {:?}",
+            parsed.diagnostics
+        );
+        eval_program(&parsed.program)
+    }
+
+    #[test]
+    fn metadata_becomes_score_meta() {
+        let (score, diags) = program_score(
+            "title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130\ninstrument banjo\nscore {}",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(
+            score.meta,
+            ScoreMeta {
+                title: Some("Cripple Creek".to_string()),
+                composer: Some("trad.".to_string()),
+                tempo: Some(130),
+            }
+        );
+    }
+
+    #[test]
+    fn missing_metadata_is_none() {
+        let (score, _) = program_score("instrument banjo\nscore {}");
+        assert_eq!(score.meta, ScoreMeta::default());
+    }
+
+    #[test]
+    fn an_out_of_range_tempo_diagnoses() {
+        let (score, diags) = program_score("tempo 99999\ninstrument banjo\nscore {}");
+        assert!(diags.iter().any(|d| d.message.contains("too high")));
+        assert_eq!(score.meta.tempo, None);
+    }
+
+    #[test]
+    fn a_later_metadata_declaration_wins() {
+        let (score, _) = program_score("title \"A\"\ntitle \"B\"\nscore {}");
+        assert_eq!(score.meta.title, Some("B".to_string()));
+    }
+
+    #[test]
+    fn the_default_instrument_is_banjo() {
+        let (score, _) = program_score("score {}");
+        assert_eq!(score.instrument.name, "banjo");
+        assert_eq!(score.instrument.string_count(), 5);
+    }
+
+    #[test]
+    fn the_instrument_declaration_is_resolved() {
+        let (score, diags) = program_score("instrument guitar\nscore {}");
+        assert!(diags.is_empty());
+        assert_eq!(score.instrument.name, "guitar");
+        assert_eq!(score.instrument.string_count(), 6);
+    }
+
+    #[test]
+    fn an_unknown_instrument_diagnoses_and_falls_back_to_banjo() {
+        let (score, diags) = program_score("instrument mandolin\nscore {}");
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("unknown instrument"))
+        );
+        assert_eq!(score.instrument.name, "banjo");
+    }
+
+    #[test]
+    fn a_tuning_override_is_applied() {
+        // Double C retunes string 2 to C4 (60).
+        let (score, diags) = program_score("instrument banjo\ntuning doubleC\nscore {}");
+        assert!(diags.is_empty());
+        let span = crate::span::Span::new(0, 0);
+        assert_eq!(score.instrument.pitch_at(2, 0, span).unwrap().0, 60);
+    }
+
+    #[test]
+    fn an_unknown_tuning_diagnoses() {
+        let (_, diags) = program_score("instrument banjo\ntuning nashville\nscore {}");
+        assert!(diags.iter().any(|d| d.message.contains("unknown tuning")));
+    }
+
+    #[test]
+    fn capo_labels_are_collected() {
+        let (score, _) = program_score("capo \"5th string @ 2\"\ninstrument banjo\nscore {}");
+        assert_eq!(score.capo, vec!["5th string @ 2".to_string()]);
+    }
+
+    #[test]
+    fn the_score_body_is_assembled_into_measures() {
+        let (score, _) = program_score("instrument banjo\nscore { default 1/4\n 3:0 2:0 1:0 5:0 }");
+        assert_eq!(score.measures.len(), 1);
+        assert_eq!(score.measures[0].events.len(), 4);
+    }
+
+    #[test]
+    fn cripple_creek_compiles_to_a_golden_score() {
+        let src = include_str!("../../../examples/cripple_creek.ctab");
+        let parsed = parse(src);
+        assert!(parsed.diagnostics.is_empty());
+        let (score, _) = eval_program(&parsed.program);
+        insta::assert_debug_snapshot!(score);
     }
 }

@@ -1,0 +1,613 @@
+---
+source: crates/cadtab-core/src/eval.rs
+expression: score
+---
+Score {
+    meta: ScoreMeta {
+        title: Some(
+            "Cripple Creek",
+        ),
+        composer: Some(
+            "trad.",
+        ),
+        tempo: Some(
+            130,
+        ),
+    },
+    instrument: Instrument {
+        name: "banjo",
+        strings: [
+            StringDef {
+                open_pitch: Pitch(
+                    62,
+                ),
+                label: "D",
+            },
+            StringDef {
+                open_pitch: Pitch(
+                    59,
+                ),
+                label: "B",
+            },
+            StringDef {
+                open_pitch: Pitch(
+                    55,
+                ),
+                label: "G",
+            },
+            StringDef {
+                open_pitch: Pitch(
+                    50,
+                ),
+                label: "D",
+            },
+            StringDef {
+                open_pitch: Pitch(
+                    67,
+                ),
+                label: "g",
+            },
+        ],
+    },
+    capo: [
+        "5th string @ 2",
+    ],
+    measures: [
+        Measure {
+            events: [
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 2,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Index,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 199,
+                        end: 204,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Thumb,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 205,
+                        end: 210,
+                    },
+                },
+            ],
+            meter: Some(
+                TimeSig {
+                    num: 4,
+                    den: 4,
+                },
+            ),
+            repeat_start: false,
+            repeat_end: false,
+            ending: None,
+            is_pickup: true,
+        },
+        Measure {
+            events: [
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Thumb,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 315,
+                        end: 320,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 2,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Index,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 322,
+                        end: 327,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Middle,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 329,
+                        end: 334,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 5,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Thumb,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 337,
+                        end: 342,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Index,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 344,
+                        end: 349,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Middle,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 351,
+                        end: 356,
+                    },
+                },
+                Event {
+                    kind: Chord(
+                        Chord {
+                            dur: Duration {
+                                num: 1,
+                                den: 4,
+                            },
+                            notes: [
+                                ChordNote {
+                                    pos: Position {
+                                        string: 1,
+                                        fret: 0,
+                                    },
+                                    right_hand: Some(
+                                        Finger(
+                                            Middle,
+                                        ),
+                                    ),
+                                },
+                                ChordNote {
+                                    pos: Position {
+                                        string: 5,
+                                        fret: 0,
+                                    },
+                                    right_hand: Some(
+                                        Finger(
+                                            Thumb,
+                                        ),
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                    span: Span {
+                        start: 384,
+                        end: 399,
+                    },
+                },
+            ],
+            meter: None,
+            repeat_start: true,
+            repeat_end: false,
+            ending: None,
+            is_pickup: false,
+        },
+        Measure {
+            events: [
+                Event {
+                    kind: Rest(
+                        Duration {
+                            num: 1,
+                            den: 8,
+                        },
+                    ),
+                    span: Span {
+                        start: 453,
+                        end: 456,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 2,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: true,
+                        },
+                    ),
+                    span: Span {
+                        start: 458,
+                        end: 461,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 2,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 464,
+                        end: 467,
+                    },
+                },
+            ],
+            meter: None,
+            repeat_start: false,
+            repeat_end: true,
+            ending: Some(
+                1,
+            ),
+            is_pickup: false,
+        },
+        Measure {
+            events: [
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Middle,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 517,
+                        end: 522,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Middle,
+                                ),
+                            ),
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 523,
+                        end: 528,
+                    },
+                },
+            ],
+            meter: None,
+            repeat_start: false,
+            repeat_end: false,
+            ending: Some(
+                2,
+            ),
+            is_pickup: false,
+        },
+        Measure {
+            events: [
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 2,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 564,
+                        end: 567,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 4,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 568,
+                        end: 571,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 2,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 564,
+                        end: 567,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 4,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 568,
+                        end: 571,
+                    },
+                },
+            ],
+            meter: None,
+            repeat_start: false,
+            repeat_end: false,
+            ending: None,
+            is_pickup: false,
+        },
+        Measure {
+            events: [
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 0,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: None,
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 680,
+                        end: 696,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 3,
+                                fret: 2,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: Some(
+                                HammerOn,
+                            ),
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 680,
+                        end: 696,
+                    },
+                },
+                Event {
+                    kind: Note(
+                        Note {
+                            pos: Position {
+                                string: 1,
+                                fret: 7,
+                            },
+                            dur: Duration {
+                                num: 1,
+                                den: 8,
+                            },
+                            right_hand: None,
+                            technique: Some(
+                                Bend,
+                            ),
+                            tie: false,
+                        },
+                    ),
+                    span: Span {
+                        start: 735,
+                        end: 744,
+                    },
+                },
+            ],
+            meter: None,
+            repeat_start: false,
+            repeat_end: false,
+            ending: None,
+            is_pickup: false,
+        },
+    ],
+}
