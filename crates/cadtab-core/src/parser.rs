@@ -5,7 +5,7 @@
 //! so a half-typed document still yields a partial tree. Grammar productions
 //! are added incrementally.
 
-use crate::ast::{Item, ItemKind, Program};
+use crate::ast::{Ident, IntLit, Item, ItemKind, Program, StringLit};
 use crate::diagnostics::Diagnostic;
 use crate::lexer::lex;
 use crate::span::Span;
@@ -159,10 +159,123 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse one top-level item. Productions are added in later sub-tasks; for
-    /// now nothing is recognized, so the caller's recovery path handles input.
+    /// Parse one top-level item. `score`/`def`/`let` are added in later
+    /// sub-tasks; until then they fall through to the caller's recovery path.
     fn parse_item(&mut self) -> Option<Item> {
-        None
+        let start = self.peek().span.start;
+        let TokenKind::Keyword(kw) = self.peek_kind() else {
+            return None;
+        };
+        let kind = match kw {
+            Keyword::Title => {
+                self.bump();
+                self.string_decl(ItemKind::Title)
+            }
+            Keyword::Composer => {
+                self.bump();
+                self.string_decl(ItemKind::Composer)
+            }
+            Keyword::Capo => {
+                self.bump();
+                self.string_decl(ItemKind::Capo)
+            }
+            Keyword::Import => {
+                self.bump();
+                self.string_decl(ItemKind::Import)
+            }
+            Keyword::Tempo => {
+                self.bump();
+                match self.parse_int_lit() {
+                    Some(n) => ItemKind::Tempo(n),
+                    None => ItemKind::Error,
+                }
+            }
+            Keyword::Instrument => {
+                self.bump();
+                self.ident_decl(ItemKind::Instrument)
+            }
+            Keyword::Tuning => {
+                self.bump();
+                self.ident_decl(ItemKind::Tuning)
+            }
+            // Not yet: score (T1.4c), def/let (T1.4f).
+            _ => return None,
+        };
+        Some(Item::new(kind, self.span_from(start)))
+    }
+
+    /// `<keyword> STRING` → `f(string)`, or an error node if the string is
+    /// missing (reported; the next item's keyword is left for recovery).
+    fn string_decl(&mut self, f: impl FnOnce(StringLit) -> ItemKind) -> ItemKind {
+        match self.parse_string_lit() {
+            Some(s) => f(s),
+            None => ItemKind::Error,
+        }
+    }
+
+    /// `<keyword> IDENT` → `f(ident)`, or an error node if the ident is missing.
+    fn ident_decl(&mut self, f: impl FnOnce(Ident) -> ItemKind) -> ItemKind {
+        match self.parse_ident() {
+            Some(id) => f(id),
+            None => ItemKind::Error,
+        }
+    }
+
+    /// A string literal (quotes stripped; escapes not decoded). Reports without
+    /// consuming on mismatch.
+    fn parse_string_lit(&mut self) -> Option<StringLit> {
+        if self.at(TokenKind::Str) {
+            let tok = self.bump();
+            let raw = self.text(tok.span);
+            let inner = raw.strip_prefix('"').unwrap_or(raw);
+            let inner = inner.strip_suffix('"').unwrap_or(inner);
+            Some(StringLit::new(inner, tok.span))
+        } else {
+            let tok = self.peek();
+            self.error_at(
+                tok.span,
+                format!("expected string, found {}", token_label(tok.kind)),
+            );
+            None
+        }
+    }
+
+    /// An integer literal. Overflowing values are clamped (and reported) so the
+    /// node still exists for downstream resilience.
+    fn parse_int_lit(&mut self) -> Option<IntLit> {
+        if self.at(TokenKind::Int) {
+            let tok = self.bump();
+            match self.text(tok.span).parse::<u32>() {
+                Ok(v) => Some(IntLit::new(v, tok.span)),
+                Err(_) => {
+                    self.error_at(tok.span, "number is too large");
+                    Some(IntLit::new(u32::MAX, tok.span))
+                }
+            }
+        } else {
+            let tok = self.peek();
+            self.error_at(
+                tok.span,
+                format!("expected number, found {}", token_label(tok.kind)),
+            );
+            None
+        }
+    }
+
+    /// An identifier. Reports without consuming on mismatch.
+    fn parse_ident(&mut self) -> Option<Ident> {
+        if self.at(TokenKind::Ident) {
+            let tok = self.bump();
+            let name = self.text(tok.span).to_string();
+            Some(Ident::new(name, tok.span))
+        } else {
+            let tok = self.peek();
+            self.error_at(
+                tok.span,
+                format!("expected identifier, found {}", token_label(tok.kind)),
+            );
+            None
+        }
     }
 }
 
@@ -349,5 +462,114 @@ mod tests {
         let p = Parser::new("banjo");
         let tok = p.peek();
         assert_eq!(p.text(tok.span), "banjo");
+    }
+
+    // --- T1.4b: top-level declarations ------------------------------------
+
+    use crate::ast::IntLit;
+
+    fn only_item(src: &str) -> ItemKind {
+        let parsed = parse(src);
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert_eq!(parsed.program.items.len(), 1);
+        parsed.program.items.into_iter().next().unwrap().kind
+    }
+
+    #[test]
+    fn string_declarations() {
+        match only_item("title \"Cripple Creek\"") {
+            ItemKind::Title(s) => assert_eq!(s.value, "Cripple Creek"),
+            other => panic!("{other:?}"),
+        }
+        match only_item("composer \"trad.\"") {
+            ItemKind::Composer(s) => assert_eq!(s.value, "trad."),
+            other => panic!("{other:?}"),
+        }
+        match only_item("capo \"5th string @ 2\"") {
+            ItemKind::Capo(s) => assert_eq!(s.value, "5th string @ 2"),
+            other => panic!("{other:?}"),
+        }
+        match only_item("import \"rolls.ctab\"") {
+            ItemKind::Import(s) => assert_eq!(s.value, "rolls.ctab"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn tempo_declaration() {
+        match only_item("tempo 130") {
+            ItemKind::Tempo(IntLit { value, .. }) => assert_eq!(value, 130),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn instrument_and_tuning_declarations() {
+        match only_item("instrument banjo") {
+            ItemKind::Instrument(id) => assert_eq!(id.name, "banjo"),
+            other => panic!("{other:?}"),
+        }
+        match only_item("tuning openG") {
+            ItemKind::Tuning(id) => assert_eq!(id.name, "openG"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn item_span_covers_keyword_through_operand() {
+        let parsed = parse("tempo 130");
+        assert_eq!(parsed.program.items[0].span, Span::new(0, 9));
+    }
+
+    #[test]
+    fn multiple_declarations_parse_in_order() {
+        let parsed = parse("title \"X\"\ninstrument banjo\ntempo 90");
+        assert!(parsed.diagnostics.is_empty());
+        assert_eq!(parsed.program.items.len(), 3);
+        assert!(matches!(parsed.program.items[0].kind, ItemKind::Title(_)));
+        assert!(matches!(
+            parsed.program.items[1].kind,
+            ItemKind::Instrument(_)
+        ));
+        assert!(matches!(parsed.program.items[2].kind, ItemKind::Tempo(_)));
+    }
+
+    #[test]
+    fn missing_operand_reports_and_makes_error_node() {
+        let parsed = parse("title");
+        assert_eq!(parsed.program.items.len(), 1);
+        assert!(matches!(parsed.program.items[0].kind, ItemKind::Error));
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.diagnostics[0].message.contains("expected string"));
+    }
+
+    #[test]
+    fn missing_operand_recovers_to_next_declaration() {
+        // `title` has no string; the next keyword starts a fresh, valid item.
+        let parsed = parse("title\ninstrument banjo");
+        assert_eq!(parsed.program.items.len(), 2);
+        assert!(matches!(parsed.program.items[0].kind, ItemKind::Error));
+        assert!(matches!(
+            parsed.program.items[1].kind,
+            ItemKind::Instrument(_)
+        ));
+        assert_eq!(parsed.diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn tempo_with_non_number_reports() {
+        let parsed = parse("tempo banjo");
+        assert!(matches!(parsed.program.items[0].kind, ItemKind::Error));
+        assert!(parsed.diagnostics[0].message.contains("expected number"));
+    }
+
+    #[test]
+    fn metadata_header_snapshot() {
+        let parsed = parse(
+            "title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130\n\
+             instrument banjo\ntuning openG\ncapo \"5th string @ 2\"",
+        );
+        assert!(parsed.diagnostics.is_empty());
+        insta::assert_debug_snapshot!(parsed.program);
     }
 }
