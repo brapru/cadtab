@@ -38,7 +38,7 @@ INT     = DIGIT { DIGIT }                          // unsigned decimal
 STRING  = '"' { CHAR_NO_DQ | '\\' ANY } '"'        // double-quoted, backslash escapes
 IDENT   = (ALPHA | "_") { ALPHA | DIGIT | "_" }    // keyword recognition is post-scan
 COMMENT = "//" { ANY_NO_NL }                       // line comment        (whitespace)
-        | "/*" { ANY } "*/"                         // block comment       (whitespace; nesting [PROVISIONAL])
+        | "/*" { ANY } "*/"                         // block comment       (whitespace; non-nesting [CORE])
 WS      = SP | TAB | NL | CR                        // insignificant
 ```
 
@@ -283,7 +283,7 @@ it uses is `[CORE]` above:
 
 - **Tuplet syntax** (D11 TBD) — §3 / §5 row 3′. **Owner: T1.2d.**
 - **`r` as keyword vs. contextual** — §1 keywords. **Owner: T1.2c/T1.2d.**
-- **Block-comment nesting** — §1. **Owner: T1.2b.**
+- ~~**Block-comment nesting** — §1. **Owner: T1.2b.**~~ → resolved **non-nesting** (C-style, first `*/` closes); now `[CORE]`.
 - **Space-before-mark** (`chord.0 .t`) — §6 note. **Owner: T1.4e.**
 - **`..` reserved token** — §1; currently no use. Drop or assign. **Owner: T1.2e.**
 

@@ -1,6 +1,6 @@
 //! Source map: turn byte offsets / spans into human-facing `line:column`
 //! locations for diagnostic rendering (tests, CLI). The live editor consumes
-//! raw byte spans (D31); this is the Rust-side index for pretty-printing.
+//! raw byte spans; this is the Rust-side index for pretty-printing.
 
 use serde::{Deserialize, Serialize};
 

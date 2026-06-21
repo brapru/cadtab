@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use crate::span::Span;
 
 /// Highlight classification for a lexed token. The lexer is the single source
-/// for both syntax highlighting and diagnostics (D27); this is the class the
-/// editor renders as a decoration. Crosses the wire as part of [`Token`].
+/// for both syntax highlighting and diagnostics; this is the class the editor
+/// renders as a decoration. Crosses the wire as part of [`Token`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TokenClass {
@@ -26,9 +26,9 @@ pub struct Token {
     pub span: Span,
 }
 
-/// Reserved words recognized from identifiers (GRAMMAR.md §1). `r` (rest) is
-/// deliberately *not* here — it is lexed as an `Ident` and recognized as a rest
-/// only in event position (parser's job).
+/// Reserved words recognized from identifiers. `r` (rest) is deliberately *not*
+/// here — it is lexed as an `Ident` and recognized as a rest only in event
+/// position (parser's job).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Keyword {
@@ -78,10 +78,10 @@ impl Keyword {
     }
 }
 
-/// The precise lexical kind of a token. Atomic per GRAMMAR.md §1: the lexer
-/// emits single `.` / `_` / `:` / `~` tokens; the parser assembles marks
-/// (`.t`), indices (`.0`), and durations (`_8.`). Values (int/ident/string
-/// text) are recovered by the parser from `source[span]`, so this stays `Copy`.
+/// The precise lexical kind of a token. Atomic: the lexer emits single
+/// `.` / `_` / `:` / `~` tokens; the parser assembles marks (`.t`), indices
+/// (`.0`), and durations (`_8.`). Values (int/ident/string text) are recovered
+/// by the parser from `source[span]`, so this stays `Copy`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum TokenKind {
@@ -112,7 +112,7 @@ pub enum TokenKind {
 
     // Trivia & control
     Comment, // `//` line or `/* */` block
-    Error,   // an unrecognized / malformed run (T1.2f)
+    Error,   // an unrecognized / malformed run
     Eof,     // end of input sentinel
 }
 
@@ -139,7 +139,7 @@ impl TokenKind {
 }
 
 /// A token as produced by the lexer: a precise [`TokenKind`] plus its source
-/// span. Spans are mandatory across the pipeline (D20).
+/// span.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LexToken {

@@ -2,9 +2,9 @@ use serde::{Deserialize, Serialize};
 
 /// A half-open byte range `[start, end)` into the source text.
 ///
-/// Spans are mandatory on every node across the whole pipeline (AST → model →
-/// render tree) so source↔render mapping stays cheap (D20). Well-formed spans
-/// have `start <= end`; the arithmetic below treats `start >= end` as empty.
+/// Spans are mandatory on every node across the whole pipeline. Well-formed
+/// spans have `start <= end`; the arithmetic below treats `start >= end` as
+/// empty.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Span {

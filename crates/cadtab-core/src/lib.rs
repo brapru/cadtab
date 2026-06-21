@@ -2,6 +2,7 @@
 
 pub mod diagnostics;
 pub mod layout;
+pub mod lexer;
 pub mod render;
 pub mod source;
 pub mod span;

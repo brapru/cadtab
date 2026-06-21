@@ -1,0 +1,27 @@
+---
+source: crates/cadtab-core/src/lexer.rs
+expression: lexed.tokens
+---
+[
+    LexToken {
+        kind: Comment,
+        span: Span {
+            start: 2,
+            end: 9,
+        },
+    },
+    LexToken {
+        kind: Comment,
+        span: Span {
+            start: 10,
+            end: 30,
+        },
+    },
+    LexToken {
+        kind: Eof,
+        span: Span {
+            start: 33,
+            end: 33,
+        },
+    },
+]
