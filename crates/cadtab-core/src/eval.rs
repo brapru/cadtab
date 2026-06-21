@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{self, Def, Expr, ExprKind, ItemKind, Mark, MarkKind, Program};
+use crate::ast::{self, Def, Expr, ExprKind, ItemKind, LoopBlock, Mark, MarkKind, Program};
 use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
@@ -106,6 +106,10 @@ const INITIAL_DURATION: Duration = Duration { num: 1, den: 4 };
 /// nest, so a recursive `def` fails with a diagnostic rather than hanging.
 const MAX_CALL_DEPTH: usize = 64;
 
+/// A `loop N` unrolls its body inline; this bounds the unroll so a typo'd count
+/// cannot freeze the live recompile. Real loops are tiny.
+const MAX_LOOP_ITERATIONS: u32 = 1024;
+
 /// Lowers AST events into musical-model events, threading the sticky default
 /// duration across the run. `def`s expand into phrases that are spliced at the
 /// call site; `let`s bind reusable values. Diagnostics (out-of-range positions,
@@ -164,6 +168,29 @@ impl Evaluator {
         let mut phrase = Phrase::new();
         for ev in events {
             self.eval_event_into(ev, &mut phrase);
+        }
+        phrase
+    }
+
+    /// Unroll `loop N { body }`: evaluate the body `count` times in sequence,
+    /// threading the sticky duration across iterations. A count past the cap is
+    /// clamped (with a diagnostic) so a typo cannot blow up the recompile.
+    pub fn eval_loop(&mut self, block: &LoopBlock) -> Phrase {
+        let mut count = block.count.value;
+        if count > MAX_LOOP_ITERATIONS {
+            self.diagnostics.push(
+                Diagnostic::error(block.count.span, format!("loop count {count} is too large"))
+                    .with_help(format!(
+                        "a loop unrolls its body inline; keep the count at most {MAX_LOOP_ITERATIONS}"
+                    )),
+            );
+            count = MAX_LOOP_ITERATIONS;
+        }
+        let mut phrase = Phrase::new();
+        for _ in 0..count {
+            phrase
+                .events
+                .extend(self.eval_events(&block.body.events).events);
         }
         phrase
     }
@@ -459,6 +486,9 @@ mod event_eval_tests {
                             .events
                             .extend(ev.eval_events(std::slice::from_ref(e)).events);
                     }
+                    ScoreItemKind::Loop(lb) => {
+                        phrase.events.extend(ev.eval_loop(lb).events);
+                    }
                     _ => {}
                 }
             }
@@ -726,6 +756,69 @@ score {
   roll(5:0, 3:0, 1:0)
 }",
         );
+        insta::assert_debug_snapshot!(phrase);
+    }
+
+    /// The positions of a phrase's notes, in order.
+    fn positions(phrase: &Phrase) -> Vec<Position> {
+        notes(phrase).into_iter().map(|(p, _, _)| p).collect()
+    }
+
+    #[test]
+    fn loop_unrolls_its_body_n_times() {
+        let (phrase, diags) = eval_score("score { default 1/8\n loop 2 { 3:2 3:4 } }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            positions(&phrase),
+            vec![
+                Position::new(3, 2),
+                Position::new(3, 4),
+                Position::new(3, 2),
+                Position::new(3, 4),
+            ]
+        );
+    }
+
+    #[test]
+    fn loop_zero_unrolls_to_nothing() {
+        let (phrase, diags) = eval_score("score { loop 0 { 3:0 2:0 } }");
+        assert!(diags.is_empty());
+        assert!(phrase.is_empty());
+    }
+
+    #[test]
+    fn loop_threads_the_sticky_duration_across_iterations() {
+        // `_4` in the first iteration sets the sticky; it persists into the next.
+        let (phrase, _) = eval_score("score { default 1/8\n loop 2 { 3:2_4 3:4 } }");
+        assert_eq!(durs(&phrase), vec![Duration::new(1, 4); 4]);
+    }
+
+    #[test]
+    fn loop_unrolls_calls_in_its_body() {
+        let (phrase, diags) =
+            eval_score("def lick() { 3:0.t 2:0.i }\nscore { default 1/8\n loop 2 { lick() } }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            positions(&phrase),
+            vec![
+                Position::new(3, 0),
+                Position::new(2, 0),
+                Position::new(3, 0),
+                Position::new(2, 0),
+            ]
+        );
+    }
+
+    #[test]
+    fn an_oversized_loop_count_is_clamped_with_a_diagnostic() {
+        let (phrase, diags) = eval_score("score { loop 100000 { 3:0 } }");
+        assert!(diags.iter().any(|d| d.message.contains("too large")));
+        assert_eq!(phrase.len(), MAX_LOOP_ITERATIONS as usize);
+    }
+
+    #[test]
+    fn loop_unroll_snapshot() {
+        let (phrase, _) = eval_score("score { default 1/8\n loop 2 { 3:2.t 3:4 } }");
         insta::assert_debug_snapshot!(phrase);
     }
 }
