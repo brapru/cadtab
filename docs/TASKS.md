@@ -107,14 +107,14 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T1.2f — Error tokens + lexer diagnostics.
   - *Tests:* snapshot lex of §6 + edge/error cases per sub-task.
 - [x] **T1.3 — AST types.** All node kinds, every node span-bearing.
-- [ ] **T1.4 — Recursive-descent parser (+ Pratt).** Resilient → partial AST + multiple diagnostics (D19).
+- [x] **T1.4 — Recursive-descent parser (+ Pratt).** Resilient → partial AST + multiple diagnostics (D19).
   - [x] T1.4a — Skeleton: token cursor, lookahead, span tracking, diagnostic sink, **recovery infra** (sync points, error nodes).
   - [x] T1.4b — Top-level declarations: `title`/`composer`/`tempo`, `instrument`, `tuning`, `capo`, `import`.
   - [x] T1.4c — `score` / `measure` / `pickup` / `repeat` (musical) blocks + nested `ending(n){}` voltas.
   - [x] T1.4d — Events: note literal (`string:fret` + mark + `_dur`), chord `[…]`, rest, tie `~`.
   - [x] T1.4e — Expressions (Pratt): idents, calls, indexing `.N`/`len`, spread `...`, precedence per GRAMMAR.md.
   - [x] T1.4f — `def` / `let` / `loop N` (unroll).
-  - [ ] T1.4g — Error-recovery corpus + multi-diagnostic tests.
+  - [x] T1.4g — Error-recovery corpus + multi-diagnostic tests.
   - *Tests:* golden ASTs for a valid-program corpus (incl. §6); recovery corpus (T1.4g).
 
 **DoD M1:** §6 + corpus parse to expected ASTs; recovery corpus yields expected diagnostics.

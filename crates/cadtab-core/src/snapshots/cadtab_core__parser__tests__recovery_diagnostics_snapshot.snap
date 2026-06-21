@@ -1,0 +1,9 @@
+---
+source: crates/cadtab-core/src/parser.rs
+expression: "diag_lines(\"title\\ntempo bad\\nscore { time 4 measure { [1:0 5:0 } }\")"
+---
+6..11: expected string, found keyword `tempo`
+12..15: expected number, found identifier
+12..15: unexpected identifier at top level
+31..38: expected `/`, found keyword `measure`
+50..51: expected `]`, found `}`

@@ -611,6 +611,10 @@ impl<'a> Parser<'a> {
         self.bump(); // `[`
         let mut notes = Vec::new();
         while !self.at_eof() && !self.at(TokenKind::RBracket) {
+            // Don't swallow an enclosing block's `}` while recovering.
+            if self.at(TokenKind::RBrace) {
+                break;
+            }
             let before = self.pos;
             if self.at(TokenKind::Int) {
                 notes.push(self.parse_chord_note());
@@ -1594,5 +1598,135 @@ mod tests {
                 .all(|it| !matches!(it.kind, ItemKind::Error))
         );
         insta::assert_debug_snapshot!(parsed.program);
+    }
+
+    // --- T1.4g: error-recovery corpus + multi-diagnostics -----------------
+
+    fn diag_messages(src: &str) -> Vec<String> {
+        parse(src)
+            .diagnostics
+            .into_iter()
+            .map(|d| d.message)
+            .collect()
+    }
+
+    fn diag_lines(src: &str) -> String {
+        parse(src)
+            .diagnostics
+            .iter()
+            .map(|d| format!("{}..{}: {}", d.span.start, d.span.end, d.message))
+            .collect::<Vec<_>>()
+            .join("\n")
+    }
+
+    #[test]
+    fn collects_multiple_top_level_diagnostics() {
+        // Two separate missing operands → two diagnostics, two error items.
+        let parsed = parse("tempo\ncomposer");
+        assert_eq!(parsed.program.items.len(), 2);
+        assert!(
+            parsed
+                .program
+                .items
+                .iter()
+                .all(|it| matches!(it.kind, ItemKind::Error))
+        );
+        assert!(parsed.diagnostics.len() >= 2);
+    }
+
+    #[test]
+    fn valid_siblings_survive_a_broken_declaration() {
+        // The broken `tempo` is reported, but title and instrument still parse.
+        let parsed = parse("title \"ok\"\ntempo bad\ninstrument banjo");
+        let kinds: Vec<_> = parsed.program.items.iter().map(|it| &it.kind).collect();
+        assert!(kinds.iter().any(|k| matches!(k, ItemKind::Title(_))));
+        assert!(kinds.iter().any(|k| matches!(k, ItemKind::Instrument(_))));
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected number"))
+        );
+    }
+
+    #[test]
+    fn garbage_before_a_declaration_recovers() {
+        // Stray numbers at top level are skipped to the next item start.
+        let parsed = parse("4 5 title \"x\"");
+        assert!(
+            parsed
+                .program
+                .items
+                .iter()
+                .any(|it| matches!(it.kind, ItemKind::Title(_)))
+        );
+        assert!(!parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn unclosed_score_brace_reports_once() {
+        let msgs = diag_messages("score { time 4/4");
+        assert_eq!(msgs.len(), 1);
+        assert!(msgs[0].contains("expected `}`"));
+    }
+
+    #[test]
+    fn unclosed_chord_stops_at_block_brace() {
+        // The chord recovery must not eat the score block's `}`.
+        let parsed = parse("score { [1:0 5:0 }");
+        match &parsed.program.items[0].kind {
+            ItemKind::Score(s) => match &s.items[0].kind {
+                ScoreItemKind::Event(ev) => match &ev.kind {
+                    EventKind::Chord(c) => assert_eq!(c.notes.len(), 2),
+                    other => panic!("{other:?}"),
+                },
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
+        // Just the missing `]` — the block's `}` was consumed normally.
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected `]`"))
+        );
+        assert!(
+            !parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected `}`"))
+        );
+    }
+
+    #[test]
+    fn malformed_note_missing_fret_reports() {
+        let parsed = parse("score { 3: }");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected number"))
+        );
+    }
+
+    #[test]
+    fn busy_program_collects_several_diagnostics() {
+        let parsed = parse("tempo x\nscore { time 4 [1:0 }");
+        assert!(parsed.diagnostics.len() >= 3, "{:?}", parsed.diagnostics);
+    }
+
+    #[test]
+    fn parser_terminates_on_operator_soup() {
+        // Pathological punctuation must not hang and must still reach EOF.
+        let parsed = parse("score { : ~ . , = ] ) }");
+        assert!(!parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn recovery_diagnostics_snapshot() {
+        insta::assert_snapshot!(diag_lines(
+            "title\ntempo bad\nscore { time 4 measure { [1:0 5:0 } }"
+        ));
     }
 }
