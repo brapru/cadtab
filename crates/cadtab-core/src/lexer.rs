@@ -65,7 +65,15 @@ impl<'a> Lexer<'a> {
                 b'_' => self.single(TokenKind::Underscore),
                 b'~' => self.single(TokenKind::Tilde),
                 b'/' => self.single(TokenKind::Slash),
-                // Delimiters, `.`/`...`, `,`, `=`: not yet scanned.
+                b'.' => self.dot(),
+                b',' => self.single(TokenKind::Comma),
+                b'=' => self.single(TokenKind::Eq),
+                b'[' => self.single(TokenKind::LBracket),
+                b']' => self.single(TokenKind::RBracket),
+                b'{' => self.single(TokenKind::LBrace),
+                b'}' => self.single(TokenKind::RBrace),
+                b'(' => self.single(TokenKind::LParen),
+                b')' => self.single(TokenKind::RParen),
                 _ => self.unknown_char(),
             };
             tokens.push(LexToken::new(kind, Span::new(start, self.pos as u32)));
@@ -128,6 +136,22 @@ impl<'a> Lexer<'a> {
     fn single(&mut self, kind: TokenKind) -> TokenKind {
         self.pos += 1;
         kind
+    }
+
+    /// `...` (spread), `..` (reserved), or a bare `.` — maximal munch.
+    fn dot(&mut self) -> TokenKind {
+        if self.peek_at(1) == Some(b'.') {
+            if self.peek_at(2) == Some(b'.') {
+                self.pos += 3;
+                TokenKind::Ellipsis
+            } else {
+                self.pos += 2;
+                TokenKind::DotDot
+            }
+        } else {
+            self.pos += 1;
+            TokenKind::Dot
+        }
     }
 
     /// A run of ASCII digits.
@@ -203,6 +227,16 @@ mod tests {
 
     fn kinds(lexed: &Lexed) -> Vec<TokenKind> {
         lexed.tokens.iter().map(|t| t.kind).collect()
+    }
+
+    /// One token per line as `Kind start..end` — a compact, reviewable snapshot.
+    fn compact(lexed: &Lexed) -> String {
+        lexed
+            .tokens
+            .iter()
+            .map(|t| format!("{:?} {}..{}", t.kind, t.span.start, t.span.end))
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
     #[test]
@@ -470,5 +504,93 @@ mod tests {
         let lexed = lex("time 4/4\n3:2 ~ 3:2 5:0_8");
         assert!(lexed.diagnostics.is_empty());
         insta::assert_debug_snapshot!(lexed.tokens);
+    }
+
+    #[test]
+    fn delimiters_comma_and_eq() {
+        let lexed = lex("[ ] { } ( ) , =");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::LBracket,
+                TokenKind::RBracket,
+                TokenKind::LBrace,
+                TokenKind::RBrace,
+                TokenKind::LParen,
+                TokenKind::RParen,
+                TokenKind::Comma,
+                TokenKind::Eq,
+                TokenKind::Eof,
+            ]
+        );
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn dot_family_is_maximal_munch() {
+        assert_eq!(
+            kinds(&lex(". .. ...")),
+            vec![
+                TokenKind::Dot,
+                TokenKind::DotDot,
+                TokenKind::Ellipsis,
+                TokenKind::Eof,
+            ]
+        );
+        // `....` is `...` then `.`
+        assert_eq!(
+            kinds(&lex("....")),
+            vec![TokenKind::Ellipsis, TokenKind::Dot, TokenKind::Eof]
+        );
+    }
+
+    #[test]
+    fn mark_index_and_spread_lower_to_dot_tokens() {
+        // Mark: `3:0.t` → … Dot Ident; the parser classifies mark vs index.
+        assert_eq!(
+            kinds(&lex("3:0.t")),
+            vec![
+                TokenKind::Int,
+                TokenKind::Colon,
+                TokenKind::Int,
+                TokenKind::Dot,
+                TokenKind::Ident,
+                TokenKind::Eof,
+            ]
+        );
+        // Index: `phrase.0` → Ident Dot Int.
+        assert_eq!(
+            kinds(&lex("phrase.0")),
+            vec![
+                TokenKind::Ident,
+                TokenKind::Dot,
+                TokenKind::Int,
+                TokenKind::Eof
+            ]
+        );
+        // Spread: `...g_chord` → Ellipsis Ident.
+        assert_eq!(
+            kinds(&lex("...g_chord")),
+            vec![TokenKind::Ellipsis, TokenKind::Ident, TokenKind::Eof]
+        );
+    }
+
+    /// The canonical example program (`examples/cripple_creek.ctab` at the repo
+    /// root) must now lex with no `Error` tokens and no diagnostics.
+    const CRIPPLE_CREEK: &str = include_str!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../examples/cripple_creek.ctab"
+    ));
+
+    #[test]
+    fn cripple_creek_lexes_cleanly() {
+        let lexed = lex(CRIPPLE_CREEK);
+        assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
+        assert!(
+            !lexed.tokens.iter().any(|t| t.kind == TokenKind::Error),
+            "unexpected Error tokens"
+        );
+        assert_eq!(lexed.tokens.last().unwrap().kind, TokenKind::Eof);
+        insta::assert_snapshot!(compact(&lexed));
     }
 }
