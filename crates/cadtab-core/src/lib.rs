@@ -3,6 +3,7 @@
 pub mod diagnostics;
 pub mod layout;
 pub mod render;
+pub mod source;
 pub mod span;
 pub mod token;
 

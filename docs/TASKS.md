@@ -89,17 +89,17 @@ targets.
 **Goal:** the full grammar parses into a span-bearing AST, *resiliently*, with diagnostics.
 Entirely headless and test-driven (D18, D19, D20).
 
-- [ ] **T1.0 — Start `docs/GRAMMAR.md` (living, incremental).** Pin the confident core first
+- [x] **T1.0 — Start `docs/GRAMMAR.md` (living, incremental).** Pin the confident core first
       (the §6 subset: notes, durations, chords, blocks); mark uncertain bits **provisional** and
       grow it construct-by-construct *alongside* the lexer/parser — not all up front. Captures
       EBNF + a precedence table (`_dur` suffix, `.mark`, `.index`, `~`, `...`, calls) and settles
       **tuplet syntax** (the D11 TBD) when that construct is actually built. A living test-oracle,
       not a one-way door — snapshot tests keep iteration cheap. *(Co-evolves with T1.2/T1.4.)*
-- [ ] **T1.1 — Source & diagnostics infra.** `Span` (byte offsets) + source map; `Diagnostic
+- [x] **T1.1 — Source & diagnostics infra.** `Span` (byte offsets) + source map; `Diagnostic
       { severity, span, message, help }` (D31). Spans are mandatory on all nodes (D20).
   - *Tests:* span arithmetic property tests.
 - [ ] **T1.2 — Hand-rolled lexer.** Emits classified tokens (for highlighting, D27) + spans.
-  - [ ] T1.2a — `Token`/`TokenKind` enum with highlight classification + span.
+  - [x] T1.2a — `Token`/`TokenKind` enum with highlight classification + span.
   - [ ] T1.2b — Scanner skeleton: cursor, whitespace, `//` + `/* */` comments, span emission.
   - [ ] T1.2c — Literals (ints, strings), identifiers + keyword recognition.
   - [ ] T1.2d — Music tokens: `:` separator, `_dur` suffix (incl. tuplet marker per T1.0), marks `.t/.i/.m/.d/.u`, `~`.
