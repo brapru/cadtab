@@ -1,0 +1,54 @@
+---
+source: crates/cadtab-core/src/lib.rs
+expression: "serde_json::to_string_pretty(&result).unwrap()"
+---
+{
+  "renderTree": {
+    "meta": {
+      "width": 12.0,
+      "height": 4.0
+    },
+    "header": [],
+    "systems": [
+      {
+        "bounds": {
+          "x": 0.0,
+          "y": 0.0,
+          "w": 12.0,
+          "h": 4.0
+        },
+        "measures": [
+          {
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0,
+              "w": 12.0,
+              "h": 4.0
+            },
+            "prims": [
+              {
+                "kind": "line",
+                "x1": 0.0,
+                "y1": 2.0,
+                "x2": 12.0,
+                "y2": 2.0,
+                "weight": 0.1
+              },
+              {
+                "kind": "text",
+                "x": 1.0,
+                "y": 2.0,
+                "content": "0",
+                "role": "fretNumber",
+                "span": null
+              }
+            ],
+            "span": null
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [],
+  "tokens": []
+}

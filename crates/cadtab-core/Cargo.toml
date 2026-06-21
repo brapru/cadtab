@@ -1,0 +1,16 @@
+[package]
+name = "cadtab-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Pure, UI-free core for cadtab: DSL pipeline (lex → parse → eval → layout → render tree)."
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
+proptest = { workspace = true }

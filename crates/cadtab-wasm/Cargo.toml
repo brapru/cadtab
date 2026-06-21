@@ -1,0 +1,20 @@
+[package]
+name = "cadtab-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "WASM bindings for cadtab-core (browser build)."
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+cadtab-core = { path = "../cadtab-core" }
+wasm-bindgen = "0.2"
+serde-wasm-bindgen = "0.6"
+console_error_panic_hook = "0.1"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+wasm-bindgen-test = "0.3"

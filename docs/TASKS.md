@@ -50,34 +50,34 @@ A task is **done** only when all of the following pass — locally *and* in CI:
 **both** desktop and web — and the full quality gate + CI is green. Validates every integration
 boundary (core ↔ tauri ↔ wasm ↔ svelte ↔ svg) on day one.
 
-- [ ] **T0.1 — Workspace scaffold.** Cargo workspace + Svelte/Vite app + Tauri 2.
-  - [ ] T0.1a — Workspace root + `cadtab-core` lib crate with a passing trivial test.
-  - [ ] T0.1b — `src-tauri` crate via Tauri 2 init; blank window runs (`cargo tauri dev`).
-  - [ ] T0.1c — `app/` Svelte + Vite + TS scaffold wired as the Tauri frontend.
-  - [ ] T0.1d — `cadtab-wasm` crate skeleton (wasm-bindgen) that builds.
+- [x] **T0.1 — Workspace scaffold.** Cargo workspace + Svelte/Vite app + Tauri 2.
+  - [x] T0.1a — Workspace root + `cadtab-core` lib crate with a passing trivial test.
+  - [x] T0.1b — `src-tauri` crate via Tauri 2 init; blank window runs (`cargo tauri dev`).
+  - [x] T0.1c — `app/` Svelte + Vite + TS scaffold wired as the Tauri frontend.
+  - [x] T0.1d — `cadtab-wasm` crate skeleton (wasm-bindgen) that builds.
   - *Tests:* trivial `cadtab-core` unit test proving `cargo test` runs.
-- [ ] **T0.2 — Quality gates (before real code).** Stand up the full DoD gate.
-  - [ ] T0.2a — Rust: `rustfmt.toml`; clippy `-D warnings`; `insta` + `proptest` deps; `cargo test` wired.
-  - [ ] T0.2b — TS: prettier, eslint, `svelte-check`, vitest configs.
-  - [ ] T0.2c — Aggregate `just check` / `npm run check` runs the whole gate; `CONTRIBUTING.md` documents it.
-- [ ] **T0.3 — CI/CD.** GitHub Actions: run `check` (Rust fmt/clippy/test + TS lint/check/test +
+- [x] **T0.2 — Quality gates (before real code).** Stand up the full DoD gate.
+  - [x] T0.2a — Rust: `rustfmt.toml`; clippy `-D warnings`; `insta` + `proptest` deps; `cargo test` wired.
+  - [x] T0.2b — TS: prettier, eslint, `svelte-check`, vitest configs.
+  - [x] T0.2c — Aggregate `just check` / `npm run check` runs the whole gate; `CONTRIBUTING.md` documents it.
+- [x] **T0.3 — CI/CD.** GitHub Actions: run `check` (Rust fmt/clippy/test + TS lint/check/test +
       builds) on push/PR, with caching. **Must be green before any feature task.**
-- [ ] **T0.4 — Core API contract (stub).** Define `compile(source, LayoutConfig) ->
+- [x] **T0.4 — Core API contract (stub).** Define `compile(source, LayoutConfig) ->
       CompileResult { render_tree, diagnostics, tokens }` in `cadtab-core`, returning a hardcoded
       trivial render tree (one string line + one fret-number `Text`).
   - *Tests:* stub returns expected shape; **serde round-trip** for render-tree/diagnostic/token types.
-- [ ] **T0.5 — Tauri command + TS `core` adapter.** Expose `compile` as a Tauri command; thin
+- [x] **T0.5 — Tauri command + TS `core` adapter.** Expose `compile` as a Tauri command; thin
       `core.compile()` TS adapter (D27) called from Svelte.
-- [ ] **T0.6 — Minimal SVG painter.** Render the stub tree (Line + Text) to SVG with `viewBox`
+- [x] **T0.6 — Minimal SVG painter.** Render the stub tree (Line + Text) to SVG with `viewBox`
       scaling (D22). → **walking skeleton visible on desktop.**
   - *Tests:* painter component test — known tree → expected SVG nodes.
-- [ ] **T0.7 — CodeMirror + live loop.** Embed CodeMirror 6; debounced (~150ms) `core.compile`
+- [x] **T0.7 — CodeMirror + live loop.** Embed CodeMirror 6; debounced (~150ms) `core.compile`
       on edit; render the result; latest-wins/drop-stale (D27, D31).
   - *Tests:* adapter stale-drop unit test.
-- [ ] **T0.8 — WASM backend parity.** Lock the dual backend on day one (D4).
-  - [ ] T0.8a — `cadtab-wasm` exposes `compile` via wasm-bindgen; serde round-trip of `CompileResult`.
-  - [ ] T0.8b — TS `core` adapter dispatches Tauri-vs-WASM behind one interface (env detection).
-  - [ ] T0.8c — Web (vite) build renders the same stub skeleton; add wasm + web builds to CI.
+- [x] **T0.8 — WASM backend parity.** Lock the dual backend on day one (D4).
+  - [x] T0.8a — `cadtab-wasm` exposes `compile` via wasm-bindgen; serde round-trip of `CompileResult`.
+  - [x] T0.8b — TS `core` adapter dispatches Tauri-vs-WASM behind one interface (env detection).
+  - [x] T0.8c — Web (vite) build renders the same stub skeleton; add wasm + web builds to CI.
 
 **DoD M0:** live stub render on desktop **and** web; CI green across fmt/lint/test/build for all
 targets.

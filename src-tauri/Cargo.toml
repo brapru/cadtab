@@ -1,0 +1,23 @@
+[package]
+name = "cadtab"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "cadtab desktop app (Tauri 2 shell over cadtab-core)."
+rust-version = "1.85"
+
+[lib]
+name = "cadtab_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+cadtab-core = { path = "../crates/cadtab-core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+log = "0.4"
+tauri = { version = "2", features = [] }
+tauri-plugin-log = "2"

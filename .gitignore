@@ -1,0 +1,22 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock.orig
+
+# Node / frontend (added as those land)
+node_modules
+dist
+.svelte-kit
+
+# Generated wasm-pack output
+/app/src/wasm-gen
+
+# Tauri build output
+/src-tauri/target
+
+# insta pending snapshots (accepted .snap files ARE committed)
+*.snap.new
+
+# OS / editor
+.DS_Store
+*.swp
