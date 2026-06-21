@@ -9,8 +9,8 @@ use crate::ast::{self, Def, Expr, ExprKind, ItemKind, LoopBlock, Mark, MarkKind,
 use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
-    Chord, ChordNote, Duration, Event, EventKind, Finger, Note, Phrase, Position, RightHand, Strum,
-    Technique,
+    Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Position,
+    RightHand, Strum, Technique, TimeSig, split_measures,
 };
 use crate::span::Span;
 
@@ -194,6 +194,67 @@ impl Evaluator {
                 .extend(self.eval_events(&block.body.events).events);
         }
         phrase
+    }
+
+    /// Assemble a score body into measures. Consecutive bare events (and loop
+    /// unrolls) form an auto-barred run under the current `time`; an explicit
+    /// `measure { }` is taken verbatim as one bar, flushing any run before it.
+    /// The meter is stamped on the first measure and after each meter change.
+    pub fn eval_score_body(&mut self, items: &[ast::ScoreItem]) -> Vec<Measure> {
+        let mut time = TimeSig::new(4, 4);
+        let mut pending_meter = Some(time);
+        let mut measures = Vec::new();
+        let mut run: Vec<Event> = Vec::new();
+
+        for item in items {
+            match &item.kind {
+                ast::ScoreItemKind::Time(ts) => {
+                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
+                    if let Some(t) = self.eval_time_sig(ts) {
+                        time = t;
+                        pending_meter = Some(time);
+                    }
+                }
+                ast::ScoreItemKind::Default(frac) => {
+                    self.set_default(Duration::new(frac.num.value, frac.den.value));
+                }
+                ast::ScoreItemKind::Event(e) => {
+                    run.extend(self.eval_events(std::slice::from_ref(e)).events);
+                }
+                ast::ScoreItemKind::Loop(lb) => {
+                    run.extend(self.eval_loop(lb).events);
+                }
+                ast::ScoreItemKind::Measure(block) => {
+                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
+                    let mut measure = Measure::new(self.eval_events(&block.events).events);
+                    measure.meter = pending_meter.take();
+                    measures.push(measure);
+                }
+                // Pickup and repeat are assembled by later passes.
+                ast::ScoreItemKind::Pickup(_)
+                | ast::ScoreItemKind::Repeat(_)
+                | ast::ScoreItemKind::Error => {}
+            }
+        }
+        flush_run(&mut measures, &mut run, time, &mut pending_meter);
+        measures
+    }
+
+    /// Convert an AST time signature to the model, validating it. A zero or
+    /// oversized value diagnoses and yields `None` (the current meter is kept).
+    fn eval_time_sig(&mut self, ts: &ast::TimeSig) -> Option<TimeSig> {
+        let num = u8::try_from(ts.num.value).ok().filter(|&n| n > 0);
+        let den = u8::try_from(ts.den.value).ok().filter(|&d| d > 0);
+        match (num, den) {
+            (Some(n), Some(d)) => Some(TimeSig::new(n, d)),
+            _ => {
+                self.diagnostics.push(
+                    Diagnostic::error(ts.span, "invalid time signature")
+                        .with_help("write a meter like `4/4` or `6/8`"),
+                );
+                None
+            }
+        }
     }
 
     fn eval_event_into(&mut self, ev: &ast::Event, out: &mut Phrase) {
@@ -502,6 +563,24 @@ impl Evaluator {
     }
 }
 
+/// Auto-bar a run of pending events under `time`, appending the measures and
+/// stamping the meter on the first one if a change is pending. Clears the run.
+fn flush_run(
+    measures: &mut Vec<Measure>,
+    run: &mut Vec<Event>,
+    time: TimeSig,
+    pending_meter: &mut Option<TimeSig>,
+) {
+    if run.is_empty() {
+        return;
+    }
+    let mut barred = split_measures(std::mem::take(run), time);
+    if let Some(first) = barred.first_mut() {
+        first.meter = pending_meter.take();
+    }
+    measures.append(&mut barred);
+}
+
 /// The position of a call's `i`th argument, if it is one. Non-position or
 /// missing arguments yield `None` (the type checker reports the misuse).
 fn position_arg(args: &[Option<Value>], i: usize) -> Option<Position> {
@@ -608,12 +687,11 @@ mod tests {
 mod event_eval_tests {
     use super::*;
     use crate::ast::{ItemKind, ScoreItemKind};
-    use crate::model::{EventKind, Finger, RightHand, Technique};
+    use crate::model::{EventKind, Finger, Measure, RightHand, Technique, TimeSig};
     use crate::parser::parse;
 
-    /// Evaluate the events of a `score { … }` body in source order, applying any
-    /// `default` directive and threading the sticky duration across events.
-    fn eval_score(src: &str) -> (Phrase, Vec<Diagnostic>) {
+    /// Assemble every `score { … }` body into measures.
+    fn barred(src: &str) -> (Vec<Measure>, Vec<Diagnostic>) {
         let parsed = parse(src);
         assert!(
             parsed.diagnostics.is_empty(),
@@ -622,29 +700,21 @@ mod event_eval_tests {
         );
         let mut ev = Evaluator::new(Instrument::builtin("banjo").unwrap());
         ev.load(&parsed.program);
-        let mut phrase = Phrase::new();
+        let mut measures = Vec::new();
         for item in &parsed.program.items {
-            let ItemKind::Score(score) = &item.kind else {
-                continue;
-            };
-            for si in &score.items {
-                match &si.kind {
-                    ScoreItemKind::Default(frac) => {
-                        ev.set_default(Duration::new(frac.num.value, frac.den.value));
-                    }
-                    ScoreItemKind::Event(e) => {
-                        phrase
-                            .events
-                            .extend(ev.eval_events(std::slice::from_ref(e)).events);
-                    }
-                    ScoreItemKind::Loop(lb) => {
-                        phrase.events.extend(ev.eval_loop(lb).events);
-                    }
-                    _ => {}
-                }
+            if let ItemKind::Score(score) = &item.kind {
+                measures.extend(ev.eval_score_body(&score.items));
             }
         }
-        (phrase, ev.into_diagnostics())
+        (measures, ev.into_diagnostics())
+    }
+
+    /// Evaluate a score body and flatten its measures back to one event stream —
+    /// barring preserves event order, so this is the pre-barring view.
+    fn eval_score(src: &str) -> (Phrase, Vec<Diagnostic>) {
+        let (measures, diags) = barred(src);
+        let events = measures.into_iter().flat_map(|m| m.events).collect();
+        (Phrase { events }, diags)
     }
 
     fn durs(phrase: &Phrase) -> Vec<Duration> {
@@ -1207,5 +1277,98 @@ score {
 }",
         );
         insta::assert_debug_snapshot!(phrase);
+    }
+
+    /// The number of events in each measure, in order.
+    fn measure_sizes(measures: &[Measure]) -> Vec<usize> {
+        measures.iter().map(|m| m.events.len()).collect()
+    }
+
+    #[test]
+    fn bare_events_auto_bar_into_measures() {
+        // Four quarters fill a 4/4 bar; the meter is stamped on the first measure.
+        let (measures, diags) = barred("score { default 1/4\n 3:0 2:0 1:0 5:0 }");
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![4]);
+        assert_eq!(measures[0].meter, Some(TimeSig::new(4, 4)));
+    }
+
+    #[test]
+    fn an_explicit_measure_is_one_bar_verbatim() {
+        // Five quarters in a `measure {}` stay one bar — not re-split by barring.
+        let (measures, diags) = barred("score { default 1/4\n measure { 3:0 2:0 1:0 5:0 3:0 } }");
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![5]);
+    }
+
+    #[test]
+    fn an_explicit_measure_flushes_the_auto_barred_run_before_it() {
+        // A partial run before the brace flushes as its own (under-full) measure.
+        let (measures, _) = barred("score { default 1/4\n 3:0 2:0  measure { 1:0 } }");
+        assert_eq!(measure_sizes(&measures), vec![2, 1]);
+    }
+
+    #[test]
+    fn auto_barring_resumes_after_an_explicit_measure() {
+        let (measures, _) = barred(
+            "score {
+  default 1/4
+  3:0 2:0 1:0 5:0
+  measure { 3:2 }
+  1:0 2:0 1:0 5:0
+}",
+        );
+        // Full bar, then the verbatim measure, then another full bar.
+        assert_eq!(measure_sizes(&measures), vec![4, 1, 4]);
+    }
+
+    #[test]
+    fn a_meter_change_is_stamped_on_its_first_measure() {
+        let (measures, diags) = barred(
+            "score {
+  time 4/4
+  default 1/4
+  3:0 2:0 1:0 5:0
+  time 3/4
+  3:0 2:0 1:0
+}",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![4, 3]);
+        assert_eq!(measures[0].meter, Some(TimeSig::new(4, 4)));
+        assert_eq!(measures[1].meter, Some(TimeSig::new(3, 4)));
+    }
+
+    #[test]
+    fn an_explicit_first_measure_carries_the_meter() {
+        let (measures, _) = barred("score { time 3/4\n measure { 3:0 } }");
+        assert_eq!(measures[0].meter, Some(TimeSig::new(3, 4)));
+    }
+
+    #[test]
+    fn an_invalid_time_signature_diagnoses_and_keeps_the_current_meter() {
+        let (measures, diags) = barred("score { time 4/0\n default 1/4\n 3:0 2:0 1:0 5:0 }");
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("invalid time signature"))
+        );
+        // The bad change is ignored; the default 4/4 stays in effect.
+        assert_eq!(measure_sizes(&measures), vec![4]);
+        assert_eq!(measures[0].meter, Some(TimeSig::new(4, 4)));
+    }
+
+    #[test]
+    fn measure_assembly_snapshot() {
+        let (measures, _) = barred(
+            "score {
+  time 4/4
+  default 1/4
+  3:0 2:0 1:0 5:0
+  measure { hammer(3:0, 3:2)  1:0 }
+  3:2 3:4 3:0 2:0
+}",
+        );
+        insta::assert_debug_snapshot!(measures);
     }
 }

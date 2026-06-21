@@ -369,8 +369,8 @@ impl BeatAccumulator {
 /// Split a flat event stream into measures under one time signature, inserting a
 /// barline (a measure boundary) each time an event completes — or overflows — a
 /// bar. An event that overflows stays whole in the bar it began; a trailing
-/// partial bar becomes a final measure. The first measure carries `time` as its
-/// meter (the meter in effect for this run); the rest leave it unset.
+/// partial bar becomes a final measure. Meter is left unset on every measure;
+/// the caller, which tracks meter changes, stamps it.
 pub fn split_measures(events: Vec<Event>, time: TimeSig) -> Vec<Measure> {
     let mut acc = BeatAccumulator::new(time);
     let mut measures = Vec::new();
@@ -385,9 +385,6 @@ pub fn split_measures(events: Vec<Event>, time: TimeSig) -> Vec<Measure> {
     }
     if !current.is_empty() {
         measures.push(Measure::new(current));
-    }
-    if let Some(first) = measures.first_mut() {
-        first.meter = Some(time);
     }
     measures
 }
@@ -731,11 +728,10 @@ mod tests {
     }
 
     #[test]
-    fn only_the_first_measure_carries_the_meter() {
+    fn split_leaves_meter_unset_for_the_caller() {
         let quarter = Duration::from_denominator(4);
         let measures = split_measures(vec![ev(quarter); 8], TimeSig::new(3, 4));
-        assert_eq!(measures[0].meter, Some(TimeSig::new(3, 4)));
-        assert!(measures[1..].iter().all(|m| m.meter.is_none()));
+        assert!(measures.iter().all(|m| m.meter.is_none()));
     }
 
     #[test]
