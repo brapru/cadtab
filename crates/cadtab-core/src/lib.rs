@@ -2,6 +2,7 @@
 
 pub mod ast;
 pub mod diagnostics;
+pub mod eval;
 pub mod instrument;
 pub mod layout;
 pub mod lexer;
