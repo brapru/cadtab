@@ -101,7 +101,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [ ] **T1.2 — Hand-rolled lexer.** Emits classified tokens (for highlighting, D27) + spans.
   - [x] T1.2a — `Token`/`TokenKind` enum with highlight classification + span.
   - [x] T1.2b — Scanner skeleton: cursor, whitespace, `//` + `/* */` comments, span emission.
-  - [ ] T1.2c — Literals (ints, strings), identifiers + keyword recognition.
+  - [x] T1.2c — Literals (ints, strings), identifiers + keyword recognition.
   - [ ] T1.2d — Music tokens: `:` separator, `_dur` suffix (incl. tuplet marker per T1.0), marks `.t/.i/.m/.d/.u`, `~`.
   - [ ] T1.2e — Delimiters/operators: `[] {} ()`, `...`, index `.` (`repeat`/`ending`/`loop` are keywords, T1.2c).
   - [ ] T1.2f — Error tokens + lexer diagnostics.

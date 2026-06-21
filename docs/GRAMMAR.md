@@ -35,8 +35,8 @@ highlighting *and* diagnostics, D27), and never bails (error tokens, D19).
 
 ```
 INT     = DIGIT { DIGIT }                          // unsigned decimal
-STRING  = '"' { CHAR_NO_DQ | '\\' ANY } '"'        // double-quoted, backslash escapes
-IDENT   = (ALPHA | "_") { ALPHA | DIGIT | "_" }    // keyword recognition is post-scan
+STRING  = '"' { CHAR_NO_DQ_NL | '\\' ANY } '"'     // double-quoted, single-line, backslash escapes
+IDENT   = ALPHA { ALPHA | DIGIT | "_" }            // no leading "_"; keyword recognition is post-scan
 COMMENT = "//" { ANY_NO_NL }                       // line comment        (whitespace)
         | "/*" { ANY } "*/"                         // block comment       (whitespace; non-nesting [CORE])
 WS      = SP | TAB | NL | CR                        // insignificant
@@ -50,9 +50,11 @@ Punctuation / operator tokens:
 
 - `"..."` (spread) is scanned greedily and must out-prioritize `".."`/`"."` (maximal munch).
   `".."` is reserved (no current use) so a stray `..` lexes as one token, not two `.`.
-- `"_"` is the duration-suffix lead. A bare `_` adjacent to a number forms a duration (§3);
-  a `_` inside/leading an identifier is part of `IDENT` (handled by the `IDENT` rule, which the
-  scanner tries first on an alpha/`_` start).
+- `"_"` is always the duration-suffix lead token (`Underscore`). Identifiers may *contain* `_`
+  (`forward_roll`) but never *start* with one, so `_8` lexes as `Underscore` `Int`, never as an
+  identifier.
+- Strings are **single-line**: a newline (or EOF) before the closing `"` is an unterminated-string
+  diagnostic; the `\`-escape is scanned but not decoded by the lexer.
 - `"."` carries three surface meanings disambiguated by what follows (parser, not lexer):
   right-hand **mark** (`.` + mark-letter), phrase **index** (`.` + `INT`), and is otherwise a
   bare dot. The lexer emits a single `.` token; classification happens in the parser.

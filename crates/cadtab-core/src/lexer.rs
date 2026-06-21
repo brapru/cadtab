@@ -4,7 +4,7 @@
 
 use crate::diagnostics::Diagnostic;
 use crate::span::Span;
-use crate::token::{LexToken, TokenKind};
+use crate::token::{Keyword, LexToken, TokenKind};
 
 /// The result of lexing: the full token stream (ending in `Eof`) plus any
 /// diagnostics gathered along the way.
@@ -58,7 +58,10 @@ impl<'a> Lexer<'a> {
             let kind = match b {
                 b'/' if self.peek_at(1) == Some(b'/') => self.line_comment(),
                 b'/' if self.peek_at(1) == Some(b'*') => self.block_comment(start),
-                // Literals, identifiers, music tokens, delimiters: not yet scanned.
+                b'"' => self.string(start),
+                b if b.is_ascii_digit() => self.number(),
+                b if b.is_ascii_alphabetic() => self.ident(start),
+                // Music tokens, delimiters, operators: not yet scanned.
                 _ => self.unknown_char(),
             };
             tokens.push(LexToken::new(kind, Span::new(start, self.pos as u32)));
@@ -115,6 +118,61 @@ impl<'a> Lexer<'a> {
             }
         }
         TokenKind::Comment
+    }
+
+    /// A run of ASCII digits.
+    fn number(&mut self) -> TokenKind {
+        while matches!(self.peek(), Some(b) if b.is_ascii_digit()) {
+            self.pos += 1;
+        }
+        TokenKind::Int
+    }
+
+    /// An identifier starting with an ASCII letter, then letters/digits/`_`.
+    /// Recognized keywords lower to [`TokenKind::Keyword`].
+    fn ident(&mut self, start: u32) -> TokenKind {
+        while matches!(self.peek(), Some(b) if b == b'_' || b.is_ascii_alphanumeric()) {
+            self.pos += 1;
+        }
+        let text = &self.src[start as usize..self.pos];
+        match Keyword::from_ident(text) {
+            Some(kw) => TokenKind::Keyword(kw),
+            None => TokenKind::Ident,
+        }
+    }
+
+    /// A double-quoted, single-line string with `\`-escapes (the escape is not
+    /// decoded here). A newline or EOF before the closing `"` is unterminated →
+    /// diagnostic + a resilient `Str` token spanning what was read.
+    fn string(&mut self, start: u32) -> TokenKind {
+        self.pos += 1; // opening quote
+        loop {
+            match self.peek() {
+                None | Some(b'\n') => {
+                    self.diagnostics.push(
+                        Diagnostic::error(
+                            Span::new(start, self.pos as u32),
+                            "unterminated string literal",
+                        )
+                        .with_help("add a closing `\"`"),
+                    );
+                    break;
+                }
+                Some(b'"') => {
+                    self.pos += 1;
+                    break;
+                }
+                Some(b'\\') => {
+                    self.pos += 1;
+                    // Skip the escaped byte, unless the line/input ends first.
+                    if !matches!(self.peek(), None | Some(b'\n')) {
+                        self.pos += 1;
+                    }
+                }
+                Some(_) => self.pos += 1,
+            }
+        }
+        TokenKind::Str
     }
 
     /// Consume one whole UTF-8 char as an `Error` token; advancing by a full
@@ -174,10 +232,10 @@ mod tests {
         let lexed = lex("/* a\n b */x");
         assert_eq!(
             kinds(&lexed),
-            vec![TokenKind::Comment, TokenKind::Error, TokenKind::Eof]
+            vec![TokenKind::Comment, TokenKind::Ident, TokenKind::Eof]
         );
         assert_eq!(lexed.tokens[0].span, Span::new(0, 10)); // "/* a\n b */"
-        assert_eq!(lexed.tokens[1].span, Span::new(10, 11)); // 'x' (unhandled yet)
+        assert_eq!(lexed.tokens[1].span, Span::new(10, 11)); // 'x'
         assert!(lexed.diagnostics.is_empty());
     }
 
@@ -210,6 +268,108 @@ mod tests {
     #[test]
     fn comments_and_whitespace_snapshot() {
         let lexed = lex("  // line\n/* block\n   spans */  \n");
+        assert!(lexed.diagnostics.is_empty());
+        insta::assert_debug_snapshot!(lexed.tokens);
+    }
+
+    #[test]
+    fn integers() {
+        let lexed = lex("0 130 42");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Int,
+                TokenKind::Int,
+                TokenKind::Int,
+                TokenKind::Eof
+            ]
+        );
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 1));
+        assert_eq!(lexed.tokens[1].span, Span::new(2, 5));
+        assert_eq!(lexed.tokens[2].span, Span::new(6, 8));
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn identifiers_and_keywords() {
+        let lexed = lex("score banjo forward_roll abc123 r");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Keyword(Keyword::Score),
+                TokenKind::Ident, // banjo
+                TokenKind::Ident, // forward_roll
+                TokenKind::Ident, // abc123
+                TokenKind::Ident, // r — contextual, not a keyword
+                TokenKind::Eof,
+            ]
+        );
+        assert_eq!(lexed.tokens[2].span, Span::new(12, 24)); // forward_roll
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn underscore_does_not_start_an_identifier() {
+        // `_8` is the duration suffix, not an identifier; `_` is unhandled here.
+        let lexed = lex("_8 g_chord");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Error, // `_` (Underscore arrives in a later sub-task)
+                TokenKind::Int,   // 8
+                TokenKind::Ident, // g_chord (contains, not leads, `_`)
+                TokenKind::Eof,
+            ]
+        );
+        assert_eq!(lexed.tokens[2].span, Span::new(3, 10));
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn strings_with_escapes_and_unicode() {
+        let lexed = lex(r#""hello" "a\"b" "café""#);
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Str,
+                TokenKind::Str,
+                TokenKind::Str,
+                TokenKind::Eof
+            ]
+        );
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 7)); // "hello"
+        assert_eq!(lexed.tokens[1].span, Span::new(8, 14)); // "a\"b" — escape doesn't close
+        assert_eq!(lexed.tokens[2].span, Span::new(15, 22)); // "café" — é is 2 bytes
+        assert!(lexed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn unterminated_string_reports_diagnostic() {
+        let lexed = lex("\"oops");
+        assert_eq!(kinds(&lexed), vec![TokenKind::Str, TokenKind::Eof]);
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 5));
+        assert_eq!(lexed.diagnostics.len(), 1);
+        assert_eq!(lexed.diagnostics[0].message, "unterminated string literal");
+    }
+
+    #[test]
+    fn string_does_not_span_newline() {
+        let lexed = lex("\"oops\nscore");
+        assert_eq!(
+            kinds(&lexed),
+            vec![
+                TokenKind::Str,
+                TokenKind::Keyword(Keyword::Score),
+                TokenKind::Eof
+            ]
+        );
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 5)); // up to the newline
+        assert_eq!(lexed.diagnostics.len(), 1);
+    }
+
+    #[test]
+    fn metadata_header_snapshot() {
+        let lexed = lex("title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130");
         assert!(lexed.diagnostics.is_empty());
         insta::assert_debug_snapshot!(lexed.tokens);
     }
