@@ -1,0 +1,183 @@
+---
+source: crates/cadtab-core/src/eval.rs
+expression: phrase
+---
+Phrase {
+    events: [
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Thumb,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 24,
+                end: 29,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 2,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 31,
+                end: 34,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 1,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Middle,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 36,
+                end: 41,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 2,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 4,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 44,
+                end: 49,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 4,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 4,
+                    },
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 51,
+                end: 54,
+            },
+        },
+        Event {
+            kind: Chord(
+                Chord {
+                    dur: Duration {
+                        num: 1,
+                        den: 4,
+                    },
+                    notes: [
+                        ChordNote {
+                            pos: Position {
+                                string: 1,
+                                fret: 0,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Middle,
+                                ),
+                            ),
+                        },
+                        ChordNote {
+                            pos: Position {
+                                string: 5,
+                                fret: 0,
+                            },
+                            right_hand: Some(
+                                Finger(
+                                    Thumb,
+                                ),
+                            ),
+                        },
+                    ],
+                },
+            ),
+            span: Span {
+                start: 57,
+                end: 72,
+            },
+        },
+        Event {
+            kind: Rest(
+                Duration {
+                    num: 1,
+                    den: 8,
+                },
+            ),
+            span: Span {
+                start: 75,
+                end: 78,
+            },
+        },
+        Event {
+            kind: Rest(
+                Duration {
+                    num: 1,
+                    den: 8,
+                },
+            ),
+            span: Span {
+                start: 80,
+                end: 81,
+            },
+        },
+    ],
+}
