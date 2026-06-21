@@ -146,7 +146,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T2.5a — Beat accumulator over the event stream (rational time, per `time`).
   - [x] T2.5b — Bar splitting into `Measure`s + barline insertion (D12).
   - [x] T2.5c — Explicit `measure {}` override interplay.
-  - [ ] T2.5d — `pickup {}`: excluded from fill check, offset flag (D33).
+  - [x] T2.5d — `pickup {}`: excluded from fill check, offset flag (D33).
   - [ ] T2.5e — `repeat {}` → `repeat_start/end`; `ending(n){}` → volta routing + `ending` attrs (D32); meter changes.
   - [ ] T2.5f — Over/under-full diagnostics with `help`.
   - *Tests:* barring corpus — pickups, meter changes, over/under-full errors.

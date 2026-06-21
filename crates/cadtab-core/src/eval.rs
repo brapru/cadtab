@@ -226,18 +226,34 @@ impl Evaluator {
                 }
                 ast::ScoreItemKind::Measure(block) => {
                     flush_run(&mut measures, &mut run, time, &mut pending_meter);
-                    let mut measure = Measure::new(self.eval_events(&block.events).events);
-                    measure.meter = pending_meter.take();
-                    measures.push(measure);
+                    measures.push(self.block_measure(&block.events, false, &mut pending_meter));
                 }
-                // Pickup and repeat are assembled by later passes.
-                ast::ScoreItemKind::Pickup(_)
-                | ast::ScoreItemKind::Repeat(_)
-                | ast::ScoreItemKind::Error => {}
+                // A pickup is a partial bar: taken verbatim and flagged so the
+                // fill check skips it and the layout renders it offset.
+                ast::ScoreItemKind::Pickup(block) => {
+                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
+                    measures.push(self.block_measure(&block.events, true, &mut pending_meter));
+                }
+                // Repeats are assembled by a later pass.
+                ast::ScoreItemKind::Repeat(_) | ast::ScoreItemKind::Error => {}
             }
         }
         flush_run(&mut measures, &mut run, time, &mut pending_meter);
         measures
+    }
+
+    /// Build one verbatim measure from a `measure`/`pickup` block's events,
+    /// taking any pending meter stamp.
+    fn block_measure(
+        &mut self,
+        events: &[ast::Event],
+        is_pickup: bool,
+        pending_meter: &mut Option<TimeSig>,
+    ) -> Measure {
+        let mut measure = Measure::new(self.eval_events(events).events);
+        measure.is_pickup = is_pickup;
+        measure.meter = pending_meter.take();
+        measure
     }
 
     /// Convert an AST time signature to the model, validating it. A zero or
@@ -1370,5 +1386,54 @@ score {
 }",
         );
         insta::assert_debug_snapshot!(measures);
+    }
+
+    /// The pickup flag on each measure, in order.
+    fn pickups(measures: &[Measure]) -> Vec<bool> {
+        measures.iter().map(|m| m.is_pickup).collect()
+    }
+
+    #[test]
+    fn pickup_is_a_flagged_partial_bar() {
+        let (measures, diags) = barred("score { time 4/4\n default 1/8\n pickup { 2:0 1:0 } }");
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![2]);
+        assert!(measures[0].is_pickup);
+    }
+
+    #[test]
+    fn a_leading_pickup_carries_the_meter() {
+        let (measures, _) = barred("score { time 4/4\n default 1/8\n pickup { 2:0 1:0 } }");
+        assert_eq!(measures[0].meter, Some(TimeSig::new(4, 4)));
+    }
+
+    #[test]
+    fn a_pickup_does_not_offset_the_following_bar_grid() {
+        // The pickup's 1/4 is "extra"; the next bar is a fresh, full 4/4 bar.
+        let (measures, _) = barred(
+            "score {
+  time 4/4
+  default 1/4
+  pickup { 1:0 }
+  3:0 2:0 1:0 5:0
+}",
+        );
+        assert_eq!(measure_sizes(&measures), vec![1, 4]);
+        assert_eq!(pickups(&measures), vec![true, false]);
+    }
+
+    #[test]
+    fn a_pickup_is_verbatim_not_resplit() {
+        // Five quarters in a pickup stay one bar — the fill check will skip it.
+        let (measures, _) = barred("score { default 1/4\n pickup { 3:0 2:0 1:0 5:0 3:0 } }");
+        assert_eq!(measure_sizes(&measures), vec![5]);
+        assert!(measures[0].is_pickup);
+    }
+
+    #[test]
+    fn a_pickup_flushes_any_run_before_it() {
+        let (measures, _) = barred("score { default 1/4\n 3:0 2:0  pickup { 1:0 } }");
+        assert_eq!(measure_sizes(&measures), vec![2, 1]);
+        assert_eq!(pickups(&measures), vec![false, true]);
     }
 }
