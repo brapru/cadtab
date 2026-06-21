@@ -5,7 +5,7 @@ import globals from "globals";
 
 export default ts.config(
   {
-    ignores: ["dist/", "node_modules/", "src/wasm-gen/"],
+    ignores: ["dist/", "node_modules/", "src/wasm-gen/", "coverage/"],
   },
   js.configs.recommended,
   ...ts.configs.recommended,

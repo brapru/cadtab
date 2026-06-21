@@ -2,8 +2,10 @@
 
 pub mod ast;
 pub mod diagnostics;
+pub mod instrument;
 pub mod layout;
 pub mod lexer;
+pub mod model;
 pub mod parser;
 pub mod render;
 pub mod source;

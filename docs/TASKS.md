@@ -125,7 +125,7 @@ Entirely headless and test-driven (D18, D19, D20).
 
 **Goal:** `source → musical model` for the whole language (D5–D17, D32–D39).
 
-- [ ] **T2.1 — Instruments, tunings, pitch.** Builtin banjo (Open G `gDGBD`) + guitar (`EADGBE`);
+- [x] **T2.1 — Instruments, tunings, pitch.** Builtin banjo (Open G `gDGBD`) + guitar (`EADGBE`);
       `tuning` override (D35); pitch derivation `open_pitch[string] + fret`; 1-based→Vec mapping
       (D37); bounds validation (string in range, fret ≥ 0) → diagnostics.
   - *Tests:* pitch-derivation table; invalid-position diagnostics.

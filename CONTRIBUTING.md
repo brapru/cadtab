@@ -61,3 +61,17 @@ just fmt
 
 New behavior ships with tests (unit / snapshot / component as fits). CI runs the
 same `just check`, so a green local gate means a green CI.
+
+## Coverage (report-only)
+
+Coverage is informational for now — it is **not** part of `just check` and has no
+enforced thresholds (those land post-M3). Generate reports with:
+
+```sh
+just cov        # both languages
+just cov-rust   # cargo-llvm-cov line summary (needs `cargo install cargo-llvm-cov`)
+just cov-ts     # vitest v8 coverage; HTML report at app/coverage/index.html
+```
+
+`cargo-llvm-cov` also requires the `llvm-tools-preview` component
+(`rustup component add llvm-tools-preview`).

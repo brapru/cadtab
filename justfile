@@ -20,6 +20,17 @@ check-ts:
     npm --prefix app run check
     npm --prefix app run test
 
+# Coverage (report-only; not part of `check`, no thresholds until post-M3).
+cov: cov-rust cov-ts
+
+# Rust line coverage summary via cargo-llvm-cov.
+cov-rust:
+    cargo llvm-cov --workspace --summary-only
+
+# Frontend coverage via vitest (v8); HTML report in app/coverage/.
+cov-ts:
+    npm --prefix app run test:coverage
+
 # Auto-format Rust and frontend sources.
 fmt:
     cargo fmt

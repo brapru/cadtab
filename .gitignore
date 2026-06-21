@@ -17,6 +17,10 @@ dist
 # insta pending snapshots (accepted .snap files ARE committed)
 *.snap.new
 
+# Coverage reports (report-only; not committed)
+/app/coverage
+/target/llvm-cov
+
 # OS / editor
 .DS_Store
 *.swp

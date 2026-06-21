@@ -1,0 +1,36 @@
+---
+source: crates/cadtab-core/src/instrument.rs
+expression: out
+---
+banjo openG
+  string 1 (D): 62 63 64 65 66
+  string 2 (B): 59 60 61 62 63
+  string 3 (G): 55 56 57 58 59
+  string 4 (D): 50 51 52 53 54
+  string 5 (g): 67 68 69 70 71
+banjo doubleC
+  string 1 (D): 62 63 64 65 66
+  string 2 (C): 60 61 62 63 64
+  string 3 (G): 55 56 57 58 59
+  string 4 (C): 48 49 50 51 52
+  string 5 (g): 67 68 69 70 71
+banjo sawmill
+  string 1 (D): 62 63 64 65 66
+  string 2 (C): 60 61 62 63 64
+  string 3 (G): 55 56 57 58 59
+  string 4 (D): 50 51 52 53 54
+  string 5 (g): 67 68 69 70 71
+guitar standard
+  string 1 (E): 64 65 66 67 68
+  string 2 (B): 59 60 61 62 63
+  string 3 (G): 55 56 57 58 59
+  string 4 (D): 50 51 52 53 54
+  string 5 (A): 45 46 47 48 49
+  string 6 (E): 40 41 42 43 44
+guitar dropD
+  string 1 (E): 64 65 66 67 68
+  string 2 (B): 59 60 61 62 63
+  string 3 (G): 55 56 57 58 59
+  string 4 (D): 50 51 52 53 54
+  string 5 (A): 45 46 47 48 49
+  string 6 (D): 38 39 40 41 42
