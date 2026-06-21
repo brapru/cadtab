@@ -5,7 +5,10 @@
 //! so a half-typed document still yields a partial tree. Grammar productions
 //! are added incrementally.
 
-use crate::ast::{Ident, IntLit, Item, ItemKind, Program, StringLit};
+use crate::ast::{
+    Block, Ending, Event, Fraction, Ident, IntLit, Item, ItemKind, Program, Repeat, Score,
+    ScoreItem, ScoreItemKind, StringLit, TimeSig,
+};
 use crate::diagnostics::Diagnostic;
 use crate::lexer::lex;
 use crate::span::Span;
@@ -198,7 +201,11 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.ident_decl(ItemKind::Tuning)
             }
-            // Not yet: score (T1.4c), def/let (T1.4f).
+            Keyword::Score => {
+                self.bump();
+                self.parse_score()
+            }
+            // Not yet: def/let (T1.4f).
             _ => return None,
         };
         Some(Item::new(kind, self.span_from(start)))
@@ -276,6 +283,183 @@ impl<'a> Parser<'a> {
             );
             None
         }
+    }
+
+    // --- score block & its items -----------------------------------------
+
+    /// `score { score_item* }` (the `score` keyword is already consumed).
+    fn parse_score(&mut self) -> ItemKind {
+        let lb = self.peek().span.start;
+        if !self.eat(TokenKind::LBrace) {
+            self.error_at(
+                Span::point(lb),
+                format!("expected `{{`, found {}", token_label(self.peek_kind())),
+            );
+            return ItemKind::Score(Score { items: Vec::new() });
+        }
+        let mut items = Vec::new();
+        while !self.at_eof() && !self.at(TokenKind::RBrace) {
+            let before = self.pos;
+            match self.parse_score_item() {
+                Some(item) => items.push(item),
+                None => {
+                    let tok = self.peek();
+                    self.error_at(
+                        tok.span,
+                        format!("unexpected {} in score", token_label(tok.kind)),
+                    );
+                    self.bump();
+                }
+            }
+            if self.pos == before {
+                self.bump();
+            }
+        }
+        self.expect(TokenKind::RBrace);
+        ItemKind::Score(Score { items })
+    }
+
+    fn parse_score_item(&mut self) -> Option<ScoreItem> {
+        let start = self.peek().span.start;
+        let kind = match self.peek_kind() {
+            TokenKind::Keyword(Keyword::Time) => {
+                self.bump();
+                match self.parse_ratio() {
+                    Some((num, den)) => ScoreItemKind::Time(TimeSig {
+                        span: num.span.merge(den.span),
+                        num,
+                        den,
+                    }),
+                    None => ScoreItemKind::Error,
+                }
+            }
+            TokenKind::Keyword(Keyword::Default) => {
+                self.bump();
+                match self.parse_ratio() {
+                    Some((num, den)) => ScoreItemKind::Default(Fraction {
+                        span: num.span.merge(den.span),
+                        num,
+                        den,
+                    }),
+                    None => ScoreItemKind::Error,
+                }
+            }
+            TokenKind::Keyword(Keyword::Pickup) => {
+                self.bump();
+                ScoreItemKind::Pickup(self.parse_block())
+            }
+            TokenKind::Keyword(Keyword::Measure) => {
+                self.bump();
+                ScoreItemKind::Measure(self.parse_block())
+            }
+            TokenKind::Keyword(Keyword::Repeat) => {
+                self.bump();
+                self.parse_repeat()
+            }
+            // `loop` (T1.4f) and events (T1.4d) are not handled yet.
+            _ => return None,
+        };
+        Some(ScoreItem::new(kind, self.span_from(start)))
+    }
+
+    /// `INT "/" INT`. Reports on a missing part.
+    fn parse_ratio(&mut self) -> Option<(IntLit, IntLit)> {
+        let num = self.parse_int_lit()?;
+        if !self.expect(TokenKind::Slash) {
+            return None;
+        }
+        let den = self.parse_int_lit()?;
+        Some((num, den))
+    }
+
+    /// `repeat { event* ending(n){}* }` (the `repeat` keyword is consumed). The
+    /// body events precede the voltas.
+    fn parse_repeat(&mut self) -> ScoreItemKind {
+        let lb = self.peek().span.start;
+        if !self.eat(TokenKind::LBrace) {
+            self.error_at(
+                Span::point(lb),
+                format!("expected `{{`, found {}", token_label(self.peek_kind())),
+            );
+            return ScoreItemKind::Repeat(Repeat {
+                body: Vec::new(),
+                endings: Vec::new(),
+            });
+        }
+        let body = self.parse_events_until(&[TokenKind::Keyword(Keyword::Ending)]);
+        let mut endings = Vec::new();
+        while self.at_keyword(Keyword::Ending) {
+            endings.push(self.parse_ending());
+        }
+        self.expect(TokenKind::RBrace);
+        ScoreItemKind::Repeat(Repeat { body, endings })
+    }
+
+    /// `ending(N) { event* }` (the current token is `ending`).
+    fn parse_ending(&mut self) -> Ending {
+        let start = self.peek().span.start;
+        self.bump(); // `ending`
+        self.expect(TokenKind::LParen);
+        let number = self
+            .parse_int_lit()
+            .unwrap_or_else(|| IntLit::new(0, Span::point(self.prev_end())));
+        self.expect(TokenKind::RParen);
+        let body = self.parse_block();
+        Ending {
+            number,
+            body,
+            span: self.span_from(start),
+        }
+    }
+
+    /// `{ event* }`. A missing `{` is reported; the body is empty in that case.
+    fn parse_block(&mut self) -> Block {
+        let start = self.peek().span.start;
+        if !self.eat(TokenKind::LBrace) {
+            self.error_at(
+                Span::point(start),
+                format!("expected `{{`, found {}", token_label(self.peek_kind())),
+            );
+            return Block {
+                events: Vec::new(),
+                span: Span::point(start),
+            };
+        }
+        let events = self.parse_events_until(&[]);
+        self.expect(TokenKind::RBrace);
+        Block {
+            events,
+            span: self.span_from(start),
+        }
+    }
+
+    /// Parse events until `}`, EOF, or any token in `stop`. Event productions
+    /// land in T1.4d; for now any event token is reported and skipped.
+    fn parse_events_until(&mut self, stop: &[TokenKind]) -> Vec<Event> {
+        let mut events = Vec::new();
+        while !self.at_eof() && !self.at(TokenKind::RBrace) && !stop.contains(&self.peek_kind()) {
+            let before = self.pos;
+            match self.parse_event() {
+                Some(ev) => events.push(ev),
+                None => {
+                    let tok = self.peek();
+                    self.error_at(
+                        tok.span,
+                        format!("unexpected {} in block", token_label(tok.kind)),
+                    );
+                    self.bump();
+                }
+            }
+            if self.pos == before {
+                self.bump();
+            }
+        }
+        events
+    }
+
+    /// Parse one event. Productions land in T1.4d.
+    fn parse_event(&mut self) -> Option<Event> {
+        None
     }
 }
 
@@ -570,6 +754,106 @@ mod tests {
              instrument banjo\ntuning openG\ncapo \"5th string @ 2\"",
         );
         assert!(parsed.diagnostics.is_empty());
+        insta::assert_debug_snapshot!(parsed.program);
+    }
+
+    // --- T1.4c: score / pickup / repeat / measure / endings ---------------
+
+    use crate::ast::{ScoreItemKind, TimeSig};
+
+    fn score_items(src: &str) -> Vec<ScoreItem> {
+        let parsed = parse(src);
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+        assert_eq!(parsed.program.items.len(), 1);
+        match parsed.program.items.into_iter().next().unwrap().kind {
+            ItemKind::Score(s) => s.items,
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn empty_score_block() {
+        let items = score_items("score { }");
+        assert!(items.is_empty());
+    }
+
+    #[test]
+    fn time_and_default_settings() {
+        let items = score_items("score { time 4/4 default 1/8 }");
+        assert_eq!(items.len(), 2);
+        match &items[0].kind {
+            ScoreItemKind::Time(TimeSig { num, den, .. }) => {
+                assert_eq!((num.value, den.value), (4, 4));
+            }
+            other => panic!("{other:?}"),
+        }
+        match &items[1].kind {
+            ScoreItemKind::Default(f) => assert_eq!((f.num.value, f.den.value), (1, 8)),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn pickup_and_measure_blocks_are_recognized() {
+        let items = score_items("score { pickup { } measure { } }");
+        assert!(matches!(items[0].kind, ScoreItemKind::Pickup(_)));
+        assert!(matches!(items[1].kind, ScoreItemKind::Measure(_)));
+    }
+
+    #[test]
+    fn repeat_with_endings_splits_body_and_voltas() {
+        let items = score_items("score { repeat { ending(1) { } ending(2) { } } }");
+        assert_eq!(items.len(), 1);
+        match &items[0].kind {
+            ScoreItemKind::Repeat(r) => {
+                assert!(r.body.is_empty());
+                assert_eq!(r.endings.len(), 2);
+                assert_eq!(r.endings[0].number.value, 1);
+                assert_eq!(r.endings[1].number.value, 2);
+            }
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn nested_blocks_carry_spans() {
+        // The block span runs from its `{` (offset 16) to its `}` (offset 19).
+        let items = score_items("score { measure { } }");
+        match &items[0].kind {
+            ScoreItemKind::Measure(b) => assert_eq!(b.span, Span::new(16, 19)),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn score_missing_close_brace_reports_but_recovers() {
+        let parsed = parse("score { time 4/4");
+        // The score item still parsed; a single "expected `}`" is reported.
+        match &parsed.program.items[0].kind {
+            ItemKind::Score(s) => assert_eq!(s.items.len(), 1),
+            other => panic!("{other:?}"),
+        }
+        assert_eq!(parsed.diagnostics.len(), 1);
+        assert!(parsed.diagnostics[0].message.contains("expected `}`"));
+    }
+
+    #[test]
+    fn malformed_time_reports_and_continues() {
+        let parsed = parse("score { time 4 }");
+        match &parsed.program.items[0].kind {
+            ItemKind::Score(s) => assert!(matches!(s.items[0].kind, ScoreItemKind::Error)),
+            other => panic!("{other:?}"),
+        }
+        assert!(!parsed.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn score_block_snapshot() {
+        let parsed = parse(
+            "score {\n  time 4/4\n  default 1/8\n  pickup { }\n  \
+             repeat { ending(1) { } ending(2) { } }\n  measure { }\n}",
+        );
+        assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         insta::assert_debug_snapshot!(parsed.program);
     }
 }

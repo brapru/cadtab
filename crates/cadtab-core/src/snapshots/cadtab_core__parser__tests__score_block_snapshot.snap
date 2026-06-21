@@ -1,0 +1,163 @@
+---
+source: crates/cadtab-core/src/parser.rs
+expression: parsed.program
+---
+Program {
+    items: [
+        Item {
+            kind: Score(
+                Score {
+                    items: [
+                        ScoreItem {
+                            kind: Time(
+                                TimeSig {
+                                    num: IntLit {
+                                        value: 4,
+                                        span: Span {
+                                            start: 15,
+                                            end: 16,
+                                        },
+                                    },
+                                    den: IntLit {
+                                        value: 4,
+                                        span: Span {
+                                            start: 17,
+                                            end: 18,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 15,
+                                        end: 18,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 10,
+                                end: 18,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Default(
+                                Fraction {
+                                    num: IntLit {
+                                        value: 1,
+                                        span: Span {
+                                            start: 29,
+                                            end: 30,
+                                        },
+                                    },
+                                    den: IntLit {
+                                        value: 8,
+                                        span: Span {
+                                            start: 31,
+                                            end: 32,
+                                        },
+                                    },
+                                    span: Span {
+                                        start: 29,
+                                        end: 32,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 21,
+                                end: 32,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Pickup(
+                                Block {
+                                    events: [],
+                                    span: Span {
+                                        start: 42,
+                                        end: 45,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 35,
+                                end: 45,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Repeat(
+                                Repeat {
+                                    body: [],
+                                    endings: [
+                                        Ending {
+                                            number: IntLit {
+                                                value: 1,
+                                                span: Span {
+                                                    start: 64,
+                                                    end: 65,
+                                                },
+                                            },
+                                            body: Block {
+                                                events: [],
+                                                span: Span {
+                                                    start: 67,
+                                                    end: 70,
+                                                },
+                                            },
+                                            span: Span {
+                                                start: 57,
+                                                end: 70,
+                                            },
+                                        },
+                                        Ending {
+                                            number: IntLit {
+                                                value: 2,
+                                                span: Span {
+                                                    start: 78,
+                                                    end: 79,
+                                                },
+                                            },
+                                            body: Block {
+                                                events: [],
+                                                span: Span {
+                                                    start: 81,
+                                                    end: 84,
+                                                },
+                                            },
+                                            span: Span {
+                                                start: 71,
+                                                end: 84,
+                                            },
+                                        },
+                                    ],
+                                },
+                            ),
+                            span: Span {
+                                start: 48,
+                                end: 86,
+                            },
+                        },
+                        ScoreItem {
+                            kind: Measure(
+                                Block {
+                                    events: [],
+                                    span: Span {
+                                        start: 97,
+                                        end: 100,
+                                    },
+                                },
+                            ),
+                            span: Span {
+                                start: 89,
+                                end: 100,
+                            },
+                        },
+                    ],
+                },
+            ),
+            span: Span {
+                start: 0,
+                end: 102,
+            },
+        },
+    ],
+    span: Span {
+        start: 0,
+        end: 102,
+    },
+}

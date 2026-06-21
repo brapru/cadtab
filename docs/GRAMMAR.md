@@ -130,7 +130,7 @@ score_item  = setting
             | event
 
 setting     = "time"    INT "/" INT      // meter; may recur (meter change) (D12, D32)
-            | "default" duration         // sticky default duration seed (D11)
+            | "default" INT "/" INT      // sticky default duration as a fraction, e.g. 1/8 (D11)
 
 pickup_block  = "pickup"  block                       // anacrusis, excluded from barring (D33)
 loop_block    = "loop" INT block                      // unroll N copies (D32; renamed from repeat N)

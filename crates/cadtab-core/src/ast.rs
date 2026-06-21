@@ -103,6 +103,15 @@ pub struct TimeSig {
     pub span: Span,
 }
 
+/// A `num/den` fraction, e.g. the sticky-default duration `1/8`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Fraction {
+    pub num: IntLit,
+    pub den: IntLit,
+    pub span: Span,
+}
+
 // ---------------------------------------------------------------------------
 // Program & top-level items
 // ---------------------------------------------------------------------------
@@ -194,7 +203,7 @@ impl ScoreItem {
 #[serde(rename_all = "camelCase")]
 pub enum ScoreItemKind {
     Time(TimeSig),
-    Default(Duration),
+    Default(Fraction),
     Pickup(Block),
     Repeat(Repeat),
     Loop(LoopBlock),
