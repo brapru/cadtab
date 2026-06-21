@@ -1,5 +1,6 @@
 //! The pure, UI-free core of cadtab: the `source text → render tree` pipeline.
 
+pub mod ast;
 pub mod diagnostics;
 pub mod layout;
 pub mod lexer;

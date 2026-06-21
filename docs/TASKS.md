@@ -106,7 +106,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T1.2e — Delimiters/operators: `[] {} ()`, `...`, index `.` (`repeat`/`ending`/`loop` are keywords, T1.2c).
   - [x] T1.2f — Error tokens + lexer diagnostics.
   - *Tests:* snapshot lex of §6 + edge/error cases per sub-task.
-- [ ] **T1.3 — AST types.** All node kinds, every node span-bearing.
+- [x] **T1.3 — AST types.** All node kinds, every node span-bearing.
 - [ ] **T1.4 — Recursive-descent parser (+ Pratt).** Resilient → partial AST + multiple diagnostics (D19).
   - [ ] T1.4a — Skeleton: token cursor, lookahead, span tracking, diagnostic sink, **recovery infra** (sync points, error nodes).
   - [ ] T1.4b — Top-level declarations: `title`/`composer`/`tempo`, `instrument`, `tuning`, `capo`, `import`.

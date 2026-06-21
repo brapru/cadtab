@@ -202,8 +202,11 @@ spread_expr = [ "..." ] tie_expr_e                   // spread only in argument 
 
 postfix   = primary { postfix_op }
 postfix_op = "." INT                     // phrase index .N            (D17)
-           | "." mark_kind               // right-hand mark (note/chord member context)
            | "(" [ args ] ")"            // call
+                                         // NB: "." mark_kind is NOT an expression postfix —
+                                         // a mark attaches at the note/event level (§3), not as
+                                         // a value operator. `chord.0 .t` = a note whose head is
+                                         // the index expr `chord.0`, annotated with mark `.t`.
 
 primary   = INT
           | STRING
@@ -240,7 +243,8 @@ ordering the Pratt/recursive-descent parser (T1.4) implements.
 | Lvl | Construct            | Form               | Fixity / assoc      | Notes |
 |----:|----------------------|--------------------|---------------------|-------|
 | 1   | note literal         | `string:fret`      | primary             | `:` binds tighter than any `.` (D10, D37) |
-| 2   | call · index · mark  | `f(a)` · `e.N` · `e.t` | postfix, **left** | chained L→R: `chord.0.t` = `(chord.0).t` (D8/D17) |
+| 2   | call · index         | `f(a)` · `e.N`     | postfix, **left**   | chained L→R: `chord.0` = `(chord).0` (D8/D17) |
+| 2′  | mark                 | `e.t`              | note-level suffix   | not a value op: attaches to the note whose head is `e` (§3/§4) |
 | 3   | duration suffix      | `e_N`, `e_N.`      | postfix             | binds looser than `.`: `3:2.t_4` = `((3:2).t)_4` (D11) |
 | 3′  | *tuplet marker*      | *TBD*              | postfix **`[PROVISIONAL]`** | co-located with `_dur`; pinned in T1.2d |
 | 4   | tie                  | `a ~ b`            | infix, **left**     | looser than `_dur`: `3:2_4 ~ 3:2_8` ties two full notes (D36) |
