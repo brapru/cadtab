@@ -5,7 +5,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{self, ExprKind, Mark, MarkKind};
+use crate::ast::{self, Def, Expr, ExprKind, ItemKind, Mark, MarkKind, Program};
 use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
@@ -87,19 +87,36 @@ impl Env {
     pub fn depth(&self) -> usize {
         self.scopes.len()
     }
+
+    /// A fresh environment for a function call: the global scope plus an empty
+    /// scope for parameters. Function bodies have lexical scope — they see the
+    /// globals and their own parameters, never the caller's local bindings.
+    fn call_scope(&self) -> Env {
+        Env {
+            scopes: vec![self.scopes[0].clone(), HashMap::new()],
+        }
+    }
 }
 
 /// The default note duration before any `default` directive or `_N` suffix has
 /// seeded the sticky duration: a quarter note.
 const INITIAL_DURATION: Duration = Duration { num: 1, den: 4 };
 
+/// Functions expand into phrases; this bounds how deep that expansion may
+/// nest, so a recursive `def` fails with a diagnostic rather than hanging.
+const MAX_CALL_DEPTH: usize = 64;
+
 /// Lowers AST events into musical-model events, threading the sticky default
-/// duration across the run. Diagnostics (out-of-range positions, malformed
-/// durations) are collected; lowering is best-effort so a single bad event
-/// never drops the rest.
+/// duration across the run. `def`s expand into phrases that are spliced at the
+/// call site; `let`s bind reusable values. Diagnostics (out-of-range positions,
+/// malformed durations, runaway recursion) are collected; lowering is
+/// best-effort so a single bad event never drops the rest.
 pub struct Evaluator {
     instrument: Instrument,
     sticky: Duration,
+    env: Env,
+    defs: HashMap<String, Def>,
+    call_depth: usize,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -108,6 +125,9 @@ impl Evaluator {
         Self {
             instrument,
             sticky: INITIAL_DURATION,
+            env: Env::new(),
+            defs: HashMap::new(),
+            call_depth: 0,
             diagnostics: Vec::new(),
         }
     }
@@ -122,34 +142,58 @@ impl Evaluator {
         self.diagnostics
     }
 
+    /// Register every `def` and evaluate top-level `let`s into the global scope.
+    /// Defs are collected first so a call may precede its definition.
+    pub fn load(&mut self, program: &Program) {
+        for item in &program.items {
+            if let ItemKind::Def(def) = &item.kind {
+                self.defs.insert(def.name.name.clone(), def.clone());
+            }
+        }
+        for item in &program.items {
+            if let ItemKind::Let(l) = &item.kind
+                && let Some(value) = self.eval_expr(&l.value)
+            {
+                self.env.define(l.name.name.clone(), value);
+            }
+        }
+    }
+
     /// Lower a run of events, threading the sticky duration across them.
     pub fn eval_events(&mut self, events: &[ast::Event]) -> Phrase {
         let mut phrase = Phrase::new();
         for ev in events {
-            if let Some(out) = self.eval_event(ev) {
-                phrase.push(out);
-            }
+            self.eval_event_into(ev, &mut phrase);
         }
         phrase
     }
 
-    fn eval_event(&mut self, ev: &ast::Event) -> Option<Event> {
+    fn eval_event_into(&mut self, ev: &ast::Event, out: &mut Phrase) {
         match &ev.kind {
-            ast::EventKind::Note(note) => self.eval_note(note, ev.span),
-            ast::EventKind::Chord(chord) => Some(self.eval_chord(chord, ev.span)),
-            ast::EventKind::Rest(rest) => Some(self.eval_rest(rest, ev.span)),
-            // Phrase splices, ties, and error nodes are lowered by later passes.
-            ast::EventKind::Phrase(_) | ast::EventKind::Tie(_) | ast::EventKind::Error => None,
+            ast::EventKind::Note(note) => {
+                if let Some(e) = self.eval_note(note, ev.span) {
+                    out.push(e);
+                }
+            }
+            ast::EventKind::Chord(chord) => out.push(self.eval_chord(chord, ev.span)),
+            ast::EventKind::Rest(rest) => out.push(self.eval_rest(rest, ev.span)),
+            // A bare expression event splices a phrase value at the call site.
+            ast::EventKind::Phrase(expr) => {
+                if let Some(Value::Phrase(ph)) = self.eval_expr(expr) {
+                    out.events.extend(ph.events);
+                }
+            }
+            // Ties (the `~` tie flag) and error nodes are lowered by later passes.
+            ast::EventKind::Tie(_) | ast::EventKind::Error => {}
         }
     }
 
     fn eval_note(&mut self, note: &ast::Note, span: Span) -> Option<Event> {
-        // Only position-literal heads are notes here; computed heads (indexing,
-        // calls) are lowered by later passes.
-        let ExprKind::Position(p) = &note.head.kind else {
+        // The head must evaluate to a position; computed heads that don't
+        // (calls, indexes into note phrases) are lowered by later passes.
+        let Some(Value::Position(pos)) = self.eval_expr(&note.head) else {
             return None;
         };
-        let pos = self.eval_position(p);
         let dur = self.resolve_duration(note.duration.as_ref());
         let right_hand = note.mark.as_ref().map(lower_mark);
         Some(Event::new(
@@ -182,6 +226,85 @@ impl Evaluator {
         Event::new(EventKind::Rest(dur), span)
     }
 
+    /// Evaluate an expression to a value. Indexing and spread are lowered by a
+    /// later pass; an unresolved name yields `None` (name resolution reports it).
+    fn eval_expr(&mut self, e: &Expr) -> Option<Value> {
+        match &e.kind {
+            ExprKind::Int(n) => Some(Value::Int(*n)),
+            ExprKind::Position(p) => Some(Value::Position(self.eval_position(p))),
+            // A chord literal in value position is a sequence of its members.
+            ExprKind::Chord(c) => Some(Value::Phrase(self.chord_to_phrase(c))),
+            ExprKind::Paren(inner) => self.eval_expr(inner),
+            ExprKind::Ident(name) => self.env.get(name).cloned(),
+            ExprKind::Call { callee, args } => self.eval_call(callee, args, e.span),
+            // Strings are metadata only; indexing and spread are a later pass.
+            ExprKind::Str(_) | ExprKind::Index { .. } | ExprKind::Spread(_) | ExprKind::Error => {
+                None
+            }
+        }
+    }
+
+    /// Expand a call to a user `def` into a phrase value. Technique builtins and
+    /// spread arguments are handled by later passes.
+    fn eval_call(&mut self, callee: &Expr, args: &[Expr], span: Span) -> Option<Value> {
+        let ExprKind::Ident(name) = &callee.kind else {
+            return None;
+        };
+        let def = self.defs.get(name)?.clone();
+        if args.iter().any(|a| matches!(a.kind, ExprKind::Spread(_))) {
+            return None;
+        }
+        if self.call_depth >= MAX_CALL_DEPTH {
+            self.diagnostics.push(
+                Diagnostic::error(span, format!("`{name}` expands too deeply"))
+                    .with_help("a function cannot call itself without an exit"),
+            );
+            return None;
+        }
+        self.call_depth += 1;
+        let phrase = self.expand_def(&def, args);
+        self.call_depth -= 1;
+        Some(Value::Phrase(phrase))
+    }
+
+    /// Bind arguments to parameters in a fresh lexical scope and evaluate the
+    /// body to a phrase. Arguments are evaluated in the caller's scope; the body
+    /// runs with only the globals plus its parameters.
+    fn expand_def(&mut self, def: &Def, args: &[Expr]) -> Phrase {
+        let arg_values: Vec<Option<Value>> = args.iter().map(|a| self.eval_expr(a)).collect();
+        let call_env = self.env.call_scope();
+        let caller = std::mem::replace(&mut self.env, call_env);
+        for (param, value) in def.params.iter().zip(arg_values) {
+            if let Some(v) = value {
+                self.env.define(param.name.clone(), v);
+            }
+        }
+        let phrase = self.eval_events(&def.body.events);
+        self.env = caller;
+        phrase
+    }
+
+    /// Lower a chord literal used as a value into a phrase of its members as
+    /// individual notes (the seam later passes index and spread over).
+    fn chord_to_phrase(&mut self, chord: &ast::Chord) -> Phrase {
+        let dur = match chord.duration.as_ref() {
+            Some(d) => self.lower_duration(d).unwrap_or(self.sticky),
+            None => self.sticky,
+        };
+        let mut phrase = Phrase::new();
+        for n in &chord.notes {
+            let note = Note {
+                pos: self.eval_position(&n.position),
+                dur,
+                right_hand: n.mark.as_ref().map(lower_mark),
+                technique: None,
+                tie: false,
+            };
+            phrase.push(Event::new(EventKind::Note(note), n.span));
+        }
+        phrase
+    }
+
     /// Validate a position against the instrument (string range, fret bound) and
     /// lower it; out-of-range values diagnose but still produce a position.
     fn eval_position(&mut self, pos: &ast::Position) -> Position {
@@ -198,17 +321,24 @@ impl Evaluator {
     /// Resolve a duration: an explicit `_N` updates and returns the sticky
     /// duration; an omitted one inherits the current sticky.
     fn resolve_duration(&mut self, dur: Option<&ast::Duration>) -> Duration {
-        if let Some(d) = dur {
-            if d.denom.value == 0 {
-                self.diagnostics.push(
-                    Diagnostic::error(d.span, "duration denominator must be nonzero")
-                        .with_help("a duration is `_N`, where N is 1, 2, 4, 8, …"),
-                );
-                return self.sticky;
-            }
-            self.sticky = Duration::from_denominator(d.denom.value).dotted(d.dots);
+        if let Some(d) = dur
+            && let Some(model) = self.lower_duration(d)
+        {
+            self.sticky = model;
         }
         self.sticky
+    }
+
+    /// Lower a `_N` suffix to a model duration, or diagnose a zero denominator.
+    fn lower_duration(&mut self, d: &ast::Duration) -> Option<Duration> {
+        if d.denom.value == 0 {
+            self.diagnostics.push(
+                Diagnostic::error(d.span, "duration denominator must be nonzero")
+                    .with_help("a duration is `_N`, where N is 1, 2, 4, 8, …"),
+            );
+            return None;
+        }
+        Some(Duration::from_denominator(d.denom.value).dotted(d.dots))
     }
 }
 
@@ -313,6 +443,7 @@ mod event_eval_tests {
             parsed.diagnostics
         );
         let mut ev = Evaluator::new(Instrument::builtin("banjo").unwrap());
+        ev.load(&parsed.program);
         let mut phrase = Phrase::new();
         for item in &parsed.program.items {
             let ItemKind::Score(score) = &item.kind else {
@@ -465,6 +596,134 @@ mod event_eval_tests {
   3:2_4  3:4
   [1:0.m 5:0.t]_4
   r_8  r
+}",
+        );
+        insta::assert_debug_snapshot!(phrase);
+    }
+
+    /// The notes of a phrase as `(position, right-hand, duration)` tuples.
+    fn notes(phrase: &Phrase) -> Vec<(Position, Option<RightHand>, Duration)> {
+        phrase
+            .events
+            .iter()
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some((n.pos, n.right_hand, n.dur)),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn call_splices_the_def_body() {
+        let (phrase, diags) =
+            eval_score("def lick() { 3:0.t 2:0.i 1:0.m }\nscore { default 1/8\n lick() }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![
+                (
+                    Position::new(3, 0),
+                    Some(RightHand::Finger(Finger::Thumb)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(2, 0),
+                    Some(RightHand::Finger(Finger::Index)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(1, 0),
+                    Some(RightHand::Finger(Finger::Middle)),
+                    Duration::new(1, 8)
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn parameters_bind_positionally() {
+        // A param used as a note head resolves to the argument's position; the
+        // literal's mark and the sticky duration still apply.
+        let (phrase, diags) =
+            eval_score("def two(a, b) { a.t b.i }\nscore { default 1/8\n two(3:0, 2:0) }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![
+                (
+                    Position::new(3, 0),
+                    Some(RightHand::Finger(Finger::Thumb)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(2, 0),
+                    Some(RightHand::Finger(Finger::Index)),
+                    Duration::new(1, 8)
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_let_bound_position_is_a_note_head() {
+        let (phrase, diags) = eval_score("let p = 3:0\nscore { p.t }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![(
+                Position::new(3, 0),
+                Some(RightHand::Finger(Finger::Thumb)),
+                Duration::new(1, 4)
+            )]
+        );
+    }
+
+    #[test]
+    fn a_call_may_precede_its_definition() {
+        // Defs are collected before any are evaluated, so forward references work.
+        let (phrase, diags) = eval_score("score { f() }\ndef f() { 3:0.t }");
+        assert!(diags.is_empty());
+        assert_eq!(phrase.len(), 1);
+    }
+
+    #[test]
+    fn calls_are_lexically_scoped() {
+        // `inner` cannot see `outer`'s parameter `a`: its `a.t` resolves to
+        // nothing, so only `outer`'s own `a.i` produces a note.
+        let (phrase, diags) =
+            eval_score("def inner() { a.t }\ndef outer(a) { inner() a.i }\nscore { outer(3:0) }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![(
+                Position::new(3, 0),
+                Some(RightHand::Finger(Finger::Index)),
+                Duration::new(1, 4)
+            )]
+        );
+    }
+
+    #[test]
+    fn runaway_recursion_is_bounded() {
+        // A self-recursive def terminates with a diagnostic rather than hanging.
+        let (phrase, diags) = eval_score("def rec() { rec() }\nscore { rec() }");
+        assert!(phrase.is_empty());
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("expands too deeply"))
+        );
+    }
+
+    #[test]
+    fn def_call_lowering_snapshot() {
+        let (phrase, _) = eval_score(
+            "def roll(a, b, c) { a.t b.i c.m }
+let low = 3:0
+score {
+  default 1/8
+  roll(low, 2:0, 1:0)
+  roll(5:0, 3:0, 1:0)
 }",
         );
         insta::assert_debug_snapshot!(phrase);

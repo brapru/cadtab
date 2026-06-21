@@ -137,7 +137,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [ ] **T2.4 — Evaluator.** AST → musical-model values.
   - [x] T2.4a — Value types (Int/Duration/Position/Note/Phrase) + evaluation environment/scopes.
   - [x] T2.4b — Event eval: notes, chords (shared duration, D39), rests; sticky-duration threading (D11).
-  - [ ] T2.4c — `def` definition + call expansion → `Phrase` splicing (D14).
+  - [x] T2.4c — `def` definition + call expansion → `Phrase` splicing (D14).
   - [ ] T2.4d — `loop N` unroll expansion.
   - [ ] T2.4e — Phrase indexing `.N` + `len`; spread `...` (D17).
   - [ ] T2.4f — Technique fns → `Technique` annotations w/ target-note rules (D8); `~` → `tie` flag (D36).
