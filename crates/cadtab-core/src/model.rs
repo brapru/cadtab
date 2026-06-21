@@ -3,6 +3,8 @@
 //! Source spans ride along through the model so a rendered primitive can map
 //! back to the text that produced it.
 
+use std::cmp::Ordering;
+
 use serde::{Deserialize, Serialize};
 
 use crate::span::Span;
@@ -54,6 +56,45 @@ impl Duration {
         let factor_den = 1u32 << k;
         Self::new(self.num * factor_num, self.den * factor_den)
     }
+
+    /// The zero duration.
+    pub fn zero() -> Self {
+        Self { num: 0, den: 1 }
+    }
+
+    /// Whether this is the zero duration.
+    pub fn is_zero(self) -> bool {
+        self.num == 0
+    }
+
+    /// The sum of two durations, reduced.
+    pub fn plus(self, other: Duration) -> Duration {
+        Duration::new(
+            self.num * other.den + other.num * self.den,
+            self.den * other.den,
+        )
+    }
+
+    /// The difference `self - other`, reduced; saturates at zero when `other` is
+    /// larger (callers subtract only a duration known not to exceed `self`).
+    pub fn minus(self, other: Duration) -> Duration {
+        let num = (self.num * other.den).saturating_sub(other.num * self.den);
+        Duration::new(num, self.den * other.den)
+    }
+}
+
+impl PartialOrd for Duration {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Duration {
+    /// Compare as rationals by cross-multiplication (widened to avoid overflow).
+    fn cmp(&self, other: &Self) -> Ordering {
+        (u64::from(self.num) * u64::from(other.den))
+            .cmp(&(u64::from(other.num) * u64::from(self.den)))
+    }
 }
 
 fn gcd(a: u32, b: u32) -> u32 {
@@ -62,6 +103,25 @@ fn gcd(a: u32, b: u32) -> u32 {
         (a, b) = (b, a % b);
     }
     a
+}
+
+/// A time signature: `num` beats of a `den`-th note per bar.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TimeSig {
+    pub num: u8,
+    pub den: u8,
+}
+
+impl TimeSig {
+    pub fn new(num: u8, den: u8) -> Self {
+        Self { num, den }
+    }
+
+    /// One bar's length as a fraction of a whole note (`num/den`).
+    pub fn bar_len(self) -> Duration {
+        Duration::new(u32::from(self.num), u32::from(self.den))
+    }
 }
 
 /// A fretted position. `string` is 1-based, `1` = highest line in tab.
@@ -157,6 +217,11 @@ impl Event {
     pub fn new(kind: EventKind, span: Span) -> Self {
         Self { kind, span }
     }
+
+    /// The duration this event occupies.
+    pub fn duration(&self) -> Duration {
+        self.kind.duration()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -165,6 +230,17 @@ pub enum EventKind {
     Note(Note),
     Chord(Chord),
     Rest(Duration),
+}
+
+impl EventKind {
+    /// The duration this event occupies.
+    pub fn duration(&self) -> Duration {
+        match self {
+            EventKind::Note(n) => n.dur,
+            EventKind::Chord(c) => c.dur,
+            EventKind::Rest(d) => *d,
+        }
+    }
 }
 
 /// A sequence of events — the unit that licks produce and calls splice.
@@ -192,9 +268,80 @@ impl Phrase {
     }
 }
 
+/// Where an event falls in barred time: the bar it starts in and its onset (the
+/// time already filled in that bar) when it begins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Beat {
+    pub bar: usize,
+    pub onset: Duration,
+}
+
+/// Walks an event stream accumulating rational time within fixed-length bars,
+/// reporting each event's onset and rolling over into later bars as they fill.
+/// The pure core of auto-barring: it counts time but neither splits nor
+/// diagnoses (those build on the positions it reports).
+#[derive(Debug, Clone)]
+pub struct BeatAccumulator {
+    bar_len: Duration,
+    bar: usize,
+    position: Duration,
+}
+
+impl BeatAccumulator {
+    pub fn new(time: TimeSig) -> Self {
+        Self {
+            bar_len: time.bar_len(),
+            bar: 0,
+            position: Duration::zero(),
+        }
+    }
+
+    /// Place an event of length `dur`: return where it begins, then advance,
+    /// rolling past every bar the event completes.
+    pub fn push(&mut self, dur: Duration) -> Beat {
+        let beat = Beat {
+            bar: self.bar,
+            onset: self.position,
+        };
+        self.position = self.position.plus(dur);
+        while !self.bar_len.is_zero() && self.position >= self.bar_len {
+            self.position = self.position.minus(self.bar_len);
+            self.bar += 1;
+        }
+        beat
+    }
+
+    /// Place an event, using its own duration.
+    pub fn push_event(&mut self, event: &Event) -> Beat {
+        self.push(event.duration())
+    }
+
+    /// The bar currently being filled.
+    pub fn bar(&self) -> usize {
+        self.bar
+    }
+
+    /// The time filled so far in the current bar.
+    pub fn position(&self) -> Duration {
+        self.position
+    }
+
+    /// The unfilled time remaining in the current bar.
+    pub fn remaining(&self) -> Duration {
+        self.bar_len.minus(self.position)
+    }
+
+    /// Whether the accumulator sits exactly on a barline (the current bar is
+    /// empty) — false once any event has partly filled it.
+    pub fn on_barline(&self) -> bool {
+        self.position.is_zero()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use proptest::prelude::*;
     use serde::de::DeserializeOwned;
     use std::fmt::Debug as DebugTrait;
 
@@ -293,5 +440,172 @@ mod tests {
                 Span::new(0, 3),
             )],
         });
+    }
+
+    #[test]
+    fn duration_adds_and_subtracts() {
+        assert_eq!(
+            Duration::new(1, 4).plus(Duration::new(1, 4)),
+            Duration::new(1, 2)
+        );
+        assert_eq!(
+            Duration::new(3, 8).plus(Duration::from_denominator(8)),
+            Duration::new(1, 2)
+        );
+        assert_eq!(
+            Duration::new(1, 2).minus(Duration::new(1, 4)),
+            Duration::new(1, 4)
+        );
+        assert_eq!(
+            Duration::zero().plus(Duration::new(1, 8)),
+            Duration::new(1, 8)
+        );
+        // Subtraction past zero saturates.
+        assert_eq!(
+            Duration::new(1, 8).minus(Duration::new(1, 4)),
+            Duration::zero()
+        );
+        assert!(Duration::zero().is_zero());
+        assert!(!Duration::new(1, 16).is_zero());
+    }
+
+    #[test]
+    fn duration_orders_as_a_rational() {
+        assert!(Duration::new(1, 4) < Duration::new(1, 2));
+        assert!(Duration::new(3, 4) > Duration::new(2, 3));
+        assert_eq!(
+            Duration::new(1, 2).cmp(&Duration::new(2, 4)),
+            Ordering::Equal
+        );
+        let mut ds = vec![
+            Duration::new(1, 2),
+            Duration::new(1, 8),
+            Duration::new(1, 4),
+        ];
+        ds.sort();
+        assert_eq!(
+            ds,
+            vec![
+                Duration::new(1, 8),
+                Duration::new(1, 4),
+                Duration::new(1, 2)
+            ]
+        );
+    }
+
+    #[test]
+    fn time_sig_bar_length() {
+        assert_eq!(TimeSig::new(4, 4).bar_len(), Duration::new(1, 1));
+        assert_eq!(TimeSig::new(6, 8).bar_len(), Duration::new(3, 4));
+        assert_eq!(TimeSig::new(3, 4).bar_len(), Duration::new(3, 4));
+        assert_eq!(TimeSig::new(2, 2).bar_len(), Duration::new(1, 1));
+    }
+
+    #[test]
+    fn event_reports_its_duration() {
+        let note = Event::new(EventKind::Note(quarter_note(3, 0)), Span::new(0, 3));
+        assert_eq!(note.duration(), Duration::from_denominator(4));
+        let rest = Event::new(
+            EventKind::Rest(Duration::from_denominator(8)),
+            Span::new(0, 1),
+        );
+        assert_eq!(rest.duration(), Duration::from_denominator(8));
+    }
+
+    fn eighth() -> Duration {
+        Duration::from_denominator(8)
+    }
+
+    #[test]
+    fn accumulator_reports_onsets_within_a_bar() {
+        let mut acc = BeatAccumulator::new(TimeSig::new(4, 4));
+        let quarter = Duration::from_denominator(4);
+        let onsets: Vec<Beat> = (0..4).map(|_| acc.push(quarter)).collect();
+        assert_eq!(
+            onsets,
+            vec![
+                Beat {
+                    bar: 0,
+                    onset: Duration::zero()
+                },
+                Beat {
+                    bar: 0,
+                    onset: Duration::new(1, 4)
+                },
+                Beat {
+                    bar: 0,
+                    onset: Duration::new(1, 2)
+                },
+                Beat {
+                    bar: 0,
+                    onset: Duration::new(3, 4)
+                },
+            ]
+        );
+        // The four quarters exactly fill the bar.
+        assert_eq!(acc.bar(), 1);
+        assert!(acc.on_barline());
+    }
+
+    #[test]
+    fn accumulator_rolls_over_completed_bars() {
+        let mut acc = BeatAccumulator::new(TimeSig::new(4, 4));
+        let quarter = Duration::from_denominator(4);
+        let bars: Vec<usize> = (0..8).map(|_| acc.push(quarter).bar).collect();
+        assert_eq!(bars, vec![0, 0, 0, 0, 1, 1, 1, 1]);
+        assert_eq!(acc.bar(), 2);
+        assert!(acc.on_barline());
+    }
+
+    #[test]
+    fn accumulator_handles_an_event_crossing_a_barline() {
+        let mut acc = BeatAccumulator::new(TimeSig::new(4, 4));
+        assert_eq!(acc.push(Duration::new(3, 4)).onset, Duration::zero());
+        // A half note starting at 3/4 spills 1/4 into the next bar.
+        let crossing = acc.push(Duration::new(1, 2));
+        assert_eq!(
+            crossing,
+            Beat {
+                bar: 0,
+                onset: Duration::new(3, 4)
+            }
+        );
+        assert_eq!(acc.bar(), 1);
+        assert_eq!(acc.position(), Duration::new(1, 4));
+    }
+
+    #[test]
+    fn accumulator_tracks_remaining_and_barline() {
+        let mut acc = BeatAccumulator::new(TimeSig::new(4, 4));
+        acc.push(eighth());
+        assert_eq!(acc.remaining(), Duration::new(7, 8));
+        assert!(!acc.on_barline());
+        acc.push(Duration::new(7, 8));
+        assert!(acc.on_barline());
+        assert_eq!(acc.remaining(), Duration::new(1, 1));
+    }
+
+    proptest! {
+        /// All pushed time is conserved: completed bars plus the leftover
+        /// position always re-sum to the total of the event durations.
+        #[test]
+        fn beat_accumulation_conserves_total_time(
+            num in 1u8..=12,
+            den in prop::sample::select(vec![2u8, 4, 8]),
+            durs in prop::collection::vec(
+                (1u32..=8, prop::sample::select(vec![1u32, 2, 4, 8, 16]))
+                    .prop_map(|(n, d)| Duration::new(n, d)),
+                0..12,
+            ),
+        ) {
+            let time = TimeSig::new(num, den);
+            let mut acc = BeatAccumulator::new(time);
+            for d in &durs {
+                acc.push(*d);
+            }
+            let sum = durs.iter().fold(Duration::zero(), |a, d| a.plus(*d));
+            let completed = Duration::new(time.bar_len().num * acc.bar() as u32, time.bar_len().den);
+            prop_assert_eq!(completed.plus(acc.position()), sum);
+        }
     }
 }

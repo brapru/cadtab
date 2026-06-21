@@ -143,7 +143,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T2.4f — Technique fns → `Technique` annotations w/ target-note rules (D8); `~` → `tie` flag (D36).
   - *Tests:* `source → model` snapshots across the feature matrix.
 - [ ] **T2.5 — Auto-barring + pickup + repeats.**
-  - [ ] T2.5a — Beat accumulator over the event stream (rational time, per `time`).
+  - [x] T2.5a — Beat accumulator over the event stream (rational time, per `time`).
   - [ ] T2.5b — Bar splitting into `Measure`s + barline insertion (D12).
   - [ ] T2.5c — Explicit `measure {}` override interplay.
   - [ ] T2.5d — `pickup {}`: excluded from fill check, offset flag (D33).
