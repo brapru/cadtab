@@ -139,7 +139,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T2.4b — Event eval: notes, chords (shared duration, D39), rests; sticky-duration threading (D11).
   - [x] T2.4c — `def` definition + call expansion → `Phrase` splicing (D14).
   - [x] T2.4d — `loop N` unroll expansion.
-  - [ ] T2.4e — Phrase indexing `.N` + `len`; spread `...` (D17).
+  - [x] T2.4e — Phrase indexing `.N` + `len`; spread `...` (D17).
   - [ ] T2.4f — Technique fns → `Technique` annotations w/ target-note rules (D8); `~` → `tie` flag (D36).
   - *Tests:* `source → model` snapshots across the feature matrix.
 - [ ] **T2.5 — Auto-barring + pickup + repeats.**

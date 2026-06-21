@@ -205,11 +205,21 @@ impl Evaluator {
             ast::EventKind::Chord(chord) => out.push(self.eval_chord(chord, ev.span)),
             ast::EventKind::Rest(rest) => out.push(self.eval_rest(rest, ev.span)),
             // A bare expression event splices a phrase value at the call site.
-            ast::EventKind::Phrase(expr) => {
-                if let Some(Value::Phrase(ph)) = self.eval_expr(expr) {
-                    out.events.extend(ph.events);
-                }
-            }
+            ast::EventKind::Phrase(expr) => match self.eval_expr(expr) {
+                Some(Value::Phrase(ph)) => out.events.extend(ph.events),
+                // A bare indexed element re-times to a note at the sticky duration.
+                Some(Value::Position(pos)) => out.push(Event::new(
+                    EventKind::Note(Note {
+                        pos,
+                        dur: self.sticky,
+                        right_hand: None,
+                        technique: None,
+                        tie: false,
+                    }),
+                    expr.span,
+                )),
+                _ => {}
+            },
             // Ties (the `~` tie flag) and error nodes are lowered by later passes.
             ast::EventKind::Tie(_) | ast::EventKind::Error => {}
         }
@@ -264,41 +274,96 @@ impl Evaluator {
             ExprKind::Paren(inner) => self.eval_expr(inner),
             ExprKind::Ident(name) => self.env.get(name).cloned(),
             ExprKind::Call { callee, args } => self.eval_call(callee, args, e.span),
-            // Strings are metadata only; indexing and spread are a later pass.
-            ExprKind::Str(_) | ExprKind::Index { .. } | ExprKind::Spread(_) | ExprKind::Error => {
+            ExprKind::Index { base, index } => self.eval_index(base, index.value, e.span),
+            // Strings are metadata only; a spread has meaning only inside a call.
+            ExprKind::Str(_) | ExprKind::Spread(_) | ExprKind::Error => None,
+        }
+    }
+
+    /// Index into a phrase value: `base.N` yields the position of its Nth note.
+    /// An out-of-range index diagnoses and yields nothing.
+    fn eval_index(&mut self, base: &Expr, index: u32, span: Span) -> Option<Value> {
+        let Some(Value::Phrase(ph)) = self.eval_expr(base) else {
+            return None;
+        };
+        match ph.events.get(index as usize) {
+            Some(ev) => event_to_value(ev),
+            None => {
+                self.diagnostics.push(
+                    Diagnostic::error(
+                        span,
+                        format!(
+                            "index {index} is past the end of a phrase of length {}",
+                            ph.events.len()
+                        ),
+                    )
+                    .with_help("phrase indices start at 0"),
+                );
                 None
             }
         }
     }
 
-    /// Expand a call to a user `def` into a phrase value. Technique builtins and
-    /// spread arguments are handled by later passes.
+    /// Evaluate a call. A user `def` (which overrides a builtin of the same name)
+    /// expands into a spliced phrase; otherwise a builtin is tried. Arguments are
+    /// evaluated in the caller's scope, expanding any `...` spread.
     fn eval_call(&mut self, callee: &Expr, args: &[Expr], span: Span) -> Option<Value> {
         let ExprKind::Ident(name) = &callee.kind else {
             return None;
         };
-        let def = self.defs.get(name)?.clone();
-        if args.iter().any(|a| matches!(a.kind, ExprKind::Spread(_))) {
-            return None;
+        let arg_values = self.eval_args(args);
+        if let Some(def) = self.defs.get(name).cloned() {
+            if self.call_depth >= MAX_CALL_DEPTH {
+                self.diagnostics.push(
+                    Diagnostic::error(span, format!("`{name}` expands too deeply"))
+                        .with_help("a function cannot call itself without an exit"),
+                );
+                return None;
+            }
+            self.call_depth += 1;
+            let phrase = self.expand_def(&def, arg_values);
+            self.call_depth -= 1;
+            return Some(Value::Phrase(phrase));
         }
-        if self.call_depth >= MAX_CALL_DEPTH {
-            self.diagnostics.push(
-                Diagnostic::error(span, format!("`{name}` expands too deeply"))
-                    .with_help("a function cannot call itself without an exit"),
-            );
-            return None;
-        }
-        self.call_depth += 1;
-        let phrase = self.expand_def(&def, args);
-        self.call_depth -= 1;
-        Some(Value::Phrase(phrase))
+        self.eval_builtin(name, &arg_values)
     }
 
-    /// Bind arguments to parameters in a fresh lexical scope and evaluate the
-    /// body to a phrase. Arguments are evaluated in the caller's scope; the body
-    /// runs with only the globals plus its parameters.
-    fn expand_def(&mut self, def: &Def, args: &[Expr]) -> Phrase {
-        let arg_values: Vec<Option<Value>> = args.iter().map(|a| self.eval_expr(a)).collect();
+    /// Evaluate a call's arguments in the caller's scope, expanding each `...`
+    /// spread into the positional values of its phrase.
+    fn eval_args(&mut self, args: &[Expr]) -> Vec<Option<Value>> {
+        let mut values = Vec::new();
+        for a in args {
+            if let ExprKind::Spread(inner) = &a.kind {
+                match self.eval_expr(inner) {
+                    Some(Value::Phrase(ph)) => {
+                        values.extend(ph.events.iter().map(event_to_value));
+                    }
+                    // A non-phrase spread is reported by the type checker.
+                    _ => values.push(None),
+                }
+            } else {
+                values.push(self.eval_expr(a));
+            }
+        }
+        values
+    }
+
+    /// Evaluate a builtin function. Only `len` (a general primitive) for now;
+    /// technique builtins are lowered by a later pass.
+    fn eval_builtin(&mut self, name: &str, args: &[Option<Value>]) -> Option<Value> {
+        match name {
+            "len" => match args.first() {
+                Some(Some(Value::Phrase(ph))) => Some(Value::Int(ph.events.len() as u32)),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// Bind argument values to parameters in a fresh lexical scope and evaluate
+    /// the body to a phrase. The body runs with only the globals plus its
+    /// parameters; surplus arguments (e.g. from a spread) are ignored.
+    fn expand_def(&mut self, def: &Def, arg_values: Vec<Option<Value>>) -> Phrase {
         let call_env = self.env.call_scope();
         let caller = std::mem::replace(&mut self.env, call_env);
         for (param, value) in def.params.iter().zip(arg_values) {
@@ -366,6 +431,15 @@ impl Evaluator {
             return None;
         }
         Some(Duration::from_denominator(d.denom.value).dotted(d.dots))
+    }
+}
+
+/// The value an indexed or spread phrase element produces: a note contributes
+/// its position; other event kinds have no positional value.
+fn event_to_value(ev: &Event) -> Option<Value> {
+    match &ev.kind {
+        EventKind::Note(n) => Some(Value::Position(n.pos)),
+        EventKind::Chord(_) | EventKind::Rest(_) => None,
     }
 }
 
@@ -819,6 +893,135 @@ score {
     #[test]
     fn loop_unroll_snapshot() {
         let (phrase, _) = eval_score("score { default 1/8\n loop 2 { 3:2.t 3:4 } }");
+        insta::assert_debug_snapshot!(phrase);
+    }
+
+    /// Evaluate the first score phrase-event's expression directly, so a value
+    /// that produces no model events (like `len`) can still be inspected.
+    fn eval_first_expr(src: &str) -> (Option<Value>, Vec<Diagnostic>) {
+        let parsed = parse(src);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "source should parse cleanly: {:?}",
+            parsed.diagnostics
+        );
+        let mut ev = Evaluator::new(Instrument::builtin("banjo").unwrap());
+        ev.load(&parsed.program);
+        for item in &parsed.program.items {
+            let ItemKind::Score(score) = &item.kind else {
+                continue;
+            };
+            for si in &score.items {
+                if let ScoreItemKind::Event(e) = &si.kind
+                    && let crate::ast::EventKind::Phrase(expr) = &e.kind
+                {
+                    let value = ev.eval_expr(expr);
+                    return (value, ev.into_diagnostics());
+                }
+            }
+        }
+        panic!("no phrase-event expression in score");
+    }
+
+    #[test]
+    fn indexing_a_chord_yields_its_member_position() {
+        // The forward roll re-times a chord's members into a thumb/index/middle
+        // sequence — phrase indexing reapplies the right hand and timing.
+        let (phrase, diags) = eval_score(
+            "def forward_roll(chord) { chord.0 .t  chord.1 .i  chord.2 .m }
+let g = [3:0 2:0 1:0]
+score { default 1/8\n forward_roll(g) }",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![
+                (
+                    Position::new(3, 0),
+                    Some(RightHand::Finger(Finger::Thumb)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(2, 0),
+                    Some(RightHand::Finger(Finger::Index)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(1, 0),
+                    Some(RightHand::Finger(Finger::Middle)),
+                    Duration::new(1, 8)
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_bare_index_re_times_to_a_note() {
+        let (phrase, diags) = eval_score("let g = [3:0 2:2]\nscore { default 1/8\n g.1 }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![(Position::new(2, 2), None, Duration::new(1, 8))]
+        );
+    }
+
+    #[test]
+    fn len_counts_a_phrase_s_elements() {
+        let (value, diags) = eval_first_expr("let g = [3:0 2:0 1:0]\nscore { len(g) }");
+        assert!(diags.is_empty());
+        assert_eq!(value, Some(Value::Int(3)));
+    }
+
+    #[test]
+    fn spread_splats_a_phrase_into_positional_arguments() {
+        let (phrase, diags) = eval_score(
+            "def two(a, b) { a.t b.i }\nlet g = [3:2 1:0]\nscore { default 1/8\n two(...g) }",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(
+            notes(&phrase),
+            vec![
+                (
+                    Position::new(3, 2),
+                    Some(RightHand::Finger(Finger::Thumb)),
+                    Duration::new(1, 8)
+                ),
+                (
+                    Position::new(1, 0),
+                    Some(RightHand::Finger(Finger::Index)),
+                    Duration::new(1, 8)
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn spread_with_surplus_elements_binds_only_the_parameters() {
+        // `one` takes a single parameter; the extra spread elements are dropped.
+        let (phrase, diags) =
+            eval_score("def one(a) { a.t }\nlet g = [3:0 2:0 1:0]\nscore { one(...g) }");
+        assert!(diags.is_empty());
+        assert_eq!(positions(&phrase), vec![Position::new(3, 0)]);
+    }
+
+    #[test]
+    fn an_out_of_range_index_diagnoses() {
+        let (phrase, diags) = eval_score("let g = [3:0 2:0]\nscore { g.5 .t }");
+        assert!(phrase.is_empty());
+        assert!(diags.iter().any(|d| d.message.contains("past the end")));
+    }
+
+    #[test]
+    fn index_and_spread_snapshot() {
+        let (phrase, _) = eval_score(
+            "def forward_roll(chord) { chord.0 .t  chord.1 .i  chord.2 .m }
+let g = [3:0 2:0 1:0]
+score {
+  default 1/8
+  forward_roll(g)
+  loop 2 { forward_roll(g) }
+}",
+        );
         insta::assert_debug_snapshot!(phrase);
     }
 }

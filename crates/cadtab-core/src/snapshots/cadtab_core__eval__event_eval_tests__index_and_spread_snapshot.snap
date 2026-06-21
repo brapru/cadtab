@@ -1,0 +1,233 @@
+---
+source: crates/cadtab-core/src/eval.rs
+expression: phrase
+---
+Phrase {
+    events: [
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Thumb,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 26,
+                end: 36,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 2,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Index,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 38,
+                end: 48,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 1,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Middle,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 50,
+                end: 60,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Thumb,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 26,
+                end: 36,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 2,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Index,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 38,
+                end: 48,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 1,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Middle,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 50,
+                end: 60,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 3,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Thumb,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 26,
+                end: 36,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 2,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Index,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 38,
+                end: 48,
+            },
+        },
+        Event {
+            kind: Note(
+                Note {
+                    pos: Position {
+                        string: 1,
+                        fret: 0,
+                    },
+                    dur: Duration {
+                        num: 1,
+                        den: 8,
+                    },
+                    right_hand: Some(
+                        Finger(
+                            Middle,
+                        ),
+                    ),
+                    technique: None,
+                    tie: false,
+                },
+            ),
+            span: Span {
+                start: 50,
+                end: 60,
+            },
+        },
+    ],
+}
