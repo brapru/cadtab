@@ -268,6 +268,34 @@ impl Phrase {
     }
 }
 
+/// One bar of the score. The compiler owns barline placement, so a measure is a
+/// run of events bounded by barlines. `meter` is set only where the meter
+/// changes; the repeat/ending/pickup flags are populated by later passes.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Measure {
+    pub events: Vec<Event>,
+    pub meter: Option<TimeSig>,
+    pub repeat_start: bool,
+    pub repeat_end: bool,
+    pub ending: Option<u8>,
+    pub is_pickup: bool,
+}
+
+impl Measure {
+    /// A measure holding `events`, with no meter change and all flags clear.
+    pub fn new(events: Vec<Event>) -> Self {
+        Self {
+            events,
+            meter: None,
+            repeat_start: false,
+            repeat_end: false,
+            ending: None,
+            is_pickup: false,
+        }
+    }
+}
+
 /// Where an event falls in barred time: the bar it starts in and its onset (the
 /// time already filled in that bar) when it begins.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -336,6 +364,32 @@ impl BeatAccumulator {
     pub fn on_barline(&self) -> bool {
         self.position.is_zero()
     }
+}
+
+/// Split a flat event stream into measures under one time signature, inserting a
+/// barline (a measure boundary) each time an event completes — or overflows — a
+/// bar. An event that overflows stays whole in the bar it began; a trailing
+/// partial bar becomes a final measure. The first measure carries `time` as its
+/// meter (the meter in effect for this run); the rest leave it unset.
+pub fn split_measures(events: Vec<Event>, time: TimeSig) -> Vec<Measure> {
+    let mut acc = BeatAccumulator::new(time);
+    let mut measures = Vec::new();
+    let mut current = Vec::new();
+    for event in events {
+        let start_bar = acc.bar();
+        acc.push_event(&event);
+        current.push(event);
+        if acc.bar() != start_bar {
+            measures.push(Measure::new(std::mem::take(&mut current)));
+        }
+    }
+    if !current.is_empty() {
+        measures.push(Measure::new(current));
+    }
+    if let Some(first) = measures.first_mut() {
+        first.meter = Some(time);
+    }
+    measures
 }
 
 #[cfg(test)]
@@ -607,5 +661,87 @@ mod tests {
             let completed = Duration::new(time.bar_len().num * acc.bar() as u32, time.bar_len().den);
             prop_assert_eq!(completed.plus(acc.position()), sum);
         }
+    }
+
+    /// A rest event of duration `d` — splitting cares only about durations.
+    fn ev(d: Duration) -> Event {
+        Event::new(EventKind::Rest(d), Span::new(0, 0))
+    }
+
+    /// The number of events in each measure, in order.
+    fn measure_sizes(measures: &[Measure]) -> Vec<usize> {
+        measures.iter().map(|m| m.events.len()).collect()
+    }
+
+    #[test]
+    fn splits_full_bars() {
+        let quarter = Duration::from_denominator(4);
+        let events: Vec<Event> = (0..8).map(|_| ev(quarter)).collect();
+        let measures = split_measures(events, TimeSig::new(4, 4));
+        assert_eq!(measure_sizes(&measures), vec![4, 4]);
+    }
+
+    #[test]
+    fn an_exactly_full_bar_is_one_measure() {
+        let quarter = Duration::from_denominator(4);
+        let measures = split_measures(vec![ev(quarter); 4], TimeSig::new(4, 4));
+        assert_eq!(measure_sizes(&measures), vec![4]);
+    }
+
+    #[test]
+    fn a_trailing_partial_bar_becomes_a_measure() {
+        let quarter = Duration::from_denominator(4);
+        let measures = split_measures(vec![ev(quarter); 5], TimeSig::new(4, 4));
+        assert_eq!(measure_sizes(&measures), vec![4, 1]);
+    }
+
+    #[test]
+    fn splits_mixed_durations_on_beat_boundaries() {
+        // 1/2 1/4 1/4 | 1/2 1/2
+        let measures = split_measures(
+            vec![
+                ev(Duration::new(1, 2)),
+                ev(Duration::new(1, 4)),
+                ev(Duration::new(1, 4)),
+                ev(Duration::new(1, 2)),
+                ev(Duration::new(1, 2)),
+            ],
+            TimeSig::new(4, 4),
+        );
+        assert_eq!(measure_sizes(&measures), vec![3, 2]);
+    }
+
+    #[test]
+    fn an_overflowing_event_stays_in_the_bar_it_began() {
+        // 3/4 then 1/2 crosses the barline; it closes bar 0. 3/4 then fills bar 1.
+        let measures = split_measures(
+            vec![
+                ev(Duration::new(3, 4)),
+                ev(Duration::new(1, 2)),
+                ev(Duration::new(3, 4)),
+            ],
+            TimeSig::new(4, 4),
+        );
+        assert_eq!(measure_sizes(&measures), vec![2, 1]);
+    }
+
+    #[test]
+    fn an_empty_stream_has_no_measures() {
+        assert!(split_measures(vec![], TimeSig::new(4, 4)).is_empty());
+    }
+
+    #[test]
+    fn only_the_first_measure_carries_the_meter() {
+        let quarter = Duration::from_denominator(4);
+        let measures = split_measures(vec![ev(quarter); 8], TimeSig::new(3, 4));
+        assert_eq!(measures[0].meter, Some(TimeSig::new(3, 4)));
+        assert!(measures[1..].iter().all(|m| m.meter.is_none()));
+    }
+
+    #[test]
+    fn measure_round_trips() {
+        let mut m = Measure::new(vec![ev(Duration::from_denominator(4))]);
+        m.meter = Some(TimeSig::new(4, 4));
+        round_trip(&m);
     }
 }
