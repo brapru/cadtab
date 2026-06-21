@@ -234,11 +234,53 @@ impl Evaluator {
                     flush_run(&mut measures, &mut run, time, &mut pending_meter);
                     measures.push(self.block_measure(&block.events, true, &mut pending_meter));
                 }
-                // Repeats are assembled by a later pass.
-                ast::ScoreItemKind::Repeat(_) | ast::ScoreItemKind::Error => {}
+                ast::ScoreItemKind::Repeat(r) => {
+                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
+                    measures.extend(self.eval_repeat(r, time, &mut pending_meter));
+                }
+                ast::ScoreItemKind::Error => {}
             }
         }
         flush_run(&mut measures, &mut run, time, &mut pending_meter);
+        measures
+    }
+
+    /// Assemble a `repeat { body… ending(n){…}… }` into measures. The body and
+    /// each ending are auto-barred separately under `time`. The first measure of
+    /// the section gets `repeat_start`; the repeat-end barline lands on the last
+    /// measure of the first ending (or the last body measure if there are none).
+    /// Each ending's measures carry its volta number.
+    fn eval_repeat(
+        &mut self,
+        repeat: &ast::Repeat,
+        time: TimeSig,
+        pending_meter: &mut Option<TimeSig>,
+    ) -> Vec<Measure> {
+        let body_events = self.eval_events(&repeat.body).events;
+        let mut measures = split_measures(body_events, time);
+        let mut repeat_end = measures.len().checked_sub(1);
+
+        for (i, ending) in repeat.endings.iter().enumerate() {
+            let number = u8::try_from(ending.number.value).unwrap_or(u8::MAX);
+            let events = self.eval_events(&ending.body.events).events;
+            let mut bars = split_measures(events, time);
+            for m in &mut bars {
+                m.ending = Some(number);
+            }
+            measures.append(&mut bars);
+            // The `:|` falls at the end of the first ending.
+            if i == 0 && !measures.is_empty() {
+                repeat_end = Some(measures.len() - 1);
+            }
+        }
+
+        if let Some(first) = measures.first_mut() {
+            first.meter = pending_meter.take();
+            first.repeat_start = true;
+        }
+        if let Some(idx) = repeat_end {
+            measures[idx].repeat_end = true;
+        }
         measures
     }
 
@@ -1435,5 +1477,95 @@ score {
         let (measures, _) = barred("score { default 1/4\n 3:0 2:0  pickup { 1:0 } }");
         assert_eq!(measure_sizes(&measures), vec![2, 1]);
         assert_eq!(pickups(&measures), vec![false, true]);
+    }
+
+    fn repeat_starts(measures: &[Measure]) -> Vec<bool> {
+        measures.iter().map(|m| m.repeat_start).collect()
+    }
+
+    fn repeat_ends(measures: &[Measure]) -> Vec<bool> {
+        measures.iter().map(|m| m.repeat_end).collect()
+    }
+
+    fn endings(measures: &[Measure]) -> Vec<Option<u8>> {
+        measures.iter().map(|m| m.ending).collect()
+    }
+
+    #[test]
+    fn a_repeat_without_endings_brackets_its_bars() {
+        let (measures, diags) = barred("score { default 1/4\n repeat { 3:0 2:0 1:0 5:0 } }");
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![4]);
+        // A one-bar repeat opens and closes on the same measure.
+        assert_eq!(repeat_starts(&measures), vec![true]);
+        assert_eq!(repeat_ends(&measures), vec![true]);
+    }
+
+    #[test]
+    fn a_multi_bar_repeat_brackets_the_span() {
+        let (measures, _) =
+            barred("score { default 1/4\n repeat { 3:0 2:0 1:0 5:0  3:0 2:0 1:0 5:0 } }");
+        assert_eq!(measure_sizes(&measures), vec![4, 4]);
+        assert_eq!(repeat_starts(&measures), vec![true, false]);
+        assert_eq!(repeat_ends(&measures), vec![false, true]);
+    }
+
+    #[test]
+    fn endings_route_voltas_and_place_the_repeat_barline() {
+        let (measures, diags) = barred(
+            "score {
+  default 1/4
+  repeat {
+    3:0 2:0 1:0 5:0
+    ending(1) { 3:2 3:2 3:2 3:2 }
+    ending(2) { 1:0 1:0 1:0 1:0 }
+  }
+}",
+        );
+        assert!(diags.is_empty());
+        assert_eq!(measure_sizes(&measures), vec![4, 4, 4]);
+        // repeat_start on the body; the `:|` at the end of the first ending.
+        assert_eq!(repeat_starts(&measures), vec![true, false, false]);
+        assert_eq!(repeat_ends(&measures), vec![false, true, false]);
+        assert_eq!(endings(&measures), vec![None, Some(1), Some(2)]);
+    }
+
+    #[test]
+    fn a_repeat_first_measure_carries_the_meter() {
+        let (measures, _) = barred("score { time 3/4\n default 1/4\n repeat { 3:0 2:0 1:0 } }");
+        assert_eq!(measures[0].meter, Some(TimeSig::new(3, 4)));
+        assert!(measures[0].repeat_start);
+    }
+
+    #[test]
+    fn a_meter_change_between_repeats_is_stamped() {
+        let (measures, _) = barred(
+            "score {
+  time 4/4
+  default 1/4
+  repeat { 3:0 2:0 1:0 5:0 }
+  time 3/4
+  3:0 2:0 1:0
+}",
+        );
+        assert_eq!(measure_sizes(&measures), vec![4, 3]);
+        assert_eq!(measures[0].meter, Some(TimeSig::new(4, 4)));
+        assert_eq!(measures[1].meter, Some(TimeSig::new(3, 4)));
+    }
+
+    #[test]
+    fn repeat_assembly_snapshot() {
+        let (measures, _) = barred(
+            "score {
+  time 4/4
+  default 1/8
+  repeat {
+    3:0.t 2:0.i 1:0.m 5:0.t 3:0.i 1:0.m [1:0.m 5:0.t]_4
+    ending(1) { 3:2 3:2 }
+    ending(2) { 1:0 1:0 }
+  }
+}",
+        );
+        insta::assert_debug_snapshot!(measures);
     }
 }
