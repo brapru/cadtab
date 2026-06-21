@@ -1,0 +1,39 @@
+---
+source: crates/cadtab-core/src/resolve.rs
+expression: resolved.diagnostics
+---
+[
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 66,
+            end: 70,
+        },
+        message: "`roll` is defined more than once",
+        help: Some(
+            "first defined at byte 26; names must be unique",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 52,
+            end: 59,
+        },
+        message: "unknown name `mystery`",
+        help: Some(
+            "is it a typo, or a missing `def`, `let`, or `import`?",
+        ),
+    },
+    Diagnostic {
+        severity: Error,
+        span: Span {
+            start: 113,
+            end: 117,
+        },
+        message: "unknown name `nope`",
+        help: Some(
+            "is it a typo, or a missing `def`, `let`, or `import`?",
+        ),
+    },
+]

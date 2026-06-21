@@ -129,7 +129,7 @@ Entirely headless and test-driven (D18, D19, D20).
       `tuning` override (D35); pitch derivation `open_pitch[string] + fret`; 1-based→Vec mapping
       (D37); bounds validation (string in range, fret ≥ 0) → diagnostics.
   - *Tests:* pitch-derivation table; invalid-position diagnostics.
-- [ ] **T2.2 — Name resolution.** Lexical scopes; `def`/`let`; `import` (desktop fs + embedded
+- [x] **T2.2 — Name resolution.** Lexical scopes; `def`/`let`; `import` (desktop fs + embedded
       stdlib, D38); shadowing; unresolved-name diagnostics.
 - [ ] **T2.3 — Minimal static type checker (D15).** Value kinds Int/Duration/Position/Note/Phrase;
       arity + kind checks; spread/index typing; diagnostics with `help`.
