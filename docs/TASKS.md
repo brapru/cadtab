@@ -171,7 +171,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - *Tests:* render-tree snapshot for a simple measure.
 - [x] **T3.3 — Horizontal layout.** Time-proportional spacing within measures (D24); barlines;
       repeat barlines + ending (volta) brackets (D32); pickup offset (D33).
-- [ ] **T3.4 — Line-breaking.** Greedy wrap of measures into systems given `LayoutConfig.width`
+- [x] **T3.4 — Line-breaking.** Greedy wrap of measures into systems given `LayoutConfig.width`
       (D23, D24).
   - *Tests:* same model at two widths → different system counts.
 - [ ] **T3.5 — Stems + beams (the fiddly one, D25).** Sub-tasked aggressively; heavy test coverage.

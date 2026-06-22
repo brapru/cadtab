@@ -30,6 +30,8 @@ const META_LINE_H: f32 = 1.0;
 const HEADER_GAP: f32 = 1.0;
 const STRING_SPACING: f32 = 1.0;
 const BOTTOM_MARGIN: f32 = 2.0;
+// Vertical gap between stacked systems (room below the numbers for stems/marks).
+const SYSTEM_GAP: f32 = 3.0;
 // Vertical room reserved above the staff for volta brackets, when any exist.
 const VOLTA_SPACE: f32 = 1.2;
 const VOLTA_GAP: f32 = 0.8;
@@ -52,74 +54,153 @@ const THICK_WEIGHT: f32 = 0.25;
 const REPEAT_GAP: f32 = 0.22;
 const DOT_R: f32 = 0.12;
 
-/// An event placed on the horizontal axis: its fretted positions, its x, and the
-/// source span that produced it.
-struct Placed {
+/// An event placed at a measure-relative x: its fretted positions, that x, and
+/// the source span that produced it.
+struct PlacedEvent {
     positions: Vec<(u8, u8)>,
-    x: f32,
+    rel_x: f32,
     span: Span,
 }
 
-/// Lay a `Score` out into a positioned render tree.
-pub fn layout(score: &Score, _config: LayoutConfig) -> RenderTree {
-    let n_strings = score.instrument.string_count();
+/// A measure resolved to its logical width and its events at measure-relative x,
+/// before line-breaking decides which system (and absolute x) it lands in.
+struct MeasurePlan {
+    width: f32,
+    events: Vec<PlacedEvent>,
+    span: Option<Span>,
+}
 
-    // Pass 1: horizontal placement. x depends only on onsets, so it is computed
-    // before the vertical origin is known.
-    let mut placed: Vec<Vec<Placed>> = Vec::with_capacity(score.measures.len());
-    let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(score.measures.len());
+/// Lay a `Score` out into a positioned render tree, wrapping measures into
+/// stacked systems no wider than `config.width`.
+pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
+    let n_strings = score.instrument.string_count();
+    let staff_height = ((n_strings.max(1) - 1) as f32) * STRING_SPACING;
+
+    // Resolve each measure's width and event placement, then greedily pack the
+    // measures into systems.
+    let plans: Vec<MeasurePlan> = score.measures.iter().map(plan_measure).collect();
+    let groups = pack_systems(&plans, config.width);
+    let width = overall_width(&groups, &plans);
+
+    let (header, header_bottom) = build_header(score, width);
+
+    // Stack the systems vertically, each restating the staff lines and labels.
+    let mut systems = Vec::with_capacity(groups.len());
+    let mut cursor = header_bottom + HEADER_GAP;
+    let mut last_bottom = cursor;
+    for &(start, end) in &groups {
+        let measures = &score.measures[start..end];
+        let has_volta = measures.iter().any(|m| m.ending.is_some());
+        let staff_top = cursor + if has_volta { VOLTA_SPACE } else { 0.0 };
+        let staff_bottom = staff_top + staff_height;
+        systems.push(build_system(
+            score,
+            measures,
+            &plans[start..end],
+            width,
+            staff_top,
+            staff_bottom,
+            staff_height,
+            n_strings,
+        ));
+        last_bottom = staff_bottom;
+        cursor = staff_bottom + SYSTEM_GAP;
+    }
+
+    let height = last_bottom + BOTTOM_MARGIN;
+    RenderTree {
+        meta: LayoutMeta { width, height },
+        header,
+        systems,
+    }
+}
+
+/// Resolve one measure to its width and measure-relative event placement.
+fn plan_measure(measure: &Measure) -> MeasurePlan {
+    let mut onset = Duration::zero();
+    let mut events = Vec::with_capacity(measure.events.len());
+    for event in &measure.events {
+        events.push(PlacedEvent {
+            positions: fretted_positions(&event.kind),
+            rel_x: MEASURE_PAD + span_width(onset),
+            span: event.span,
+        });
+        onset = onset.plus(event.duration());
+    }
+    let width = MEASURE_PAD + span_width(onset) + MEASURE_PAD;
+    let span = measure
+        .events
+        .iter()
+        .map(|e| e.span)
+        .reduce(|acc, s| acc.merge(s));
+    MeasurePlan {
+        width,
+        events,
+        span,
+    }
+}
+
+/// Greedily group measure indices into systems, each at most `width` wide (always
+/// at least one measure per system, even if it alone exceeds the target).
+fn pack_systems(plans: &[MeasurePlan], width: f32) -> Vec<(usize, usize)> {
+    let mut groups = Vec::new();
+    let mut start = 0;
+    let mut acc = 0.0;
+    for (i, plan) in plans.iter().enumerate() {
+        let prospective = LEFT_MARGIN + acc + plan.width + RIGHT_MARGIN;
+        if i > start && prospective > width {
+            groups.push((start, i));
+            start = i;
+            acc = 0.0;
+        }
+        acc += plan.width;
+    }
+    if start < plans.len() {
+        groups.push((start, plans.len()));
+    }
+    groups
+}
+
+/// The widest system's extent (with margins) — the viewBox width all systems
+/// share. Falls back to a minimum for an empty score.
+fn overall_width(groups: &[(usize, usize)], plans: &[MeasurePlan]) -> f32 {
+    let widest = groups
+        .iter()
+        .map(|&(s, e)| plans[s..e].iter().map(|p| p.width).sum::<f32>())
+        .fold(0.0_f32, f32::max);
+    LEFT_MARGIN + widest.max(UNITS_PER_WHOLE) + RIGHT_MARGIN
+}
+
+/// Build one system: its measure boxes (fret numbers) plus the system-spanning
+/// furniture (string lines, labels, barlines, volta brackets).
+#[allow(clippy::too_many_arguments)]
+fn build_system(
+    score: &Score,
+    measures: &[Measure],
+    plans: &[MeasurePlan],
+    width: f32,
+    staff_top: f32,
+    staff_bottom: f32,
+    staff_height: f32,
+    n_strings: usize,
+) -> System {
+    let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
+
     let mut number_xs: Vec<Vec<f32>> = vec![Vec::new(); n_strings];
-    let mut x_cursor = LEFT_MARGIN;
-    for measure in &score.measures {
-        let mx0 = x_cursor;
-        let mut onset = Duration::zero();
-        let mut events = Vec::with_capacity(measure.events.len());
-        for event in &measure.events {
-            let x = mx0 + MEASURE_PAD + span_width(onset);
-            let positions = fretted_positions(&event.kind);
-            for &(string, _) in &positions {
+    let mut boxes = Vec::with_capacity(plans.len());
+    let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(plans.len());
+    let mut mx0 = LEFT_MARGIN;
+    for plan in plans {
+        let mx1 = mx0 + plan.width;
+        let mut prims = Vec::new();
+        for ev in &plan.events {
+            let x = mx0 + ev.rel_x;
+            for &(string, fret) in &ev.positions {
                 if (1..=n_strings as u8).contains(&string) {
                     number_xs[(string - 1) as usize].push(x);
                 }
-            }
-            events.push(Placed {
-                positions,
-                x,
-                span: event.span,
-            });
-            onset = onset.plus(event.duration());
-        }
-        let mx1 = mx0 + MEASURE_PAD + span_width(onset) + MEASURE_PAD;
-        ranges.push((mx0, mx1));
-        placed.push(events);
-        x_cursor = mx1;
-    }
-
-    let staff_x1 = if score.measures.is_empty() {
-        LEFT_MARGIN + UNITS_PER_WHOLE
-    } else {
-        x_cursor
-    };
-    let width = staff_x1 + RIGHT_MARGIN;
-
-    // Pass 2: vertical origin, now that the width (for centering) is known.
-    let (header, header_bottom) = build_header(score, width);
-    let has_voltas = score.measures.iter().any(|m| m.ending.is_some());
-    let volta_space = if has_voltas { VOLTA_SPACE } else { 0.0 };
-    let staff_top = header_bottom + HEADER_GAP + volta_space;
-    let staff_height = ((n_strings.max(1) - 1) as f32) * STRING_SPACING;
-    let staff_bottom = staff_top + staff_height;
-    let height = staff_bottom + BOTTOM_MARGIN;
-    let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
-
-    // Pass 3: emit fret numbers per measure, now that y is fixed.
-    let mut measures = Vec::with_capacity(score.measures.len());
-    for (events, &(mx0, mx1)) in placed.iter().zip(&ranges) {
-        let mut prims = Vec::new();
-        for ev in events {
-            for &(string, fret) in &ev.positions {
                 prims.push(Primitive::Text {
-                    x: ev.x,
+                    x,
                     y: line_y(string),
                     content: fret.to_string(),
                     role: TextRole::FretNumber,
@@ -127,21 +208,25 @@ pub fn layout(score: &Score, _config: LayoutConfig) -> RenderTree {
                 });
             }
         }
-        let span = events.iter().map(|e| e.span).reduce(|acc, s| acc.merge(s));
-        measures.push(MeasureBox {
+        boxes.push(MeasureBox {
             bounds: Rect {
                 x: mx0,
                 y: staff_top,
-                w: mx1 - mx0,
+                w: plan.width,
                 h: staff_height.max(STRING_SPACING),
             },
             prims,
-            span,
+            span: plan.span,
         });
+        ranges.push((mx0, mx1));
+        mx0 = mx1;
     }
+    let staff_x1 = if plans.is_empty() {
+        LEFT_MARGIN + UNITS_PER_WHOLE
+    } else {
+        mx0
+    };
 
-    // System furniture: string lines (broken behind numbers), leading labels,
-    // barlines (incl. repeat ornaments), and volta brackets.
     let mut sys_prims = Vec::new();
     for (i, xs) in number_xs.iter().enumerate() {
         let y = line_y((i + 1) as u8);
@@ -154,10 +239,10 @@ pub fn layout(score: &Score, _config: LayoutConfig) -> RenderTree {
             span: None,
         });
     }
-    sys_prims.extend(barlines(&score.measures, &ranges, staff_top, staff_bottom));
-    sys_prims.extend(volta_brackets(&score.measures, &ranges, staff_top));
+    sys_prims.extend(barlines(measures, &ranges, staff_top, staff_bottom));
+    sys_prims.extend(volta_brackets(measures, &ranges, staff_top));
 
-    let system = System {
+    System {
         bounds: Rect {
             x: 0.0,
             y: staff_top,
@@ -165,13 +250,7 @@ pub fn layout(score: &Score, _config: LayoutConfig) -> RenderTree {
             h: staff_height.max(STRING_SPACING),
         },
         prims: sys_prims,
-        measures,
-    };
-
-    RenderTree {
-        meta: LayoutMeta { width, height },
-        header,
-        systems: vec![system],
+        measures: boxes,
     }
 }
 
@@ -672,6 +751,71 @@ mod tests {
         assert!((x_of(nums[1]) - x_of(nums[0]) - 2.0).abs() < 1e-5);
     }
 
+    fn measures_of(n: u32) -> Vec<Measure> {
+        (0..n)
+            .map(|i| Measure::new(vec![note(3, 0, i * 4)]))
+            .collect()
+    }
+
+    /// The count of distinct string lines in a system — the distinct y values
+    /// among its horizontal line segments (a line broken behind numbers still
+    /// counts once).
+    fn string_line_count(system: &System) -> usize {
+        let mut ys: Vec<u32> = system
+            .prims
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Line { y1, y2, .. } if y1 == y2 => Some(y1.to_bits()),
+                _ => None,
+            })
+            .collect();
+        ys.sort_unstable();
+        ys.dedup();
+        ys.len()
+    }
+
+    #[test]
+    fn a_wide_target_keeps_everything_on_one_system() {
+        let tree = layout(&banjo_score(measures_of(6)), LayoutConfig { width: 800.0 });
+        assert_eq!(tree.systems.len(), 1);
+    }
+
+    #[test]
+    fn a_narrow_target_wraps_into_more_systems() {
+        let wide = layout(&banjo_score(measures_of(6)), LayoutConfig { width: 800.0 });
+        let narrow = layout(&banjo_score(measures_of(6)), LayoutConfig { width: 12.0 });
+        assert_eq!(wide.systems.len(), 1);
+        assert!(narrow.systems.len() > 1);
+    }
+
+    #[test]
+    fn systems_stack_top_to_bottom() {
+        let tree = layout(&banjo_score(measures_of(6)), LayoutConfig { width: 12.0 });
+        assert!(tree.systems.len() >= 2);
+        for pair in tree.systems.windows(2) {
+            assert!(pair[1].bounds.y > pair[0].bounds.y);
+        }
+    }
+
+    #[test]
+    fn each_system_restates_its_string_lines() {
+        let tree = layout(&banjo_score(measures_of(6)), LayoutConfig { width: 12.0 });
+        assert!(tree.systems.len() >= 2);
+        for system in &tree.systems {
+            assert_eq!(string_line_count(system), 5);
+        }
+    }
+
+    #[test]
+    fn a_measure_wider_than_the_target_still_stands_alone() {
+        // A target narrower than a single measure cannot drop measures.
+        let tree = layout(&banjo_score(measures_of(3)), LayoutConfig { width: 1.0 });
+        assert_eq!(tree.systems.len(), 3);
+        for system in &tree.systems {
+            assert_eq!(system.measures.len(), 1);
+        }
+    }
+
     fn round_trip<T: Serialize + DeserializeOwned + PartialEq + DebugTrait>(value: &T) {
         let json = serde_json::to_string(value).unwrap();
         let back: T = serde_json::from_str(&json).unwrap();
@@ -711,6 +855,12 @@ mod tests {
         let mut second = Measure::new(vec![note(1, 2, 12)]);
         second.ending = Some(2);
         let tree = layout(&banjo_score(vec![open, first, second]), cfg());
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn wrapped_systems_layout_snapshot() {
+        let tree = layout(&banjo_score(measures_of(4)), LayoutConfig { width: 12.0 });
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
     }
 }

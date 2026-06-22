@@ -296,7 +296,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "bounds": {
             "x": 7.6000004,
             "y": 3.7,
-            "w": 3.6000004,
+            "w": 3.6,
             "h": 4.0
           },
           "prims": [
@@ -321,7 +321,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "bounds": {
             "x": 11.200001,
             "y": 3.7,
-            "w": 3.6000004,
+            "w": 3.6,
             "h": 4.0
           },
           "prims": [
