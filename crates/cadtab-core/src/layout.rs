@@ -243,6 +243,21 @@ fn build_system(
                     prims.push(dot(x + AUG_DOT_AFTER + f32::from(i) * AUG_DOT_GAP, y));
                 }
             }
+            if matches!(event.kind, EventKind::Rest(_)) {
+                // A rest sits centered on the staff, with its own augmentation
+                // dots; it breaks beaming, so it is never stemmed.
+                let y = (staff_top + staff_bottom) / 2.0;
+                prims.push(Primitive::Text {
+                    x,
+                    y,
+                    content: rest_glyph(event.duration()).to_string(),
+                    role: TextRole::Rest,
+                    span: Some(placed.span),
+                });
+                for i in 0..dots {
+                    prims.push(dot(x + AUG_DOT_AFTER + f32::from(i) * AUG_DOT_GAP, y));
+                }
+            }
             if beam::has_stem(event) {
                 prims.push(stem(x, staff_bottom));
             }
@@ -397,6 +412,24 @@ fn flags(x: f32, beam_y: f32, count: u8) -> Vec<Primitive> {
             }
         })
         .collect()
+}
+
+/// The rest glyph for a duration (by base value; dotted rests reuse the base
+/// glyph and add augmentation dots). Sub-quarter values pick by flag count.
+fn rest_glyph(dur: Duration) -> &'static str {
+    if dur >= Duration::new(1, 1) {
+        "\u{1D13B}" // whole rest
+    } else if dur >= Duration::new(1, 2) {
+        "\u{1D13C}" // half rest
+    } else if dur >= Duration::new(1, 4) {
+        "\u{1D13D}" // quarter rest
+    } else {
+        match beam::flag_count(dur) {
+            1 => "\u{1D13E}", // eighth rest
+            2 => "\u{1D13F}", // sixteenth rest
+            _ => "\u{1D140}", // thirty-second (and shorter) rest
+        }
+    }
 }
 
 /// A small filled dot (an SVG circle path) centered at `(cx, cy)`.
@@ -1124,6 +1157,82 @@ mod tests {
         assert_eq!(aug_dots(&tree).len(), 2);
     }
 
+    /// Rest glyphs are the rest-role text primitives inside measure boxes.
+    fn rests(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| {
+                matches!(
+                    p,
+                    Primitive::Text {
+                        role: TextRole::Rest,
+                        ..
+                    }
+                )
+            })
+            .collect()
+    }
+
+    fn rest(start: u32, den: u32) -> Event {
+        Event::new(
+            EventKind::Rest(Duration::from_denominator(den)),
+            Span::new(start, start + 2),
+        )
+    }
+
+    #[test]
+    fn a_rest_draws_a_glyph_with_no_stem() {
+        let tree = layout(&banjo_score(vec![Measure::new(vec![rest(0, 4)])]), cfg());
+        assert_eq!(rests(&tree).len(), 1);
+        assert!(stems(&tree).is_empty());
+    }
+
+    #[test]
+    fn rest_glyphs_match_their_duration() {
+        assert_eq!(rest_glyph(Duration::new(1, 1)), "\u{1D13B}");
+        assert_eq!(rest_glyph(Duration::new(1, 2)), "\u{1D13C}");
+        assert_eq!(rest_glyph(Duration::from_denominator(4)), "\u{1D13D}");
+        assert_eq!(rest_glyph(Duration::from_denominator(8)), "\u{1D13E}");
+        assert_eq!(rest_glyph(Duration::from_denominator(16)), "\u{1D13F}");
+        // A dotted quarter rest keeps the quarter glyph.
+        assert_eq!(
+            rest_glyph(Duration::from_denominator(4).dotted(1)),
+            "\u{1D13D}"
+        );
+    }
+
+    #[test]
+    fn a_rest_carries_its_span() {
+        let tree = layout(&banjo_score(vec![Measure::new(vec![rest(5, 4)])]), cfg());
+        match rests(&tree)[0] {
+            Primitive::Text { span, .. } => assert_eq!(*span, Some(Span::new(5, 7))),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn a_dotted_rest_draws_augmentation_dots() {
+        let dotted_rest = Event::new(
+            EventKind::Rest(Duration::from_denominator(4).dotted(1)),
+            Span::new(0, 2),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![dotted_rest])]), cfg());
+        assert_eq!(rests(&tree).len(), 1);
+        assert_eq!(aug_dots(&tree).len(), 1);
+    }
+
+    #[test]
+    fn a_rest_breaks_a_beam() {
+        // Eighth, eighth-rest, eighth in one beat: the rest splits the eighths so
+        // neither pair beams — both eighths stand alone (flags), no beam.
+        let m = Measure::new(vec![eighth(3, 0, 0), rest(4, 8), eighth(2, 0, 8)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert!(beams(&tree).is_empty());
+        assert_eq!(rests(&tree).len(), 1);
+    }
+
     fn measures_of(n: u32) -> Vec<Measure> {
         (0..n)
             .map(|i| Measure::new(vec![note(3, 0, i * 4)]))
@@ -1273,6 +1382,19 @@ mod tests {
     fn dotted_rhythm_layout_snapshot() {
         // A dotted quarter (one dot, stem only) then a lone eighth (a flag).
         let m = Measure::new(vec![dotted(3, 0, 0, 4, 1), eighth(2, 1, 6)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn rests_layout_snapshot() {
+        // Quarter rest, a beamed eighth pair, then another quarter rest.
+        let m = Measure::new(vec![
+            rest(0, 4),
+            eighth(3, 0, 4),
+            eighth(2, 0, 8),
+            rest(12, 4),
+        ]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
     }

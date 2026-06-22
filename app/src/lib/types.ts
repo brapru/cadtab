@@ -46,7 +46,8 @@ export type TextRole =
   | "finger"
   | "strum"
   | "technique"
-  | "ending";
+  | "ending"
+  | "rest";
 
 export type Primitive =
   | {

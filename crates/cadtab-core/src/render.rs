@@ -46,6 +46,8 @@ pub enum TextRole {
     Technique,
     /// A volta (repeat-ending) bracket number.
     Ending,
+    /// A rest glyph.
+    Rest,
 }
 
 /// A positioned drawing primitive. Span-bearing variants carry the source span
@@ -135,6 +137,7 @@ mod tests {
         TextRole::Strum,
         TextRole::Technique,
         TextRole::Ending,
+        TextRole::Rest,
     ];
 
     fn rect() -> Rect {
