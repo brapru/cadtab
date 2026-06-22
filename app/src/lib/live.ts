@@ -6,22 +6,32 @@ export type CompileFn = (
 ) => Promise<CompileResult>;
 
 // Serializes compile requests with latest-wins semantics: each run is tagged
-// with a sequence number, and a result is applied only if no newer run has
-// started since. Guards against out-of-order async resolution.
+// with a sequence number, and an outcome is applied only if no newer run has
+// started since. Guards against out-of-order async resolution — including
+// errors, so a stale rejection (e.g. a missing backend) never clobbers a fresh
+// render. `onError` receives whatever the backend threw.
 export function createLiveCompiler(
   compileFn: CompileFn,
   onResult: (result: CompileResult) => void,
+  onError?: (error: unknown) => void,
 ) {
   let seq = 0;
 
   async function run(source: string, config: LayoutConfig): Promise<boolean> {
     const mine = ++seq;
-    const result = await compileFn(source, config);
-    const isLatest = mine === seq;
-    if (isLatest) {
+    try {
+      const result = await compileFn(source, config);
+      if (mine !== seq) {
+        return false;
+      }
       onResult(result);
+    } catch (error) {
+      if (mine !== seq) {
+        return false;
+      }
+      onError?.(error);
     }
-    return isLatest;
+    return true;
   }
 
   return { run };

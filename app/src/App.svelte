@@ -6,22 +6,24 @@
   import { debounce } from "./lib/debounce";
   import type { CompileResult } from "./lib/types";
 
-  const initialDoc = "3:0";
+  const initialDoc = "score {\n  3:0 2:0 1:0 5:0\n}\n";
 
   let result = $state<CompileResult | null>(null);
   let error = $state("");
 
-  const live = createLiveCompiler(compile, (r) => {
-    result = r;
-    error = "";
-  });
-
-  async function recompile(source: string) {
-    try {
-      await live.run(source, { width: 800 });
-    } catch {
+  const live = createLiveCompiler(
+    compile,
+    (r) => {
+      result = r;
+      error = "";
+    },
+    () => {
       error = "core unavailable (no backend)";
-    }
+    },
+  );
+
+  function recompile(source: string) {
+    void live.run(source, { width: 800 });
   }
 
   const onChange = debounce((value: string) => recompile(value), 150);

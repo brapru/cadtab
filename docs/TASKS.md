@@ -195,7 +195,7 @@ Entirely headless and test-driven (D18, D19, D20).
 
 **Goal:** swap the stub for the real core and deliver the slick live editor (D20, D26, D27, D31).
 
-- [ ] **T4.1 — Wire real `compile`** over IPC + WASM; latest-wins debounced async; error paths.
+- [x] **T4.1 — Wire real `compile`** over IPC + WASM; latest-wins debounced async; error paths.
   - *Tests:* adapter stale-drop / error-handling unit tests.
 - [ ] **T4.2 — Full SVG painter.** All primitive kinds; `viewBox` zoom; theming.
   - [ ] T4.2a — Line primitives (string lines, barlines, stems, beams).

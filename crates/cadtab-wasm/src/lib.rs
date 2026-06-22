@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn compile_result_round_trips_through_json() {
-        let result = compile("3:0", LayoutConfig { width: 800.0 });
+        let result = compile("score { 3:0 2:0 1:0 5:0 }", LayoutConfig { width: 800.0 });
         let json = serde_json::to_string(&result).unwrap();
         let back: CompileResult = serde_json::from_str(&json).unwrap();
         assert_eq!(result, back);
@@ -47,7 +47,7 @@ mod wasm_tests {
         let config =
             serde_wasm_bindgen::to_value(&cadtab_core::layout::LayoutConfig { width: 800.0 })
                 .unwrap();
-        let value = compile("3:0", config).unwrap();
+        let value = compile("score { 3:0 2:0 1:0 5:0 }", config).unwrap();
         let result: cadtab_core::CompileResult = serde_wasm_bindgen::from_value(value).unwrap();
         assert_eq!(result.render_tree.systems.len(), 1);
     }

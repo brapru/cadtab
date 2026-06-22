@@ -44,4 +44,53 @@ describe("createLiveCompiler", () => {
     expect(await live.run("x", { width: 0 })).toBe(true);
     expect(applied).toEqual([resultWithWidth(7)]);
   });
+
+  it("routes a latest-run rejection to onError instead of onResult", async () => {
+    const boom = new Error("no backend");
+    const compileFn = vi.fn(async () => {
+      throw boom;
+    });
+    const applied: CompileResult[] = [];
+    const errors: unknown[] = [];
+    const live = createLiveCompiler(
+      compileFn,
+      (r) => applied.push(r),
+      (e) => errors.push(e),
+    );
+
+    expect(await live.run("x", { width: 0 })).toBe(true);
+    expect(applied).toEqual([]);
+    expect(errors).toEqual([boom]);
+  });
+
+  it("drops a stale rejection so it cannot clobber a fresh result", async () => {
+    let rejectA!: (e: unknown) => void;
+    let resolveB!: (r: CompileResult) => void;
+    const pending = [
+      new Promise<CompileResult>((_, reject) => (rejectA = reject)),
+      new Promise<CompileResult>((r) => (resolveB = r)),
+    ];
+    const compileFn = vi.fn(() => pending.shift()!);
+
+    const applied: CompileResult[] = [];
+    const errors: unknown[] = [];
+    const live = createLiveCompiler(
+      compileFn,
+      (r) => applied.push(r),
+      (e) => errors.push(e),
+    );
+
+    const runA = live.run("a", { width: 0 });
+    const runB = live.run("b", { width: 0 });
+
+    // B (newer) resolves first; then A (older/stale) rejects.
+    resolveB(resultWithWidth(2));
+    expect(await runB).toBe(true);
+    rejectA(new Error("stale"));
+    expect(await runA).toBe(false);
+
+    expect(applied).toHaveLength(1);
+    expect(applied[0].renderTree.meta.width).toBe(2);
+    expect(errors).toEqual([]);
+  });
 });
