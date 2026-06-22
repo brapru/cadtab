@@ -20,14 +20,15 @@ check-ts:
     npm --prefix app run check
     npm --prefix app run test
 
-# Coverage (report-only; not part of `check`, no thresholds until post-M3).
+# Coverage gate (90% lines on logic; not part of `check`, run separately/in CI).
 cov: cov-rust cov-ts
 
-# Rust line coverage summary via cargo-llvm-cov.
+# Rust line coverage for the pure core, gated at 90% lines. The thin wasm/tauri
+# wrappers are glue (exercised by CI builds), so they are not measured here.
 cov-rust:
-    cargo llvm-cov --workspace --summary-only
+    cargo llvm-cov -p cadtab-core --summary-only --fail-under-lines 90
 
-# Frontend coverage via vitest (v8); HTML report in app/coverage/.
+# Frontend coverage via vitest (v8); gated at 90% lines (glue excluded in config).
 cov-ts:
     npm --prefix app run test:coverage
 

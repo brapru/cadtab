@@ -15,7 +15,16 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html"],
       include: ["src/**/*.{ts,svelte}"],
-      // Report-only for now; coverage thresholds land post-M3.
+      // Untestable glue: the entrypoint, the wasm backend (needs real wasm),
+      // the type-only contract mirror, and generated/declaration files.
+      exclude: [
+        "src/main.ts",
+        "src/lib/wasm.ts",
+        "src/lib/types.ts",
+        "src/**/*.d.ts",
+        "src/wasm-gen/**",
+      ],
+      thresholds: { lines: 90 },
     },
   },
 });

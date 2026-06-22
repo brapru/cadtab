@@ -37,7 +37,7 @@ jobs:
 
       - uses: taiki-e/install-action@v2
         with:
-          tool: wasm-pack
+          tool: wasm-pack, cargo-llvm-cov
 
       - uses: actions/setup-node@v4
         with:
@@ -53,6 +53,9 @@ jobs:
 
       - name: Quality gate
         run: just check
+
+      - name: Coverage gate
+        run: just cov
 
       - name: Test wasm (node)
         run: wasm-pack test --node crates/cadtab-wasm
