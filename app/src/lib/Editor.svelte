@@ -46,6 +46,19 @@
         dropCursor(),
         highlightActiveLine(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
+        // Bind the editor surface to the app's semantic theme tokens so it
+        // re-themes (background, caret, selection) with everything else.
+        EditorView.theme({
+          "&": { backgroundColor: "var(--bg)", color: "var(--fg)" },
+          ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--fg)" },
+          ".cm-activeLine": {
+            backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",
+          },
+          ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
+            backgroundColor:
+              "color-mix(in srgb, var(--accent) 25%, transparent)",
+          },
+        }),
         syntaxHighlighting,
         diagnosticsExtension,
         EditorView.updateListener.of((update) => {

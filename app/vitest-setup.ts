@@ -23,3 +23,13 @@ Range.prototype.getClientRects = () =>
   }) as unknown as DOMRectList;
 
 Range.prototype.getBoundingClientRect = () => emptyRect;
+
+// jsdom has no ResizeObserver, which Svelte's bind:clientWidth relies on. A
+// no-op stub lets components mount; element widths just stay 0 in tests.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+globalThis.ResizeObserver ??=
+  ResizeObserverStub as unknown as typeof ResizeObserver;

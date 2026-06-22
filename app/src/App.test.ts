@@ -117,4 +117,63 @@ describe("App", () => {
       ).toBe(false);
     });
   });
+
+  it("resizes the panes from the gutter arrow keys", async () => {
+    const { container } = render(App);
+    const gutter = container.querySelector('[role="slider"]')!;
+    const editorPane = container.querySelector(".editor-pane") as HTMLElement;
+
+    expect(gutter.getAttribute("aria-valuenow")).toBe("50");
+    expect(editorPane.style.flex).not.toBe("");
+
+    await fireEvent.keyDown(gutter, { key: "ArrowRight" });
+    expect(gutter.getAttribute("aria-valuenow")).toBe("52");
+
+    await fireEvent.keyDown(gutter, { key: "ArrowLeft" });
+    await fireEvent.keyDown(gutter, { key: "ArrowLeft" });
+    expect(gutter.getAttribute("aria-valuenow")).toBe("48");
+  });
+
+  it("tracks a pointer drag on the gutter", async () => {
+    const { container } = render(App);
+    const gutter = container.querySelector('[role="slider"]')!;
+
+    await fireEvent.pointerDown(gutter, { pointerId: 1, clientX: 0 });
+    expect(gutter.classList.contains("dragging")).toBe(true);
+    await fireEvent.pointerMove(gutter, { pointerId: 1, clientX: 10 });
+    await fireEvent.pointerUp(gutter, { pointerId: 1 });
+    expect(gutter.classList.contains("dragging")).toBe(false);
+  });
+
+  it("zooms the render in and back to fit", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+    });
+    const level = () => container.querySelector(".zoom-level")?.textContent;
+    expect(level()).toBe("100%");
+
+    await fireEvent.click(getByLabelText("Zoom in"));
+    expect(level()).toBe("120%");
+    expect(container.querySelector("svg.tab")?.getAttribute("style")).toContain(
+      "--tab-zoom: 1.2",
+    );
+
+    await fireEvent.click(getByLabelText("Fit to width"));
+    expect(level()).toBe("100%");
+  });
+
+  it("cycles the colour theme onto the document root", async () => {
+    const { container } = render(App);
+    const toggle = container.querySelector(".theme-toggle")!;
+    const root = document.documentElement;
+
+    expect(root.getAttribute("data-theme")).toBeNull(); // system
+    await fireEvent.click(toggle);
+    expect(root.getAttribute("data-theme")).toBe("light");
+    await fireEvent.click(toggle);
+    expect(root.getAttribute("data-theme")).toBe("dark");
+    await fireEvent.click(toggle);
+    expect(root.getAttribute("data-theme")).toBeNull(); // back to system
+  });
 });

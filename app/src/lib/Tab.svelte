@@ -131,23 +131,16 @@
 </svg>
 
 <style>
-  /* Theming tokens: a single ink/muted/accent palette the primitives reference,
-     re-themed under dark mode. A future toggle just rebinds these. */
+  /* Primitives reference ink/muted/accent, bound to the app's semantic theme
+     tokens so the render re-themes with the rest of the UI. */
   .tab {
-    --tab-ink: #1a1a1a;
-    --tab-muted: #5f5f5f;
-    --tab-accent: #b4540a;
+    --tab-ink: var(--fg);
+    --tab-muted: var(--muted);
+    --tab-accent: var(--accent);
 
     display: block;
     width: calc(100% * var(--tab-zoom));
     height: auto;
-  }
-  @media (prefers-color-scheme: dark) {
-    .tab {
-      --tab-ink: #e6e6e6;
-      --tab-muted: #9a9a9a;
-      --tab-accent: #e08a3c;
-    }
   }
   .tab line,
   .tab path {

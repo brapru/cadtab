@@ -211,11 +211,11 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T4.5 — Bidirectional mapping (D20).** Click primitive → editor selection; cursor move →
       highlight primitives.
   - *Tests:* span↔primitive lookup unit tests.
-- [ ] **T4.6 — Shell & polish.**
-  - [ ] T4.6a — Split-pane (editor | render) with drag resize.
-  - [ ] T4.6b — Responsive reflow on resize (re-layout via width, debounced, D23).
-  - [ ] T4.6c — Zoom controls + fit-to-width.
-  - [ ] T4.6d — Theme (light/dark) + visual polish pass.
+- [x] **T4.6 — Shell & polish.**
+  - [x] T4.6a — Split-pane (editor | render) with drag resize.
+  - [x] T4.6b — Responsive reflow on resize (re-layout via width, debounced, D23).
+  - [x] T4.6c — Zoom controls + fit-to-width.
+  - [x] T4.6d — Theme (light/dark) + visual polish pass.
   - *Note:* editor cursor/selection basics (`drawSelection`, `dropCursor`,
     active-line, autofocus) were pulled forward during T4.3.
 
