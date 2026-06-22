@@ -5,7 +5,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 {
   "meta": {
     "width": 11.0,
-    "height": 8.5
+    "height": 9.3
   },
   "header": [
     {
@@ -172,6 +172,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
+              "x": 4.8,
+              "y": 8.6,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
+            },
+            {
+              "kind": "text",
               "x": 5.8,
               "y": 3.5,
               "content": "0",
@@ -188,6 +199,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "x2": 5.8,
               "y2": 8.0,
               "weight": 0.08
+            },
+            {
+              "kind": "text",
+              "x": 5.8,
+              "y": 8.6,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 8,
+                "end": 11
+              }
             },
             {
               "kind": "text",

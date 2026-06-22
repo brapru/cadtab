@@ -5,7 +5,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 {
   "meta": {
     "width": 15.800001,
-    "height": 9.7
+    "height": 10.5
   },
   "header": [
     {
@@ -285,6 +285,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
+              "x": 2.8,
+              "y": 9.8,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 0,
+                "end": 3
+              }
+            },
+            {
+              "kind": "text",
               "x": 4.8,
               "y": 4.7,
               "content": "0",
@@ -301,6 +312,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "x2": 4.8,
               "y2": 9.2,
               "weight": 0.08
+            },
+            {
+              "kind": "text",
+              "x": 4.8,
+              "y": 9.8,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
             }
           ],
           "span": {
@@ -334,6 +356,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "x2": 8.400001,
               "y2": 9.2,
               "weight": 0.08
+            },
+            {
+              "kind": "text",
+              "x": 8.400001,
+              "y": 9.8,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 8,
+                "end": 11
+              }
             }
           ],
           "span": {
@@ -367,6 +400,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "x2": 12.000001,
               "y2": 9.2,
               "weight": 0.08
+            },
+            {
+              "kind": "text",
+              "x": 12.000001,
+              "y": 9.8,
+              "content": "T",
+              "role": "finger",
+              "span": {
+                "start": 12,
+                "end": 15
+              }
             }
           ],
           "span": {

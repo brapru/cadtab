@@ -183,8 +183,9 @@ Entirely headless and test-driven (D18, D19, D20).
         tuplet syntax is pinned — D11 TBD, currently unrepresentable in model/parser.)*
   - [x] T3.5f — Rests within/between beam groups.
   - *Tests:* render-tree snapshots across a rhythm matrix, per sub-task.
-- [ ] **T3.6 — Marks & paths.** T/I/M, strum arrows, technique marks (h/p/sl), ties, bends, choke
-      as `Text`/`Path` primitives — each span-tagged (D20).
+- [x] **T3.6 — Marks & paths.** T/I/M, strum arrows, technique marks (h/p/sl), ties, bends, choke
+      as `Text`/`Path` primitives — each span-tagged (D20). *(Ghost technique drawn as no mark
+      yet; cross-measure ties deferred.)*
 
 **DoD M3:** §6 → render-tree golden snapshot; width-reflow + rhythm cases green.
 

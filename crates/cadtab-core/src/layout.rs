@@ -11,7 +11,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::beam;
-use crate::model::{Duration, EventKind, Measure, Score, TimeSig};
+use crate::model::{
+    Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique, TimeSig,
+};
 use crate::render::{LayoutMeta, MeasureBox, Primitive, Rect, RenderTree, System, TextRole};
 use crate::span::Span;
 
@@ -30,9 +32,9 @@ const COMPOSER_H: f32 = 1.2;
 const META_LINE_H: f32 = 1.0;
 const HEADER_GAP: f32 = 1.0;
 const STRING_SPACING: f32 = 1.0;
-const BOTTOM_MARGIN: f32 = 2.0;
+const BOTTOM_MARGIN: f32 = 2.8;
 // Vertical gap between stacked systems (room below the numbers for stems/marks).
-const SYSTEM_GAP: f32 = 3.0;
+const SYSTEM_GAP: f32 = 3.5;
 // Vertical room reserved above the staff for volta brackets, when any exist.
 const VOLTA_SPACE: f32 = 1.2;
 const VOLTA_GAP: f32 = 0.8;
@@ -69,6 +71,15 @@ const FLAG_SPACING: f32 = 0.35;
 // Augmentation dots sit just right of a fret number, spaced along the line.
 const AUG_DOT_AFTER: f32 = 0.45;
 const AUG_DOT_GAP: f32 = 0.3;
+// Right-hand finger/strum marks sit in a row below the stems; chord members are
+// staggered so they do not overlap.
+const RH_ROW_GAP: f32 = 0.6;
+const RH_STAGGER: f32 = 0.5;
+// Technique text (h/p/sl) sits just above and right of the note number.
+const TECH_DX: f32 = 0.4;
+const TECH_DY: f32 = 0.45;
+// A tie arcs above the two notes it joins.
+const TIE_HEIGHT: f32 = 0.8;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -224,7 +235,7 @@ fn build_system(
     for ((plan, measure), mbeams) in plans.iter().zip(measures).zip(beams) {
         let mx1 = mx0 + plan.width;
         let mut prims = Vec::new();
-        for (placed, event) in plan.events.iter().zip(&measure.events) {
+        for (j, (placed, event)) in plan.events.iter().zip(&measure.events).enumerate() {
             let x = mx0 + placed.rel_x;
             let dots = beam::augmentation_dots(event.duration());
             for &(string, fret) in &placed.positions {
@@ -261,6 +272,8 @@ fn build_system(
             if beam::has_stem(event) {
                 prims.push(stem(x, staff_bottom));
             }
+            let next_x = plan.events.get(j + 1).map(|p| mx0 + p.rel_x);
+            prims.extend(marks_for(event, x, next_x, staff_top, staff_bottom));
         }
         // A group of two or more shares one flat beam across its stem ends; a
         // lone beamable note takes flags at its stem end instead.
@@ -432,6 +445,105 @@ fn rest_glyph(dur: Duration) -> &'static str {
     }
 }
 
+/// All marks an event draws: right-hand finger/strum marks, technique marks
+/// (h/p/sl text, bend/choke paths), and a tie arc to the following note. Each
+/// carries the event's source span.
+fn marks_for(
+    event: &Event,
+    x: f32,
+    next_x: Option<f32>,
+    staff_top: f32,
+    staff_bottom: f32,
+) -> Vec<Primitive> {
+    let rh_y = staff_bottom + STEM_GAP + STEM_LENGTH + RH_ROW_GAP;
+    let line_y = |s: u8| staff_top + f32::from(s.saturating_sub(1)) * STRING_SPACING;
+    let mut out = Vec::new();
+    match &event.kind {
+        EventKind::Note(n) => {
+            if let Some(rh) = n.right_hand {
+                out.push(rh_mark(rh, x, rh_y, event.span));
+            }
+            if let Some(t) = n.technique {
+                out.extend(technique_mark(t, x, line_y(n.pos.string), event.span));
+            }
+            if let (true, Some(nx)) = (n.tie, next_x) {
+                out.push(tie_arc(x, nx, line_y(n.pos.string), event.span));
+            }
+        }
+        EventKind::Chord(c) => {
+            for (i, cn) in c.notes.iter().enumerate() {
+                if let Some(rh) = cn.right_hand {
+                    out.push(rh_mark(rh, x + i as f32 * RH_STAGGER, rh_y, event.span));
+                }
+            }
+        }
+        EventKind::Rest(_) => {}
+    }
+    out
+}
+
+/// A right-hand finger letter (T/I/M) or strum arrow.
+fn rh_mark(rh: RightHand, x: f32, y: f32, span: Span) -> Primitive {
+    let (content, role) = match rh {
+        RightHand::Finger(Finger::Thumb) => ("T", TextRole::Finger),
+        RightHand::Finger(Finger::Index) => ("I", TextRole::Finger),
+        RightHand::Finger(Finger::Middle) => ("M", TextRole::Finger),
+        RightHand::Strum(Strum::Down) => ("\u{2193}", TextRole::Strum),
+        RightHand::Strum(Strum::Up) => ("\u{2191}", TextRole::Strum),
+    };
+    Primitive::Text {
+        x,
+        y,
+        content: content.to_string(),
+        role,
+        span: Some(span),
+    }
+}
+
+/// A left-hand technique mark: h/p/sl as text above the note; bend and choke as
+/// short path arcs rising from it. Ghost notes draw no mark here.
+fn technique_mark(t: Technique, x: f32, note_y: f32, span: Span) -> Vec<Primitive> {
+    let text = |content: &str| Primitive::Text {
+        x: x + TECH_DX,
+        y: note_y - TECH_DY,
+        content: content.to_string(),
+        role: TextRole::Technique,
+        span: Some(span),
+    };
+    match t {
+        Technique::HammerOn => vec![text("h")],
+        Technique::PullOff => vec![text("p")],
+        Technique::SlideTo => vec![text("sl")],
+        Technique::Bend => vec![Primitive::Path {
+            cmds: format!(
+                "M {x} {note_y} Q {} {} {} {}",
+                x + 0.3,
+                note_y - 1.0,
+                x + 0.6,
+                note_y - 1.0
+            ),
+            span: Some(span),
+        }],
+        Technique::Choke => vec![Primitive::Path {
+            cmds: format!("M {x} {note_y} q 0.3 -0.9 0.6 0"),
+            span: Some(span),
+        }],
+        Technique::Ghost => vec![],
+    }
+}
+
+/// A tie: a slur arc from one note to the next, bowed above the line.
+fn tie_arc(x1: f32, x2: f32, y: f32, span: Span) -> Primitive {
+    Primitive::Path {
+        cmds: format!(
+            "M {x1} {y} Q {} {} {x2} {y}",
+            (x1 + x2) / 2.0,
+            y - TIE_HEIGHT
+        ),
+        span: Some(span),
+    }
+}
+
 /// A small filled dot (an SVG circle path) centered at `(cx, cy)`.
 fn dot(cx: f32, cy: f32) -> Primitive {
     let r = DOT_R;
@@ -587,7 +699,8 @@ mod tests {
     use super::*;
     use crate::instrument::Instrument;
     use crate::model::{
-        Chord, ChordNote, Duration, Event, EventKind, Note, Position, RightHand, ScoreMeta, TimeSig,
+        Chord, ChordNote, Duration, Event, EventKind, Finger, Note, Position, RightHand, ScoreMeta,
+        Strum, Technique, TimeSig,
     };
     use serde::de::DeserializeOwned;
     use std::fmt::Debug as DebugTrait;
@@ -1233,6 +1346,161 @@ mod tests {
         assert_eq!(rests(&tree).len(), 1);
     }
 
+    fn texts_with(tree: &RenderTree, role: TextRole) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(move |p| matches!(p, Primitive::Text { role: r, .. } if *r == role))
+            .collect()
+    }
+
+    fn paths(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| matches!(p, Primitive::Path { .. }))
+            .collect()
+    }
+
+    fn marked_note(
+        string: u8,
+        fret: u8,
+        rh: Option<RightHand>,
+        tech: Option<Technique>,
+        tie: bool,
+    ) -> Event {
+        Event::new(
+            EventKind::Note(Note {
+                pos: Position::new(string, fret),
+                dur: Duration::from_denominator(4),
+                right_hand: rh,
+                technique: tech,
+                tie,
+            }),
+            Span::new(0, 3),
+        )
+    }
+
+    #[test]
+    fn a_finger_mark_is_a_letter_below_the_staff() {
+        let n = marked_note(3, 0, Some(RightHand::Finger(Finger::Thumb)), None, false);
+        let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+        let fingers = texts_with(&tree, TextRole::Finger);
+        assert_eq!(fingers.len(), 1);
+        let staff_bottom = 6.5; // banjo: staff_top 2.5 + 4
+        match fingers[0] {
+            Primitive::Text {
+                content, y, span, ..
+            } => {
+                assert_eq!(content, "T");
+                assert!(*y > staff_bottom);
+                assert_eq!(*span, Some(Span::new(0, 3)));
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn finger_letters_map_thumb_index_middle() {
+        for (f, want) in [
+            (Finger::Thumb, "T"),
+            (Finger::Index, "I"),
+            (Finger::Middle, "M"),
+        ] {
+            let n = marked_note(3, 0, Some(RightHand::Finger(f)), None, false);
+            let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+            match texts_with(&tree, TextRole::Finger)[0] {
+                Primitive::Text { content, .. } => assert_eq!(content, want),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn a_strum_is_an_arrow_glyph() {
+        let n = marked_note(1, 0, Some(RightHand::Strum(Strum::Down)), None, false);
+        let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+        let strums = texts_with(&tree, TextRole::Strum);
+        assert_eq!(strums.len(), 1);
+        match strums[0] {
+            Primitive::Text { content, .. } => assert_eq!(content, "\u{2193}"),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn technique_text_marks_render_hps() {
+        for (t, want) in [
+            (Technique::HammerOn, "h"),
+            (Technique::PullOff, "p"),
+            (Technique::SlideTo, "sl"),
+        ] {
+            let n = marked_note(3, 0, None, Some(t), false);
+            let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+            let techs = texts_with(&tree, TextRole::Technique);
+            assert_eq!(techs.len(), 1);
+            match techs[0] {
+                Primitive::Text { content, .. } => assert_eq!(content, want),
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn bend_and_choke_are_paths() {
+        for t in [Technique::Bend, Technique::Choke] {
+            let n = marked_note(3, 0, None, Some(t), false);
+            let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+            assert_eq!(paths(&tree).len(), 1);
+        }
+    }
+
+    #[test]
+    fn a_tie_draws_a_path_to_the_next_note() {
+        let m = Measure::new(vec![
+            marked_note(3, 2, None, None, true),
+            marked_note(3, 2, None, None, false),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let paths = paths(&tree);
+        assert_eq!(paths.len(), 1);
+        match paths[0] {
+            Primitive::Path { span, .. } => assert_eq!(*span, Some(Span::new(0, 3))),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn a_tie_with_no_following_note_draws_nothing() {
+        let m = Measure::new(vec![marked_note(3, 2, None, None, true)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert!(paths(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_chord_marks_each_member() {
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4),
+                notes: vec![
+                    ChordNote {
+                        pos: Position::new(4, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Thumb)),
+                    },
+                    ChordNote {
+                        pos: Position::new(1, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Index)),
+                    },
+                ],
+            }),
+            Span::new(0, 7),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
+        assert_eq!(texts_with(&tree, TextRole::Finger).len(), 2);
+    }
+
     fn measures_of(n: u32) -> Vec<Measure> {
         (0..n)
             .map(|i| Measure::new(vec![note(3, 0, i * 4)]))
@@ -1394,6 +1662,39 @@ mod tests {
             eighth(3, 0, 4),
             eighth(2, 0, 8),
             rest(12, 4),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn cripple_creek_render_tree_snapshot() {
+        // The canonical example, end to end: source -> Score -> render tree.
+        let src = include_str!("../../../examples/cripple_creek.ctab");
+        let parsed = crate::parser::parse(src);
+        let (score, _) = crate::eval::eval_program(&parsed.program);
+        let tree = layout(&score, LayoutConfig { width: 80.0 });
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn marks_layout_snapshot() {
+        // A thumb-picked note, a hammer-on, a tied pair, and a down-strum chord.
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4),
+                notes: vec![ChordNote {
+                    pos: Position::new(2, 1),
+                    right_hand: Some(RightHand::Strum(Strum::Down)),
+                }],
+            }),
+            Span::new(20, 27),
+        );
+        let m = Measure::new(vec![
+            marked_note(3, 0, Some(RightHand::Finger(Finger::Thumb)), None, false),
+            marked_note(2, 2, None, Some(Technique::HammerOn), false),
+            marked_note(1, 0, None, None, true),
+            chord,
         ]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
