@@ -197,11 +197,12 @@ Entirely headless and test-driven (D18, D19, D20).
 
 - [x] **T4.1 — Wire real `compile`** over IPC + WASM; latest-wins debounced async; error paths.
   - *Tests:* adapter stale-drop / error-handling unit tests.
-- [ ] **T4.2 — Full SVG painter.** All primitive kinds; `viewBox` zoom; theming.
-  - [ ] T4.2a — Line primitives (string lines, barlines, stems, beams).
-  - [ ] T4.2b — Text primitives (fret numbers, T/I/M, strum, labels) + role-based styling.
-  - [ ] T4.2c — Path primitives (ties, slides, bends, choke arcs).
-  - [ ] T4.2d — `viewBox` zoom + theming tokens.
+- [x] **T4.2 — Full SVG painter.** All primitive kinds; `viewBox` zoom; theming.
+  - [x] T4.2a — Line primitives (string lines, barlines, stems, beams).
+  - [x] T4.2b — Text primitives (fret numbers, T/I/M, strum, labels) + role-based styling.
+  - [x] T4.2c — Path primitives (ties, slides, bends, choke arcs).
+  - [x] T4.2d — `viewBox` zoom + theming tokens. *(Painter capability + tokens; the
+        zoom-control UI and light/dark toggle are wired later in T4.6c/T4.6d.)*
   - *Tests:* component test per primitive kind.
 - [ ] **T4.3 — Syntax highlighting** from Rust tokens → CodeMirror decorations (D27).
 - [ ] **T4.4 — Diagnostics UI.** Squiggles + hover tooltips; **best-effort partial render** on

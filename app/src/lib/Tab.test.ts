@@ -4,25 +4,47 @@ import Tab from "./Tab.svelte";
 import type { RenderTree } from "./types";
 
 const tree: RenderTree = {
-  meta: { width: 12, height: 4 },
-  header: [],
+  meta: { width: 12, height: 8 },
+  header: [
+    {
+      kind: "text",
+      x: 6,
+      y: 1,
+      content: "Cripple Creek",
+      role: "title",
+      span: null,
+    },
+  ],
   systems: [
     {
-      bounds: { x: 0, y: 0, w: 12, h: 4 },
-      prims: [],
+      bounds: { x: 0, y: 0, w: 12, h: 8 },
+      prims: [
+        // String line (hairline) and a thick barline: lines differ by weight.
+        { kind: "line", x1: 0, y1: 2, x2: 12, y2: 2, weight: 0.06 },
+        { kind: "line", x1: 12, y1: 2, x2: 12, y2: 6, weight: 0.25 },
+      ],
       measures: [
         {
-          bounds: { x: 0, y: 0, w: 12, h: 4 },
+          bounds: { x: 0, y: 0, w: 12, h: 8 },
           prims: [
-            { kind: "line", x1: 0, y1: 2, x2: 12, y2: 2, weight: 0.1 },
             {
               kind: "text",
               x: 1,
               y: 2,
               content: "0",
               role: "fretNumber",
+              span: { start: 0, end: 3 },
+            },
+            {
+              kind: "text",
+              x: 1,
+              y: 7,
+              content: "T",
+              role: "finger",
               span: null,
             },
+            // A tie arc: an open path that must not be filled.
+            { kind: "path", cmds: "M1 2 Q2 1 3 2", span: null },
           ],
           span: null,
         },
@@ -36,19 +58,56 @@ describe("Tab painter", () => {
     const { container } = render(Tab, { props: { tree } });
     const svg = container.querySelector("svg");
     expect(svg).not.toBeNull();
-    expect(svg!.getAttribute("viewBox")).toBe("0 0 12 4");
+    expect(svg!.getAttribute("viewBox")).toBe("0 0 12 8");
   });
 
-  it("paints line and text primitives", () => {
+  // Line primitives carry their weight as stroke-width.
+  it("paints lines with their weight and rounded caps", () => {
     const { container } = render(Tab, { props: { tree } });
+    const lines = container.querySelectorAll("line");
+    expect(lines).toHaveLength(2);
+    expect(lines[0].getAttribute("stroke-width")).toBe("0.06");
+    expect(lines[1].getAttribute("stroke-width")).toBe("0.25");
+    expect(lines[0].getAttribute("stroke-linecap")).toBe("round");
+  });
 
-    const line = container.querySelector("line");
-    expect(line).not.toBeNull();
-    expect(line!.getAttribute("x2")).toBe("12");
-    expect(line!.getAttribute("stroke-width")).toBe("0.1");
+  // Text primitives are tagged by role and sized per role.
+  it("paints text with role-based size and metadata", () => {
+    const { container } = render(Tab, { props: { tree } });
+    const fret = container.querySelector('text[data-role="fretNumber"]');
+    expect(fret?.textContent).toBe("0");
+    expect(fret?.getAttribute("font-size")).toBe("1.3");
 
-    const text = container.querySelector("text");
-    expect(text?.textContent).toBe("0");
-    expect(text?.getAttribute("data-role")).toBe("fretNumber");
+    const title = container.querySelector('text[data-role="title"]');
+    expect(title?.textContent).toBe("Cripple Creek");
+    expect(title?.getAttribute("font-size")).toBe("1.5");
+    expect(title?.getAttribute("font-weight")).toBe("600");
+
+    // Distinct roles get distinct sizes so the painter can differentiate them.
+    expect(fret?.getAttribute("font-size")).not.toBe(
+      title?.getAttribute("font-size"),
+    );
+  });
+
+  // Path primitives stroke their geometry without a fill.
+  it("paints paths as unfilled stroked curves", () => {
+    const { container } = render(Tab, { props: { tree } });
+    const path = container.querySelector("path");
+    expect(path).not.toBeNull();
+    expect(path!.getAttribute("d")).toBe("M1 2 Q2 1 3 2");
+    expect(path!.getAttribute("fill")).toBe("none");
+  });
+
+  // Zoom multiplies the rendered width via a CSS token.
+  it("reflects the zoom prop in the svg style", () => {
+    const { container } = render(Tab, { props: { tree, zoom: 1.5 } });
+    const svg = container.querySelector("svg");
+    expect(svg!.style.getPropertyValue("--tab-zoom")).toBe("1.5");
+  });
+
+  it("defaults zoom to 1 when not provided", () => {
+    const { container } = render(Tab, { props: { tree } });
+    const svg = container.querySelector("svg");
+    expect(svg!.style.getPropertyValue("--tab-zoom")).toBe("1");
   });
 });
