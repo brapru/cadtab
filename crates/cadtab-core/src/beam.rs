@@ -32,6 +32,23 @@ pub fn has_stem(event: &Event) -> bool {
     }
 }
 
+/// How many flags (equivalently, beams) a note value carries: an eighth has 1, a
+/// sixteenth 2, and so on. Classified by value range so dotted notes count by
+/// their base value (a dotted eighth is still one flag). Quarter or longer: 0.
+pub fn flag_count(dur: Duration) -> u8 {
+    if dur >= Duration::new(1, 4) {
+        return 0;
+    }
+    // The value level is the n with 1/2^(n+2) <= dur < 1/2^(n+1).
+    let mut n: u8 = 1;
+    let mut bound = Duration::new(1, 8);
+    while dur < bound && n < 8 {
+        n += 1;
+        bound = Duration::new(bound.num, bound.den * 2);
+    }
+    n
+}
+
 /// Partition a measure's events into beam groups by beat. Beamable events that
 /// are contiguous and fall in the same beat group together; a rest, a longer
 /// note, or a beat boundary closes the current group. Non-beamable events belong
@@ -206,6 +223,21 @@ mod tests {
         // A whole note and a rest carry no stem.
         assert!(!has_stem(&note(1)));
         assert!(!has_stem(&rest(8)));
+    }
+
+    #[test]
+    fn flag_count_scales_with_the_note_value() {
+        assert_eq!(flag_count(Duration::from_denominator(4)), 0);
+        assert_eq!(flag_count(Duration::from_denominator(8)), 1);
+        assert_eq!(flag_count(Duration::from_denominator(16)), 2);
+        assert_eq!(flag_count(Duration::from_denominator(32)), 3);
+    }
+
+    #[test]
+    fn dotted_notes_count_by_their_base_value() {
+        // A dotted eighth (3/16) is still one flag; a dotted sixteenth (3/32) two.
+        assert_eq!(flag_count(Duration::from_denominator(8).dotted(1)), 1);
+        assert_eq!(flag_count(Duration::from_denominator(16).dotted(1)), 2);
     }
 
     #[test]

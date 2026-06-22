@@ -62,6 +62,10 @@ const STEM_WEIGHT: f32 = 0.08;
 // A beam is a thick flat bar joining a group's stem ends; tab has no pitch
 // staff, so beams never slope.
 const BEAM_WEIGHT: f32 = 0.3;
+// A flag is a short beam-like stub at a lone note's stem end; repeated flags
+// stack upward toward the staff.
+const FLAG_LENGTH: f32 = 0.6;
+const FLAG_SPACING: f32 = 0.35;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -235,12 +239,17 @@ fn build_system(
                 prims.push(stem(x, staff_bottom));
             }
         }
-        // A group of two or more shares one flat beam across its stem ends.
+        // A group of two or more shares one flat beam across its stem ends; a
+        // lone beamable note takes flags at its stem end instead.
         for g in mbeams {
             if g.members.len() >= 2 {
                 let x0 = mx0 + plan.events[g.members[0]].rel_x;
                 let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x;
                 prims.push(beam_bar(x0, x1, beam_y));
+            } else if let Some(&idx) = g.members.first() {
+                let x = mx0 + plan.events[idx].rel_x;
+                let count = beam::flag_count(measure.events[idx].duration());
+                prims.extend(flags(x, beam_y, count));
             }
         }
         boxes.push(MeasureBox {
@@ -363,6 +372,23 @@ fn beam_bar(x1: f32, x2: f32, y: f32) -> Primitive {
         y2: y,
         weight: BEAM_WEIGHT,
     }
+}
+
+/// Flags for a lone note: `count` short stubs at the stem end (`beam_y`), each
+/// stacked one step upward toward the staff.
+fn flags(x: f32, beam_y: f32, count: u8) -> Vec<Primitive> {
+    (0..count)
+        .map(|i| {
+            let y = beam_y - f32::from(i) * FLAG_SPACING;
+            Primitive::Line {
+                x1: x,
+                y1: y,
+                x2: x + FLAG_LENGTH,
+                y2: y,
+                weight: BEAM_WEIGHT,
+            }
+        })
+        .collect()
 }
 
 /// A small filled dot (an SVG circle path) centered at `(cx, cy)`.
@@ -883,14 +909,17 @@ mod tests {
         assert!(stems(&tree).is_empty());
     }
 
-    /// Beams are the thick horizontal line segments inside measure boxes.
+    /// Beams are the thick horizontal segments inside measure boxes that span
+    /// between notes — i.e. not the fixed-width flag stubs (which share the
+    /// weight but are exactly FLAG_LENGTH wide).
     fn beams(tree: &RenderTree) -> Vec<&Primitive> {
         tree.systems
             .iter()
             .flat_map(|s| s.measures.iter())
             .flat_map(|m| m.prims.iter())
             .filter(|p| {
-                matches!(p, Primitive::Line { y1, y2, weight, .. } if y1 == y2 && *weight == BEAM_WEIGHT)
+                matches!(p, Primitive::Line { x1, x2, y1, y2, weight }
+                    if y1 == y2 && *weight == BEAM_WEIGHT && (x2 - x1 - FLAG_LENGTH).abs() >= 1e-5)
             })
             .collect()
     }
@@ -960,6 +989,65 @@ mod tests {
                 _ => unreachable!(),
             }
         }
+    }
+
+    /// Flag stubs are the short (FLAG_LENGTH-wide) horizontal beam-weight lines.
+    fn flag_stubs(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| {
+                matches!(p, Primitive::Line { x1, x2, y1, y2, weight }
+                    if y1 == y2 && *weight == BEAM_WEIGHT && (x2 - x1 - FLAG_LENGTH).abs() < 1e-5)
+            })
+            .collect()
+    }
+
+    #[test]
+    fn a_lone_eighth_gets_one_flag() {
+        let tree = layout(
+            &banjo_score(vec![Measure::new(vec![eighth(3, 0, 0)])]),
+            cfg(),
+        );
+        assert_eq!(flag_stubs(&tree).len(), 1);
+        assert!(beams(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_lone_sixteenth_gets_two_flags() {
+        let m = Measure::new(vec![note_dur(3, 0, 0, Duration::from_denominator(16))]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert_eq!(flag_stubs(&tree).len(), 2);
+    }
+
+    #[test]
+    fn flags_stack_upward_from_the_stem_end() {
+        let m = Measure::new(vec![note_dur(3, 0, 0, Duration::from_denominator(16))]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let stem_end = match stems(&tree)[0] {
+            Primitive::Line { y2, .. } => *y2,
+            _ => unreachable!(),
+        };
+        let mut ys: Vec<f32> = flag_stubs(&tree)
+            .iter()
+            .map(|p| match p {
+                Primitive::Line { y1, .. } => *y1,
+                _ => unreachable!(),
+            })
+            .collect();
+        ys.sort_by(|a, b| b.partial_cmp(a).unwrap());
+        // The outermost flag is at the stem end; the next is higher (smaller y).
+        assert!((ys[0] - stem_end).abs() < 1e-5);
+        assert!(ys[1] < ys[0]);
+    }
+
+    #[test]
+    fn a_beamed_eighth_has_no_flag() {
+        let m = Measure::new(vec![eighth(3, 0, 0), eighth(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert!(flag_stubs(&tree).is_empty());
+        assert_eq!(beams(&tree).len(), 1);
     }
 
     fn measures_of(n: u32) -> Vec<Measure> {
@@ -1089,6 +1177,19 @@ mod tests {
             note(3, 0, 24),
             eighth(2, 1, 28),
             eighth(1, 0, 32),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn flagged_notes_layout_snapshot() {
+        // A lone eighth and a lone sixteenth, kept apart by a quarter so neither
+        // joins a beam — each takes flags instead (one, then two).
+        let m = Measure::new(vec![
+            eighth(2, 0, 0),
+            note(3, 0, 4),
+            note_dur(1, 0, 8, Duration::from_denominator(16)),
         ]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
