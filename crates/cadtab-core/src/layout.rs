@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::beam;
-use crate::model::{Duration, EventKind, Measure, Score};
+use crate::model::{Duration, EventKind, Measure, Score, TimeSig};
 use crate::render::{LayoutMeta, MeasureBox, Primitive, Rect, RenderTree, System, TextRole};
 use crate::span::Span;
 
@@ -59,6 +59,9 @@ const DOT_R: f32 = 0.12;
 const STEM_GAP: f32 = 0.3;
 const STEM_LENGTH: f32 = 1.2;
 const STEM_WEIGHT: f32 = 0.08;
+// A beam is a thick flat bar joining a group's stem ends; tab has no pitch
+// staff, so beams never slope.
+const BEAM_WEIGHT: f32 = 0.3;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -88,6 +91,19 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     let groups = pack_systems(&plans, config.width);
     let width = overall_width(&groups, &plans);
 
+    // Beam grouping per measure, threading the running meter (default 4/4).
+    let mut meter = TimeSig::new(4, 4);
+    let beams: Vec<Vec<beam::BeamGroup>> = score
+        .measures
+        .iter()
+        .map(|m| {
+            if let Some(t) = m.meter {
+                meter = t;
+            }
+            beam::beam_groups(&m.events, meter)
+        })
+        .collect();
+
     let (header, header_bottom) = build_header(score, width);
 
     // Stack the systems vertically, each restating the staff lines and labels.
@@ -103,9 +119,9 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
             score,
             measures,
             &plans[start..end],
+            &beams[start..end],
             width,
             staff_top,
-            staff_bottom,
             staff_height,
             n_strings,
         ));
@@ -184,19 +200,21 @@ fn build_system(
     score: &Score,
     measures: &[Measure],
     plans: &[MeasurePlan],
+    beams: &[Vec<beam::BeamGroup>],
     width: f32,
     staff_top: f32,
-    staff_bottom: f32,
     staff_height: f32,
     n_strings: usize,
 ) -> System {
+    let staff_bottom = staff_top + staff_height;
+    let beam_y = staff_bottom + STEM_GAP + STEM_LENGTH;
     let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
 
     let mut number_xs: Vec<Vec<f32>> = vec![Vec::new(); n_strings];
     let mut boxes = Vec::with_capacity(plans.len());
     let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(plans.len());
     let mut mx0 = LEFT_MARGIN;
-    for (plan, measure) in plans.iter().zip(measures) {
+    for ((plan, measure), mbeams) in plans.iter().zip(measures).zip(beams) {
         let mx1 = mx0 + plan.width;
         let mut prims = Vec::new();
         for (placed, event) in plan.events.iter().zip(&measure.events) {
@@ -215,6 +233,14 @@ fn build_system(
             }
             if beam::has_stem(event) {
                 prims.push(stem(x, staff_bottom));
+            }
+        }
+        // A group of two or more shares one flat beam across its stem ends.
+        for g in mbeams {
+            if g.members.len() >= 2 {
+                let x0 = mx0 + plan.events[g.members[0]].rel_x;
+                let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x;
+                prims.push(beam_bar(x0, x1, beam_y));
             }
         }
         boxes.push(MeasureBox {
@@ -326,6 +352,17 @@ fn vline(x: f32, y1: f32, y2: f32, weight: f32) -> Primitive {
 fn stem(x: f32, staff_bottom: f32) -> Primitive {
     let top = staff_bottom + STEM_GAP;
     vline(x, top, top + STEM_LENGTH, STEM_WEIGHT)
+}
+
+/// A primary beam: a thick flat bar joining the stem ends of a group.
+fn beam_bar(x1: f32, x2: f32, y: f32) -> Primitive {
+    Primitive::Line {
+        x1,
+        y1: y,
+        x2,
+        y2: y,
+        weight: BEAM_WEIGHT,
+    }
 }
 
 /// A small filled dot (an SVG circle path) centered at `(cx, cy)`.
@@ -846,6 +883,85 @@ mod tests {
         assert!(stems(&tree).is_empty());
     }
 
+    /// Beams are the thick horizontal line segments inside measure boxes.
+    fn beams(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| {
+                matches!(p, Primitive::Line { y1, y2, weight, .. } if y1 == y2 && *weight == BEAM_WEIGHT)
+            })
+            .collect()
+    }
+
+    fn eighth(string: u8, fret: u8, start: u32) -> Event {
+        note_dur(string, fret, start, Duration::from_denominator(8))
+    }
+
+    #[test]
+    fn two_eighths_share_one_beam() {
+        let m = Measure::new(vec![eighth(3, 0, 0), eighth(2, 1, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let beams = beams(&tree);
+        assert_eq!(beams.len(), 1);
+        // Flat, and spanning the two note x-positions.
+        let nums = fret_numbers(&tree);
+        match beams[0] {
+            Primitive::Line { x1, y1, x2, y2, .. } => {
+                assert_eq!(y1, y2);
+                assert!((x1 - x_of(nums[0])).abs() < 1e-5);
+                assert!((x2 - x_of(nums[1])).abs() < 1e-5);
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn four_eighths_make_two_beams() {
+        let m = Measure::new(vec![
+            eighth(3, 0, 0),
+            eighth(3, 0, 4),
+            eighth(3, 0, 8),
+            eighth(3, 0, 12),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert_eq!(beams(&tree).len(), 2);
+    }
+
+    #[test]
+    fn quarter_notes_have_no_beam() {
+        let m = Measure::new(vec![note(3, 0, 0), note(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert!(beams(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_lone_eighth_has_no_beam() {
+        let tree = layout(
+            &banjo_score(vec![Measure::new(vec![eighth(3, 0, 0)])]),
+            cfg(),
+        );
+        assert!(beams(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_beam_sits_at_the_stem_ends() {
+        let m = Measure::new(vec![eighth(3, 0, 0), eighth(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let beam_y = match beams(&tree)[0] {
+            Primitive::Line { y1, .. } => *y1,
+            _ => unreachable!(),
+        };
+        // Every stem's lower end reaches the beam.
+        for s in stems(&tree) {
+            match s {
+                Primitive::Line { y2, .. } => assert!((y2 - beam_y).abs() < 1e-5),
+                _ => unreachable!(),
+            }
+        }
+    }
+
     fn measures_of(n: u32) -> Vec<Measure> {
         (0..n)
             .map(|i| Measure::new(vec![note(3, 0, i * 4)]))
@@ -956,6 +1072,25 @@ mod tests {
     #[test]
     fn wrapped_systems_layout_snapshot() {
         let tree = layout(&banjo_score(measures_of(4)), LayoutConfig { width: 12.0 });
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn beamed_rhythm_layout_snapshot() {
+        // One 4/4 bar mixing beat groupings: two eighths, four sixteenths, a
+        // quarter, then two eighths.
+        let m = Measure::new(vec![
+            eighth(3, 0, 0),
+            eighth(2, 0, 4),
+            note_dur(1, 0, 8, Duration::from_denominator(16)),
+            note_dur(1, 2, 12, Duration::from_denominator(16)),
+            note_dur(1, 0, 16, Duration::from_denominator(16)),
+            note_dur(2, 0, 20, Duration::from_denominator(16)),
+            note(3, 0, 24),
+            eighth(2, 1, 28),
+            eighth(1, 0, 32),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
     }
 }
