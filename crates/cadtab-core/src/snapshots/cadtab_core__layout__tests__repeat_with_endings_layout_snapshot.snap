@@ -1,0 +1,348 @@
+---
+source: crates/cadtab-core/src/layout.rs
+expression: "serde_json::to_string_pretty(&tree).unwrap()"
+---
+{
+  "meta": {
+    "width": 15.800001,
+    "height": 9.7
+  },
+  "header": [
+    {
+      "kind": "text",
+      "x": 7.9000006,
+      "y": 1.0,
+      "content": "gDGBD",
+      "role": "tuning",
+      "span": null
+    }
+  ],
+  "systems": [
+    {
+      "bounds": {
+        "x": 0.0,
+        "y": 3.7,
+        "w": 15.800001,
+        "h": 4.0
+      },
+      "prims": [
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 3.7,
+          "x2": 7.8000007,
+          "y2": 3.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 9.000001,
+          "y1": 3.7,
+          "x2": 11.400001,
+          "y2": 3.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 12.600001,
+          "y1": 3.7,
+          "x2": 14.800001,
+          "y2": 3.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "text",
+          "x": 1.0,
+          "y": 3.7,
+          "content": "D",
+          "role": "stringLabel",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 4.7,
+          "x2": 4.2000003,
+          "y2": 4.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 5.4,
+          "y1": 4.7,
+          "x2": 14.800001,
+          "y2": 4.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "text",
+          "x": 1.0,
+          "y": 4.7,
+          "content": "B",
+          "role": "stringLabel",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 5.7,
+          "x2": 2.1999998,
+          "y2": 5.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 3.4,
+          "y1": 5.7,
+          "x2": 14.800001,
+          "y2": 5.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "text",
+          "x": 1.0,
+          "y": 5.7,
+          "content": "G",
+          "role": "stringLabel",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 6.7,
+          "x2": 14.800001,
+          "y2": 6.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "text",
+          "x": 1.0,
+          "y": 6.7,
+          "content": "D",
+          "role": "stringLabel",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 7.7,
+          "x2": 14.800001,
+          "y2": 7.7,
+          "weight": 0.06
+        },
+        {
+          "kind": "text",
+          "x": 1.0,
+          "y": 7.7,
+          "content": "g",
+          "role": "stringLabel",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 2.0,
+          "y1": 3.7,
+          "x2": 2.0,
+          "y2": 7.7,
+          "weight": 0.25
+        },
+        {
+          "kind": "line",
+          "x1": 2.22,
+          "y1": 3.7,
+          "x2": 2.22,
+          "y2": 7.7,
+          "weight": 0.1
+        },
+        {
+          "kind": "path",
+          "cmds": "M 2.3200002 5.2 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "span": null
+        },
+        {
+          "kind": "path",
+          "cmds": "M 2.3200002 6.2 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 7.6000004,
+          "y1": 3.7,
+          "x2": 7.6000004,
+          "y2": 7.7,
+          "weight": 0.1
+        },
+        {
+          "kind": "line",
+          "x1": 11.200001,
+          "y1": 3.7,
+          "x2": 11.200001,
+          "y2": 7.7,
+          "weight": 0.25
+        },
+        {
+          "kind": "line",
+          "x1": 10.9800005,
+          "y1": 3.7,
+          "x2": 10.9800005,
+          "y2": 7.7,
+          "weight": 0.1
+        },
+        {
+          "kind": "path",
+          "cmds": "M 10.640001 5.2 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "span": null
+        },
+        {
+          "kind": "path",
+          "cmds": "M 10.640001 6.2 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 14.800001,
+          "y1": 3.7,
+          "x2": 14.800001,
+          "y2": 7.7,
+          "weight": 0.1
+        },
+        {
+          "kind": "line",
+          "x1": 7.6000004,
+          "y1": 2.9,
+          "x2": 11.200001,
+          "y2": 2.9,
+          "weight": 0.1
+        },
+        {
+          "kind": "line",
+          "x1": 7.6000004,
+          "y1": 2.9,
+          "x2": 7.6000004,
+          "y2": 3.6000001,
+          "weight": 0.1
+        },
+        {
+          "kind": "text",
+          "x": 8.1,
+          "y": 3.3000002,
+          "content": "1",
+          "role": "ending",
+          "span": null
+        },
+        {
+          "kind": "line",
+          "x1": 11.200001,
+          "y1": 2.9,
+          "x2": 14.800001,
+          "y2": 2.9,
+          "weight": 0.1
+        },
+        {
+          "kind": "line",
+          "x1": 11.200001,
+          "y1": 2.9,
+          "x2": 11.200001,
+          "y2": 3.6000001,
+          "weight": 0.1
+        },
+        {
+          "kind": "text",
+          "x": 11.700001,
+          "y": 3.3000002,
+          "content": "2",
+          "role": "ending",
+          "span": null
+        }
+      ],
+      "measures": [
+        {
+          "bounds": {
+            "x": 2.0,
+            "y": 3.7,
+            "w": 5.6000004,
+            "h": 4.0
+          },
+          "prims": [
+            {
+              "kind": "text",
+              "x": 2.8,
+              "y": 5.7,
+              "content": "0",
+              "role": "fretNumber",
+              "span": {
+                "start": 0,
+                "end": 3
+              }
+            },
+            {
+              "kind": "text",
+              "x": 4.8,
+              "y": 4.7,
+              "content": "0",
+              "role": "fretNumber",
+              "span": {
+                "start": 4,
+                "end": 7
+              }
+            }
+          ],
+          "span": {
+            "start": 0,
+            "end": 7
+          }
+        },
+        {
+          "bounds": {
+            "x": 7.6000004,
+            "y": 3.7,
+            "w": 3.6000004,
+            "h": 4.0
+          },
+          "prims": [
+            {
+              "kind": "text",
+              "x": 8.400001,
+              "y": 3.7,
+              "content": "0",
+              "role": "fretNumber",
+              "span": {
+                "start": 8,
+                "end": 11
+              }
+            }
+          ],
+          "span": {
+            "start": 8,
+            "end": 11
+          }
+        },
+        {
+          "bounds": {
+            "x": 11.200001,
+            "y": 3.7,
+            "w": 3.6000004,
+            "h": 4.0
+          },
+          "prims": [
+            {
+              "kind": "text",
+              "x": 12.000001,
+              "y": 3.7,
+              "content": "2",
+              "role": "fretNumber",
+              "span": {
+                "start": 12,
+                "end": 15
+              }
+            }
+          ],
+          "span": {
+            "start": 12,
+            "end": 15
+          }
+        }
+      ]
+    }
+  ]
+}

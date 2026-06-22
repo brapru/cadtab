@@ -169,7 +169,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T3.2 — Vertical layout.** String lines; header (title/tempo/tuning/capo); fret-number
       placement with line-break-behind-number; string→line mapping (D37).
   - *Tests:* render-tree snapshot for a simple measure.
-- [ ] **T3.3 — Horizontal layout.** Time-proportional spacing within measures (D24); barlines;
+- [x] **T3.3 — Horizontal layout.** Time-proportional spacing within measures (D24); barlines;
       repeat barlines + ending (volta) brackets (D32); pickup offset (D33).
 - [ ] **T3.4 — Line-breaking.** Greedy wrap of measures into systems given `LayoutConfig.width`
       (D23, D24).
