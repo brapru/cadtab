@@ -66,6 +66,9 @@ const BEAM_WEIGHT: f32 = 0.3;
 // stack upward toward the staff.
 const FLAG_LENGTH: f32 = 0.6;
 const FLAG_SPACING: f32 = 0.35;
+// Augmentation dots sit just right of a fret number, spaced along the line.
+const AUG_DOT_AFTER: f32 = 0.45;
+const AUG_DOT_GAP: f32 = 0.3;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -223,17 +226,22 @@ fn build_system(
         let mut prims = Vec::new();
         for (placed, event) in plan.events.iter().zip(&measure.events) {
             let x = mx0 + placed.rel_x;
+            let dots = beam::augmentation_dots(event.duration());
             for &(string, fret) in &placed.positions {
                 if (1..=n_strings as u8).contains(&string) {
                     number_xs[(string - 1) as usize].push(x);
                 }
+                let y = line_y(string);
                 prims.push(Primitive::Text {
                     x,
-                    y: line_y(string),
+                    y,
                     content: fret.to_string(),
                     role: TextRole::FretNumber,
                     span: Some(placed.span),
                 });
+                for i in 0..dots {
+                    prims.push(dot(x + AUG_DOT_AFTER + f32::from(i) * AUG_DOT_GAP, y));
+                }
             }
             if beam::has_stem(event) {
                 prims.push(stem(x, staff_bottom));
@@ -1050,6 +1058,72 @@ mod tests {
         assert_eq!(beams(&tree).len(), 1);
     }
 
+    /// Augmentation dots are the path primitives inside measure boxes (repeat
+    /// dots live in the system's own prims).
+    fn aug_dots(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| matches!(p, Primitive::Path { .. }))
+            .collect()
+    }
+
+    fn dotted(string: u8, fret: u8, start: u32, den: u32, dots: u8) -> Event {
+        note_dur(
+            string,
+            fret,
+            start,
+            Duration::from_denominator(den).dotted(dots),
+        )
+    }
+
+    #[test]
+    fn a_dotted_quarter_draws_one_augmentation_dot() {
+        let tree = layout(
+            &banjo_score(vec![Measure::new(vec![dotted(3, 0, 0, 4, 1)])]),
+            cfg(),
+        );
+        assert_eq!(aug_dots(&tree).len(), 1);
+    }
+
+    #[test]
+    fn a_double_dotted_note_draws_two_dots() {
+        let tree = layout(
+            &banjo_score(vec![Measure::new(vec![dotted(3, 0, 0, 4, 2)])]),
+            cfg(),
+        );
+        assert_eq!(aug_dots(&tree).len(), 2);
+    }
+
+    #[test]
+    fn an_undotted_note_has_no_augmentation_dot() {
+        let tree = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        assert!(aug_dots(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_dotted_chord_dots_each_member() {
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4).dotted(1),
+                notes: vec![
+                    ChordNote {
+                        pos: Position::new(1, 0),
+                        right_hand: None,
+                    },
+                    ChordNote {
+                        pos: Position::new(3, 2),
+                        right_hand: None,
+                    },
+                ],
+            }),
+            Span::new(0, 7),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
+        assert_eq!(aug_dots(&tree).len(), 2);
+    }
+
     fn measures_of(n: u32) -> Vec<Measure> {
         (0..n)
             .map(|i| Measure::new(vec![note(3, 0, i * 4)]))
@@ -1191,6 +1265,14 @@ mod tests {
             note(3, 0, 4),
             note_dur(1, 0, 8, Duration::from_denominator(16)),
         ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    #[test]
+    fn dotted_rhythm_layout_snapshot() {
+        // A dotted quarter (one dot, stem only) then a lone eighth (a flag).
+        let m = Measure::new(vec![dotted(3, 0, 0, 4, 1), eighth(2, 1, 6)]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
     }

@@ -49,6 +49,23 @@ pub fn flag_count(dur: Duration) -> u8 {
     n
 }
 
+/// How many augmentation dots a duration carries. A `d`-dotted value reduces to
+/// numerator `2^(d+1) - 1` (1, 3, 7, 15…) over a power-of-two denominator, so the
+/// dot count is read back from that pattern; anything else (e.g. a tuplet value)
+/// reports zero.
+pub fn augmentation_dots(dur: Duration) -> u8 {
+    if !dur.den.is_power_of_two() {
+        return 0;
+    }
+    let mut d = 0u8;
+    let mut pattern = 1u32;
+    while pattern < dur.num && d < 8 {
+        d += 1;
+        pattern = pattern * 2 + 1;
+    }
+    if pattern == dur.num { d } else { 0 }
+}
+
 /// Partition a measure's events into beam groups by beat. Beamable events that
 /// are contiguous and fall in the same beat group together; a rest, a longer
 /// note, or a beat boundary closes the current group. Non-beamable events belong
@@ -238,6 +255,31 @@ mod tests {
         // A dotted eighth (3/16) is still one flag; a dotted sixteenth (3/32) two.
         assert_eq!(flag_count(Duration::from_denominator(8).dotted(1)), 1);
         assert_eq!(flag_count(Duration::from_denominator(16).dotted(1)), 2);
+    }
+
+    #[test]
+    fn augmentation_dots_are_read_from_the_fraction() {
+        // Undotted values: zero.
+        assert_eq!(augmentation_dots(Duration::from_denominator(4)), 0);
+        assert_eq!(augmentation_dots(Duration::from_denominator(8)), 0);
+        assert_eq!(augmentation_dots(Duration::new(1, 1)), 0);
+        // Single dot (num 3) and double dot (num 7), at several note values.
+        assert_eq!(
+            augmentation_dots(Duration::from_denominator(4).dotted(1)),
+            1
+        );
+        assert_eq!(
+            augmentation_dots(Duration::from_denominator(8).dotted(1)),
+            1
+        );
+        assert_eq!(
+            augmentation_dots(Duration::from_denominator(2).dotted(1)),
+            1
+        );
+        assert_eq!(
+            augmentation_dots(Duration::from_denominator(4).dotted(2)),
+            2
+        );
     }
 
     #[test]

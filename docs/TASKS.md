@@ -179,7 +179,8 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T3.5b — Stem geometry (direction/length, below the numbers per tab convention).
   - [x] T3.5c — Primary beams (slope, thickness) across a group.
   - [x] T3.5d — Flags for unbeamed/solo notes.
-  - [ ] T3.5e — Dotted notes + tuplet bracketing.
+  - [x] T3.5e — Dotted notes + tuplet bracketing. *(Dots done; tuplet brackets deferred until
+        tuplet syntax is pinned — D11 TBD, currently unrepresentable in model/parser.)*
   - [ ] T3.5f — Rests within/between beam groups.
   - *Tests:* render-tree snapshots across a rhythm matrix, per sub-task.
 - [ ] **T3.6 — Marks & paths.** T/I/M, strum arrows, technique marks (h/p/sl), ties, bends, choke
