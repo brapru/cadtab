@@ -166,7 +166,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T3.1 — Render-tree types (final).** `System → MeasureBox → Primitive`, logical coords,
       serde, spans (D22). Supersede the M0 stub types.
   - *Tests:* serde round-trip.
-- [ ] **T3.2 — Vertical layout.** String lines; header (title/tempo/tuning/capo); fret-number
+- [x] **T3.2 — Vertical layout.** String lines; header (title/tempo/tuning/capo); fret-number
       placement with line-break-behind-number; string→line mapping (D37).
   - *Tests:* render-tree snapshot for a simple measure.
 - [ ] **T3.3 — Horizontal layout.** Time-proportional spacing within measures (D24); barlines;
