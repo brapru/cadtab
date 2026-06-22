@@ -163,7 +163,7 @@ Entirely headless and test-driven (D18, D19, D20).
 
 **Goal:** a fully positioned, width-responsive render tree (D22–D25). Still headless.
 
-- [ ] **T3.1 — Render-tree types (final).** `System → MeasureBox → Primitive`, logical coords,
+- [x] **T3.1 — Render-tree types (final).** `System → MeasureBox → Primitive`, logical coords,
       serde, spans (D22). Supersede the M0 stub types.
   - *Tests:* serde round-trip.
 - [ ] **T3.2 — Vertical layout.** String lines; header (title/tempo/tuning/capo); fret-number

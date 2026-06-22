@@ -68,6 +68,7 @@ pub fn compile(_source: &str, _config: LayoutConfig) -> CompileResult {
     };
     let system = System {
         bounds,
+        prims: vec![],
         measures: vec![measure],
     };
     CompileResult {

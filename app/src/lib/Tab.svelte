@@ -29,6 +29,7 @@
 >
   {#each tree.header as prim, i (i)}{@render drawPrimitive(prim)}{/each}
   {#each tree.systems as system, si (si)}
+    {#each system.prims as prim, pi (pi)}{@render drawPrimitive(prim)}{/each}
     {#each system.measures as measure, mi (mi)}
       {#each measure.prims as prim, pi (pi)}{@render drawPrimitive(prim)}{/each}
     {/each}

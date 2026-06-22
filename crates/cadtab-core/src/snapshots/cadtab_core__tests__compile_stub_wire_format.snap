@@ -17,6 +17,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
           "w": 12.0,
           "h": 4.0
         },
+        "prims": [],
         "measures": [
           {
             "bounds": {

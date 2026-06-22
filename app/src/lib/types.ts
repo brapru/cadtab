@@ -35,7 +35,18 @@ export interface Rect {
   h: number;
 }
 
-export type TextRole = "fretNumber" | "stringLabel";
+export type TextRole =
+  | "fretNumber"
+  | "stringLabel"
+  | "title"
+  | "composer"
+  | "tempo"
+  | "tuning"
+  | "capo"
+  | "finger"
+  | "strum"
+  | "technique"
+  | "ending";
 
 export type Primitive =
   | {
@@ -64,6 +75,7 @@ export interface MeasureBox {
 
 export interface System {
   bounds: Rect;
+  prims: Primitive[];
   measures: MeasureBox[];
 }
 
