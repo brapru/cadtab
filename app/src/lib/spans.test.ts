@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { byteToCharIndex, spanToRange } from "./spans";
+import { byteToCharIndex, charToByteIndex, spanToRange } from "./spans";
 
 describe("byteToCharIndex", () => {
   it("is identity for ascii", () => {
@@ -14,6 +14,17 @@ describe("byteToCharIndex", () => {
     expect(map[1]).toBe(0);
     expect(map[2]).toBe(1); // start of "3"
     expect(map[3]).toBe(2); // end of source
+  });
+});
+
+describe("charToByteIndex", () => {
+  it("is identity for ascii", () => {
+    expect(charToByteIndex("abc")).toEqual([0, 1, 2, 3]);
+  });
+
+  it("advances by utf-8 byte width past multi-byte characters", () => {
+    // "é" occupies bytes 0..2, so the char at index 1 ("3") begins at byte 2.
+    expect(charToByteIndex("é3")).toEqual([0, 2, 3]);
   });
 });
 

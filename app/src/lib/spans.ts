@@ -19,6 +19,24 @@ export function byteToCharIndex(source: string): number[] {
   return map;
 }
 
+// The inverse of byteToCharIndex: map each UTF-16 code-unit offset to the byte
+// offset where its character begins. Used to turn an editor cursor position back
+// into the byte coordinates the render tree's spans speak.
+export function charToByteIndex(source: string): number[] {
+  const map: number[] = [];
+  let byte = 0;
+  for (let i = 0; i < source.length; ) {
+    const cp = source.codePointAt(i)!;
+    const units = cp > 0xffff ? 2 : 1;
+    const bytes = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+    for (let u = 0; u < units; u++) map[i + u] = byte;
+    byte += bytes;
+    i += units;
+  }
+  map[source.length] = byte;
+  return map;
+}
+
 export interface CharRange {
   from: number;
   to: number;

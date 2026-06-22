@@ -1,5 +1,5 @@
-import { render } from "@testing-library/svelte";
-import { describe, it, expect } from "vitest";
+import { render, fireEvent } from "@testing-library/svelte";
+import { describe, it, expect, vi } from "vitest";
 import Tab from "./Tab.svelte";
 import type { RenderTree } from "./types";
 
@@ -109,5 +109,35 @@ describe("Tab painter", () => {
     const { container } = render(Tab, { props: { tree } });
     const svg = container.querySelector("svg");
     expect(svg!.style.getPropertyValue("--tab-zoom")).toBe("1");
+  });
+
+  // Render -> source: clicking a span-bearing primitive reports its span.
+  it("reports a clicked primitive's span", async () => {
+    const onPrimitiveClick = vi.fn();
+    const { container } = render(Tab, { props: { tree, onPrimitiveClick } });
+    const fret = container.querySelector('text[data-role="fretNumber"]')!;
+    await fireEvent.click(fret);
+    expect(onPrimitiveClick).toHaveBeenCalledWith({ start: 0, end: 3 });
+  });
+
+  it("activates a focused primitive via the keyboard", async () => {
+    const onPrimitiveClick = vi.fn();
+    const { container } = render(Tab, { props: { tree, onPrimitiveClick } });
+    const fret = container.querySelector('text[data-role="fretNumber"]')!;
+    await fireEvent.keyDown(fret, { key: "Enter" });
+    expect(onPrimitiveClick).toHaveBeenCalledWith({ start: 0, end: 3 });
+  });
+
+  // Source -> render: a primitive whose span overlaps the active span is marked.
+  it("marks primitives overlapping the active span", () => {
+    const { container } = render(Tab, {
+      props: { tree, activeSpan: { start: 1, end: 2 } },
+    });
+    const fret = container.querySelector('text[data-role="fretNumber"]');
+    expect(fret?.classList.contains("active")).toBe(true);
+    // The spanless title is never interactive.
+    const title = container.querySelector('text[data-role="title"]');
+    expect(title?.classList.contains("active")).toBe(false);
+    expect(title?.classList.contains("clickable")).toBe(false);
   });
 });

@@ -4,12 +4,19 @@
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
-  import type { CompileResult } from "./lib/types";
+  import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
+  import { narrowestSpanAt } from "./lib/mapping";
+  import type { CompileResult, Span } from "./lib/types";
 
   const initialDoc = "score {\n  3:0 2:0 1:0 5:0\n}\n";
 
   let result = $state<CompileResult | null>(null);
   let error = $state("");
+  // The source the current result was compiled from, so cursor<->span conversions
+  // line up with the spans in that render tree.
+  let source = $state(initialDoc);
+  let selection = $state<{ from: number; to: number } | null>(null);
+  let activeSpan = $state<Span | null>(null);
 
   const live = createLiveCompiler(
     compile,
@@ -22,11 +29,32 @@
     },
   );
 
-  function recompile(source: string) {
-    void live.run(source, { width: 800 });
+  function recompile(src: string) {
+    source = src;
+    void live.run(src, { width: 800 });
   }
 
   const onChange = debounce((value: string) => recompile(value), 150);
+
+  // Render -> source: a clicked primitive selects its source range in the editor.
+  function handlePrimitiveClick(span: Span) {
+    const range = spanToRange(byteToCharIndex(source), span);
+    if (range) selection = range;
+  }
+
+  // Source -> render: the cursor lights up the primitive(s) sharing its range.
+  function handleCursor(pos: number) {
+    if (!result) return;
+    const byte = charToByteIndex(source)[pos] ?? 0;
+    activeSpan = narrowestSpanAt(result.renderTree, byte);
+  }
+
+  // Clicking empty render space (or Escape) drops the highlight, mirroring how
+  // clicking off a note in the editor clears it. Primitive clicks stop
+  // propagating, so this only fires for the background.
+  function clearHighlight() {
+    activeSpan = null;
+  }
 
   recompile(initialDoc);
 </script>
@@ -38,13 +66,24 @@
       <Editor
         doc={initialDoc}
         {onChange}
+        onCursor={handleCursor}
+        {selection}
         tokens={result?.tokens ?? []}
         diagnostics={result?.diagnostics ?? []}
       />
     </div>
-    <div class="render-pane">
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div
+      class="render-pane"
+      onclick={clearHighlight}
+      onkeydown={(e) => e.key === "Escape" && clearHighlight()}
+    >
       {#if result}
-        <Tab tree={result.renderTree} />
+        <Tab
+          tree={result.renderTree}
+          {activeSpan}
+          onPrimitiveClick={handlePrimitiveClick}
+        />
       {:else if error}
         <p class="error">{error}</p>
       {/if}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
-  import { EditorState } from "@codemirror/state";
+  import { EditorState, EditorSelection } from "@codemirror/state";
   import {
     EditorView,
     keymap,
@@ -19,13 +19,17 @@
   let {
     doc = "",
     onChange,
+    onCursor,
     tokens = [],
     diagnostics = [],
+    selection = null,
   }: {
     doc?: string;
     onChange?: (value: string) => void;
+    onCursor?: (pos: number) => void;
     tokens?: Token[];
     diagnostics?: Diagnostic[];
+    selection?: { from: number; to: number } | null;
   } = $props();
 
   let container: HTMLDivElement;
@@ -48,6 +52,9 @@
           if (update.docChanged) {
             onChange?.(update.state.doc.toString());
           }
+          if (update.selectionSet || update.docChanged) {
+            onCursor?.(update.state.selection.main.head);
+          }
         }),
       ],
     });
@@ -64,6 +71,19 @@
   // Likewise for diagnostics: underline squiggles + hover tooltips.
   $effect(() => {
     view?.dispatch({ effects: setDiagnostics.of(diagnostics) });
+  });
+
+  // Apply a selection requested from outside (a clicked render primitive),
+  // clamped to the document, and bring it into view.
+  $effect(() => {
+    if (!view || !selection) return;
+    const len = view.state.doc.length;
+    const from = Math.min(selection.from, len);
+    const to = Math.min(selection.to, len);
+    view.dispatch({
+      selection: EditorSelection.single(from, to),
+      scrollIntoView: true,
+    });
   });
 
   onDestroy(() => view?.destroy());

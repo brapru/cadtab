@@ -47,4 +47,17 @@ describe("Editor highlighting", () => {
       expect(squiggle?.textContent).toBe("score");
     });
   });
+
+  it("applies an external selection and reports the cursor head", async () => {
+    const onCursor = vi.fn();
+    render(Editor, {
+      props: { doc: "score { 3:0 }", selection: { from: 2, to: 4 }, onCursor },
+    });
+
+    // The selection effect moves the caret to the range head, which the update
+    // listener reports back through onCursor.
+    await vi.waitFor(() => {
+      expect(onCursor).toHaveBeenCalledWith(4);
+    });
+  });
 });

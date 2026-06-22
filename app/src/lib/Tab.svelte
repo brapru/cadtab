@@ -1,10 +1,40 @@
 <script lang="ts">
-  import type { RenderTree, Primitive, TextRole } from "./types";
+  import type { RenderTree, Primitive, TextRole, Span } from "./types";
+  import { spansOverlap } from "./mapping";
 
   // The painter is thin: it positions primitives verbatim in the layout's
   // logical coordinate space (1 unit = string spacing) and lets the SVG viewBox
   // scale them to pixels. `zoom` multiplies the fit-to-container width.
-  let { tree, zoom = 1 }: { tree: RenderTree; zoom?: number } = $props();
+  // `activeSpan` lights up the primitives that share the source range under the
+  // editor cursor; clicking a primitive reports its span back to the editor.
+  let {
+    tree,
+    zoom = 1,
+    activeSpan = null,
+    onPrimitiveClick,
+  }: {
+    tree: RenderTree;
+    zoom?: number;
+    activeSpan?: Span | null;
+    onPrimitiveClick?: (span: Span) => void;
+  } = $props();
+
+  const isActive = (span: Span | null): boolean =>
+    !!span && !!activeSpan && spansOverlap(span, activeSpan);
+
+  // Stop the click from reaching the background handler that clears the
+  // highlight, so selecting a primitive does not immediately deselect it.
+  function onPrimitiveSelect(e: MouseEvent, span: Span) {
+    e.stopPropagation();
+    onPrimitiveClick?.(span);
+  }
+
+  function onPrimitiveKey(e: KeyboardEvent, span: Span) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onPrimitiveClick?.(span);
+    }
+  }
 
   // Per-role text metrics, in logical units, tuned to the row heights the layout
   // engine reserves for header rows so glyphs sit inside their allotted space.
@@ -38,16 +68,48 @@
     />
   {:else if prim.kind === "text"}
     {@const style = TEXT_STYLE[prim.role]}
-    <text
-      x={prim.x}
-      y={prim.y}
-      data-role={prim.role}
-      font-size={style.size}
-      font-weight={style.weight}
-      font-style={style.italic ? "italic" : undefined}>{prim.content}</text
-    >
+    {@const attrs = {
+      x: prim.x,
+      y: prim.y,
+      "data-role": prim.role,
+      "font-size": style.size,
+      "font-weight": style.weight,
+      "font-style": style.italic ? "italic" : undefined,
+    }}
+    <!-- Span-bearing primitives are click-to-locate aids: clicking (or Enter on
+         a focused one) selects their source range in the editor. The spanless
+         ones (header labels) are plain, non-interactive glyphs. -->
+    {#if prim.span}
+      {@const span = prim.span}
+      <text
+        {...attrs}
+        role="button"
+        tabindex={0}
+        class:active={isActive(span)}
+        class:clickable={true}
+        onclick={(e) => onPrimitiveSelect(e, span)}
+        onkeydown={(e) => onPrimitiveKey(e, span)}>{prim.content}</text
+      >
+    {:else}
+      <text {...attrs}>{prim.content}</text>
+    {/if}
   {:else if prim.kind === "path"}
-    <path d={prim.cmds} fill="none" stroke-linecap="round" />
+    {#if prim.span}
+      {@const span = prim.span}
+      <path
+        d={prim.cmds}
+        role="button"
+        tabindex={0}
+        fill="none"
+        stroke-linecap="round"
+        class:active={isActive(span)}
+        class:clickable={true}
+        onclick={(e) => onPrimitiveSelect(e, span)}
+        onkeydown={(e) => onPrimitiveKey(e, span)}
+      />
+    {:else}
+      <path d={prim.cmds} fill="none" stroke-linecap="round" />
+    {/if}
   {/if}
 {/snippet}
 
@@ -108,5 +170,21 @@
   .tab text[data-role="strum"],
   .tab text[data-role="ending"] {
     fill: var(--tab-muted);
+  }
+  /* Span-bearing primitives are interactive: clickable, and accented while the
+     editor cursor sits in their source range. */
+  .tab .clickable {
+    cursor: pointer;
+  }
+  /* A mouse click focuses the primitive; don't leave the UA focus box behind.
+     Keyboard navigation still gets a ring via :focus-visible. */
+  .tab .clickable:focus:not(:focus-visible) {
+    outline: none;
+  }
+  .tab text.active {
+    fill: var(--tab-accent);
+  }
+  .tab path.active {
+    stroke: var(--tab-accent);
   }
 </style>

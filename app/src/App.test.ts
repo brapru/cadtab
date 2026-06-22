@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/svelte";
+import { render, screen, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import type { CompileResult } from "./lib/types";
 
@@ -20,7 +20,7 @@ const fake: CompileResult = {
                 y: 2,
                 content: "0",
                 role: "fretNumber",
-                span: null,
+                span: { start: 0, end: 5 },
               },
             ],
             span: null,
@@ -67,6 +67,54 @@ describe("App", () => {
       // error, and the diagnostic is underlined in the editor.
       expect(container.querySelector("svg.tab")).not.toBeNull();
       expect(container.querySelector(".cm-diag-error")).not.toBeNull();
+    });
+  });
+
+  it("round-trips a primitive click through selection back to an active highlight", async () => {
+    const { container } = render(App);
+    let fret!: Element;
+    await vi.waitFor(() => {
+      fret = container.querySelector('text[data-role="fretNumber"]')!;
+      expect(fret).toBeTruthy();
+    });
+
+    // Clicking selects the note's source range in the editor; that selection
+    // moves the cursor, which lights the same primitive back up.
+    await fireEvent.click(fret);
+    await vi.waitFor(() => {
+      expect(
+        container
+          .querySelector('text[data-role="fretNumber"]')
+          ?.classList.contains("active"),
+      ).toBe(true);
+    });
+  });
+
+  it("clears the highlight when clicking empty render space", async () => {
+    const { container } = render(App);
+    let fret!: Element;
+    await vi.waitFor(() => {
+      fret = container.querySelector('text[data-role="fretNumber"]')!;
+      expect(fret).toBeTruthy();
+    });
+
+    await fireEvent.click(fret);
+    await vi.waitFor(() => {
+      expect(
+        container
+          .querySelector('text[data-role="fretNumber"]')
+          ?.classList.contains("active"),
+      ).toBe(true);
+    });
+
+    // A click on the pane background (not a primitive) drops the highlight.
+    await fireEvent.click(container.querySelector(".render-pane")!);
+    await vi.waitFor(() => {
+      expect(
+        container
+          .querySelector('text[data-role="fretNumber"]')
+          ?.classList.contains("active"),
+      ).toBe(false);
     });
   });
 });

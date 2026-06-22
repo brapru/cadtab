@@ -208,7 +208,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T4.4 — Diagnostics UI.** Squiggles + hover tooltips; **best-effort partial render** on
       error (D31).
   - *Tests:* diagnostics → squiggles; render still shows valid parts.
-- [ ] **T4.5 — Bidirectional mapping (D20).** Click primitive → editor selection; cursor move →
+- [x] **T4.5 — Bidirectional mapping (D20).** Click primitive → editor selection; cursor move →
       highlight primitives.
   - *Tests:* span↔primitive lookup unit tests.
 - [ ] **T4.6 — Shell & polish.**
