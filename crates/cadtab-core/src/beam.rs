@@ -23,6 +23,15 @@ pub fn is_beamable(event: &Event) -> bool {
     }
 }
 
+/// Whether an event carries a stem: any note or chord shorter than a whole note
+/// (a chord shares a single stem). Rests and whole notes have none.
+pub fn has_stem(event: &Event) -> bool {
+    match &event.kind {
+        EventKind::Note(_) | EventKind::Chord(_) => event.duration() < Duration::new(1, 1),
+        EventKind::Rest(_) => false,
+    }
+}
+
 /// Partition a measure's events into beam groups by beat. Beamable events that
 /// are contiguous and fall in the same beat group together; a rest, a longer
 /// note, or a beat boundary closes the current group. Non-beamable events belong
@@ -187,6 +196,16 @@ mod tests {
     #[test]
     fn an_empty_measure_has_no_groups() {
         assert!(beam_groups(&[], TimeSig::new(4, 4)).is_empty());
+    }
+
+    #[test]
+    fn stems_are_for_notes_and_chords_below_a_whole_note() {
+        assert!(has_stem(&note(4)));
+        assert!(has_stem(&note(8)));
+        assert!(has_stem(&chord(2)));
+        // A whole note and a rest carry no stem.
+        assert!(!has_stem(&note(1)));
+        assert!(!has_stem(&rest(8)));
     }
 
     #[test]

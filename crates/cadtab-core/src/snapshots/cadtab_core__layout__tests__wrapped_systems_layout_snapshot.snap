@@ -158,6 +158,14 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
                 "start": 0,
                 "end": 3
               }
+            },
+            {
+              "kind": "line",
+              "x1": 2.8,
+              "y1": 6.8,
+              "x2": 2.8,
+              "y2": 8.0,
+              "weight": 0.08
             }
           ],
           "span": {
@@ -183,6 +191,14 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
                 "start": 4,
                 "end": 7
               }
+            },
+            {
+              "kind": "line",
+              "x1": 6.4,
+              "y1": 6.8,
+              "x2": 6.4,
+              "y2": 8.0,
+              "weight": 0.08
             }
           ],
           "span": {
@@ -332,6 +348,14 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
                 "start": 8,
                 "end": 11
               }
+            },
+            {
+              "kind": "line",
+              "x1": 2.8,
+              "y1": 13.8,
+              "x2": 2.8,
+              "y2": 15.0,
+              "weight": 0.08
             }
           ],
           "span": {
@@ -357,6 +381,14 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
                 "start": 12,
                 "end": 15
               }
+            },
+            {
+              "kind": "line",
+              "x1": 6.4,
+              "y1": 13.8,
+              "x2": 6.4,
+              "y2": 15.0,
+              "weight": 0.08
             }
           ],
           "span": {

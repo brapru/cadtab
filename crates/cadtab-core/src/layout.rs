@@ -10,6 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::beam;
 use crate::model::{Duration, EventKind, Measure, Score};
 use crate::render::{LayoutMeta, MeasureBox, Primitive, Rect, RenderTree, System, TextRole};
 use crate::span::Span;
@@ -53,6 +54,11 @@ const THICK_WEIGHT: f32 = 0.25;
 // Spacing of the thin line and dots that ornament a repeat barline.
 const REPEAT_GAP: f32 = 0.22;
 const DOT_R: f32 = 0.12;
+// Stems hang straight down below the staff (tab convention): a small gap below
+// the bottom string line, then a fixed length.
+const STEM_GAP: f32 = 0.3;
+const STEM_LENGTH: f32 = 1.2;
+const STEM_WEIGHT: f32 = 0.08;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -190,12 +196,12 @@ fn build_system(
     let mut boxes = Vec::with_capacity(plans.len());
     let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(plans.len());
     let mut mx0 = LEFT_MARGIN;
-    for plan in plans {
+    for (plan, measure) in plans.iter().zip(measures) {
         let mx1 = mx0 + plan.width;
         let mut prims = Vec::new();
-        for ev in &plan.events {
-            let x = mx0 + ev.rel_x;
-            for &(string, fret) in &ev.positions {
+        for (placed, event) in plan.events.iter().zip(&measure.events) {
+            let x = mx0 + placed.rel_x;
+            for &(string, fret) in &placed.positions {
                 if (1..=n_strings as u8).contains(&string) {
                     number_xs[(string - 1) as usize].push(x);
                 }
@@ -204,8 +210,11 @@ fn build_system(
                     y: line_y(string),
                     content: fret.to_string(),
                     role: TextRole::FretNumber,
-                    span: Some(ev.span),
+                    span: Some(placed.span),
                 });
+            }
+            if beam::has_stem(event) {
+                prims.push(stem(x, staff_bottom));
             }
         }
         boxes.push(MeasureBox {
@@ -311,6 +320,12 @@ fn vline(x: f32, y1: f32, y2: f32, weight: f32) -> Primitive {
         y2,
         weight,
     }
+}
+
+/// A note's stem: a vertical line hanging down from just below the staff.
+fn stem(x: f32, staff_bottom: f32) -> Primitive {
+    let top = staff_bottom + STEM_GAP;
+    vline(x, top, top + STEM_LENGTH, STEM_WEIGHT)
 }
 
 /// A small filled dot (an SVG circle path) centered at `(cx, cy)`.
@@ -749,6 +764,86 @@ mod tests {
         let tree = layout(&banjo_score(vec![m]), cfg());
         let nums = fret_numbers(&tree);
         assert!((x_of(nums[1]) - x_of(nums[0]) - 2.0).abs() < 1e-5);
+    }
+
+    /// Stems are the vertical line segments inside measure boxes (barlines live
+    /// in the system's own prims, not the measure boxes).
+    fn stems(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| matches!(p, Primitive::Line { x1, x2, .. } if x1 == x2))
+            .collect()
+    }
+
+    #[test]
+    fn each_note_gets_one_downward_stem() {
+        let m = Measure::new(vec![note(3, 0, 0), note(2, 1, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let stems = stems(&tree);
+        assert_eq!(stems.len(), 2);
+        for s in stems {
+            match s {
+                // Direction is down (y2 > y1) and the length is fixed.
+                Primitive::Line { y1, y2, weight, .. } => {
+                    assert!(y2 > y1);
+                    assert!((y2 - y1 - STEM_LENGTH).abs() < 1e-5);
+                    assert_eq!(*weight, STEM_WEIGHT);
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn a_stem_hangs_below_the_staff() {
+        let tree = layout(&banjo_score(vec![Measure::new(vec![note(1, 0, 0)])]), cfg());
+        // The lowest string line is the largest y among the staff's lines.
+        let bottom_line_y = tree.systems[0]
+            .prims
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Line { y1, y2, .. } if y1 == y2 => Some(*y1),
+                _ => None,
+            })
+            .fold(f32::MIN, f32::max);
+        match stems(&tree)[0] {
+            Primitive::Line { y1, .. } => assert!(*y1 > bottom_line_y),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn a_chord_gets_a_single_stem() {
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4),
+                notes: vec![
+                    ChordNote {
+                        pos: Position::new(1, 0),
+                        right_hand: None,
+                    },
+                    ChordNote {
+                        pos: Position::new(3, 2),
+                        right_hand: None,
+                    },
+                ],
+            }),
+            Span::new(0, 7),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
+        assert_eq!(stems(&tree).len(), 1);
+    }
+
+    #[test]
+    fn a_rest_has_no_stem() {
+        let rest = Event::new(
+            EventKind::Rest(Duration::from_denominator(4)),
+            Span::new(0, 1),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![rest])]), cfg());
+        assert!(stems(&tree).is_empty());
     }
 
     fn measures_of(n: u32) -> Vec<Measure> {
