@@ -204,7 +204,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T4.2d — `viewBox` zoom + theming tokens. *(Painter capability + tokens; the
         zoom-control UI and light/dark toggle are wired later in T4.6c/T4.6d.)*
   - *Tests:* component test per primitive kind.
-- [ ] **T4.3 — Syntax highlighting** from Rust tokens → CodeMirror decorations (D27).
+- [x] **T4.3 — Syntax highlighting** from Rust tokens → CodeMirror decorations (D27).
 - [ ] **T4.4 — Diagnostics UI.** Squiggles + hover tooltips; **best-effort partial render** on
       error (D31).
   - *Tests:* diagnostics → squiggles; render still shows valid parts.

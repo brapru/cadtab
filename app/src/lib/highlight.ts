@@ -1,0 +1,88 @@
+import { StateField, StateEffect } from "@codemirror/state";
+import { Decoration, EditorView } from "@codemirror/view";
+import type { DecorationSet } from "@codemirror/view";
+import type { Token } from "./types";
+
+// A decoration range in CodeMirror (UTF-16) coordinates plus its CSS class.
+export interface HighlightRange {
+  from: number;
+  to: number;
+  cls: string;
+}
+
+// Rust spans are UTF-8 byte offsets; CodeMirror positions are UTF-16 code-unit
+// indices. They diverge wherever the source holds a multi-byte character (an
+// accented title, a unicode string), so build a byte->index lookup rather than
+// trusting the offsets to coincide.
+function byteToCharIndex(source: string): number[] {
+  const map: number[] = [];
+  let byte = 0;
+  for (let i = 0; i < source.length; ) {
+    const cp = source.codePointAt(i)!;
+    const units = cp > 0xffff ? 2 : 1;
+    const bytes = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+    for (let b = 0; b < bytes; b++) map[byte + b] = i;
+    byte += bytes;
+    i += units;
+  }
+  map[byte] = source.length;
+  return map;
+}
+
+// Convert classified tokens (byte spans) into CodeMirror decoration ranges,
+// dropping anything empty or reaching outside the current source.
+export function tokensToRanges(
+  source: string,
+  tokens: Token[],
+): HighlightRange[] {
+  const map = byteToCharIndex(source);
+  const ranges: HighlightRange[] = [];
+  for (const t of tokens) {
+    const from = map[t.span.start];
+    const to = map[t.span.end];
+    if (from === undefined || to === undefined || from >= to) continue;
+    ranges.push({ from, to, cls: `cm-tok-${t.class}` });
+  }
+  return ranges;
+}
+
+function buildDecorations(source: string, tokens: Token[]): DecorationSet {
+  const ranges = tokensToRanges(source, tokens).map((r) =>
+    Decoration.mark({ class: r.cls }).range(r.from, r.to),
+  );
+  return Decoration.set(ranges, true);
+}
+
+// Effect carrying the latest token set for the current document.
+export const setTokens = StateEffect.define<Token[]>();
+
+// Holds the highlight decorations; remaps them through edits so colours track
+// the text between recompiles, and rebuilds them whenever fresh tokens arrive.
+export const tokenField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(deco, tr) {
+    deco = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(setTokens)) {
+        deco = buildDecorations(tr.state.doc.toString(), e.value);
+      }
+    }
+    return deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+// Token-class colours (a light, One Light-ish palette). Idents and punctuation
+// stay the default ink so the fretted positions and structure read plainly.
+const tokenTheme = EditorView.baseTheme({
+  ".cm-tok-keyword": { color: "#a626a4" },
+  ".cm-tok-number": { color: "#b76b01" },
+  ".cm-tok-string": { color: "#50a14f" },
+  ".cm-tok-comment": { color: "#a0a1a7", fontStyle: "italic" },
+  ".cm-tok-operator": { color: "#0184bc" },
+});
+
+// Editor extension that paints the core's classified tokens as highlighting.
+export const syntaxHighlighting = [tokenField, tokenTheme];

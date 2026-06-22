@@ -35,7 +35,7 @@
   <h1>cadtab</h1>
   <div class="panes">
     <div class="editor-pane">
-      <Editor doc={initialDoc} {onChange} />
+      <Editor doc={initialDoc} {onChange} tokens={result?.tokens ?? []} />
     </div>
     <div class="render-pane">
       {#if result}
