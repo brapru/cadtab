@@ -147,6 +147,17 @@ impl Evaluator {
         self.diagnostics
     }
 
+    /// Register the built-in licks. Call before `load` so a user `def` of the
+    /// same name (registered afterward) shadows the builtin.
+    pub fn load_stdlib(&mut self) {
+        let parsed = crate::parser::parse(crate::stdlib::source());
+        debug_assert!(
+            parsed.diagnostics.is_empty(),
+            "embedded stdlib must parse cleanly"
+        );
+        self.load(&parsed.program);
+    }
+
     /// Register every `def` and evaluate top-level `let`s into the global scope.
     /// Defs are collected first so a call may precede its definition.
     pub fn load(&mut self, program: &Program) {
@@ -639,6 +650,7 @@ pub fn eval_program(program: &Program) -> (Score, Vec<Diagnostic>) {
         .collect();
 
     let mut ev = Evaluator::new(instrument.clone());
+    ev.load_stdlib();
     ev.load(program);
     let measures = program
         .items
@@ -1885,5 +1897,109 @@ score {
         assert!(parsed.diagnostics.is_empty());
         let (score, _) = eval_program(&parsed.program);
         insta::assert_debug_snapshot!(score);
+    }
+
+    fn finger(rh: Option<RightHand>) -> char {
+        match rh {
+            Some(RightHand::Finger(Finger::Thumb)) => 't',
+            Some(RightHand::Finger(Finger::Index)) => 'i',
+            Some(RightHand::Finger(Finger::Middle)) => 'm',
+            _ => '-',
+        }
+    }
+
+    /// A roll's expansion as `(string, finger)` pairs — strings come from the
+    /// chord argument, fingers from the roll pattern.
+    fn shape(src: &str) -> Vec<(u8, char)> {
+        let (score, _) = program_score(src);
+        score
+            .measures
+            .iter()
+            .flat_map(|m| &m.events)
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some((n.pos.string, finger(n.right_hand))),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn the_stdlib_rolls_are_available_by_default() {
+        // No user `def forward_roll` — it comes from the embedded stdlib.
+        assert_eq!(
+            shape("score { default 1/8\n forward_roll([3:0 2:0 1:0]) }"),
+            vec![
+                (3, 't'),
+                (2, 'i'),
+                (1, 'm'),
+                (3, 't'),
+                (2, 'i'),
+                (1, 'm'),
+                (3, 't'),
+                (1, 'm'),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_roll_reuses_its_pattern_over_different_strings() {
+        // Same forward-roll fingering, different chord → different strings.
+        let fingers = |src| shape(src).into_iter().map(|(_, f)| f).collect::<Vec<_>>();
+        let over_321 = "score { default 1/8\n forward_roll([3:0 2:0 1:0]) }";
+        let over_521 = "score { default 1/8\n forward_roll([5:0 2:0 1:0]) }";
+        assert_eq!(fingers(over_321), fingers(over_521));
+        assert_eq!(
+            shape(over_521)
+                .into_iter()
+                .map(|(s, _)| s)
+                .collect::<Vec<_>>(),
+            vec![5, 2, 1, 5, 2, 1, 5, 1]
+        );
+    }
+
+    #[test]
+    fn each_roll_fills_a_bar_with_its_pattern() {
+        let fingers = |src| shape(src).into_iter().map(|(_, f)| f).collect::<Vec<_>>();
+        assert_eq!(
+            fingers("score { default 1/8\n backward_roll([3:0 2:0 1:0]) }"),
+            vec!['m', 'i', 't', 'm', 'i', 't', 'm', 't']
+        );
+        assert_eq!(
+            fingers("score { default 1/8\n alternating_thumb_roll([3:0 2:0 1:0]) }"),
+            vec!['t', 'i', 't', 'm', 't', 'i', 't', 'm']
+        );
+        // Each is eight notes — one 4/4 bar at the default 1/8.
+        assert_eq!(
+            shape("score { default 1/8\n foggy_mountain_roll([3:0 2:0 1:0]) }").len(),
+            8
+        );
+    }
+
+    #[test]
+    fn a_user_def_overrides_a_stdlib_roll() {
+        let s = shape(
+            "def forward_roll(c) { c.0 .t }\nscore { default 1/8\n forward_roll([3:0 2:0 1:0]) }",
+        );
+        assert_eq!(s, vec![(3, 't')]);
+    }
+
+    #[test]
+    fn stdlib_rolls_snapshot() {
+        let rolls = [
+            "forward_roll",
+            "backward_roll",
+            "alternating_thumb_roll",
+            "foggy_mountain_roll",
+        ];
+        let shapes: Vec<(&str, Vec<(u8, char)>)> = rolls
+            .iter()
+            .map(|r| {
+                (
+                    *r,
+                    shape(&format!("score {{ default 1/8\n {r}([3:0 2:0 1:0]) }}")),
+                )
+            })
+            .collect();
+        insta::assert_debug_snapshot!(shapes);
     }
 }

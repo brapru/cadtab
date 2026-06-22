@@ -12,6 +12,7 @@ pub mod render;
 pub mod resolve;
 pub mod source;
 pub mod span;
+pub mod stdlib;
 pub mod token;
 pub mod types;
 

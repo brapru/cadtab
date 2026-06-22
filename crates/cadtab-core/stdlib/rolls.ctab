@@ -1,0 +1,23 @@
+// cadtab standard licks — PROVISIONAL.
+//
+// Rolls are right-hand patterns parameterized by a chord argument `c`, where
+// `c.0` is the lowest string and indices ascend. Each roll is eight notes, so a
+// call fills one 4/4 bar at the default 1/8. These are ordinary defs: a user
+// `def` of the same name shadows the builtin. The exact patterns will firm up
+// once tab renders and the language gets real use.
+
+def forward_roll(c) {
+  c.0 .t  c.1 .i  c.2 .m  c.0 .t  c.1 .i  c.2 .m  c.0 .t  c.2 .m
+}
+
+def backward_roll(c) {
+  c.2 .m  c.1 .i  c.0 .t  c.2 .m  c.1 .i  c.0 .t  c.2 .m  c.0 .t
+}
+
+def alternating_thumb_roll(c) {
+  c.0 .t  c.1 .i  c.0 .t  c.2 .m  c.0 .t  c.1 .i  c.0 .t  c.2 .m
+}
+
+def foggy_mountain_roll(c) {
+  c.0 .t  c.1 .i  c.2 .m  c.0 .t  c.2 .m  c.0 .t  c.1 .i  c.2 .m
+}
