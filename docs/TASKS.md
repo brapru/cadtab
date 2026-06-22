@@ -216,6 +216,8 @@ Entirely headless and test-driven (D18, D19, D20).
   - [ ] T4.6b — Responsive reflow on resize (re-layout via width, debounced, D23).
   - [ ] T4.6c — Zoom controls + fit-to-width.
   - [ ] T4.6d — Theme (light/dark) + visual polish pass.
+  - *Note:* editor cursor/selection basics (`drawSelection`, `dropCursor`,
+    active-line, autofocus) were pulled forward during T4.3.
 
 **DoD M4:** the live editor works end to end on desktop + web; component/integration tests green.
 

@@ -1,7 +1,13 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { EditorState } from "@codemirror/state";
-  import { EditorView, keymap } from "@codemirror/view";
+  import {
+    EditorView,
+    keymap,
+    drawSelection,
+    dropCursor,
+    highlightActiveLine,
+  } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
   import { syntaxHighlighting, setTokens } from "./highlight";
   import type { Token } from "./types";
@@ -24,6 +30,11 @@
       doc,
       extensions: [
         history(),
+        // CM's own caret + selection layer (the native one only shows on focus
+        // and can't be themed), a drop caret, and an active-line highlight.
+        drawSelection(),
+        dropCursor(),
+        highlightActiveLine(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         syntaxHighlighting,
         EditorView.updateListener.of((update) => {
@@ -34,6 +45,7 @@
       ],
     });
     view = new EditorView({ state, parent: container });
+    view.focus();
   });
 
   // Push the latest classified tokens into the view as they arrive (and once the

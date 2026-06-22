@@ -16,4 +16,15 @@ describe("Editor highlighting", () => {
       expect(mark?.textContent).toBe("score");
     });
   });
+
+  it("renders its own caret and active-line layers", async () => {
+    const { container } = render(Editor, { props: { doc: "score" } });
+
+    await vi.waitFor(() => {
+      // drawSelection() draws CM's caret/selection layer; highlightActiveLine()
+      // marks the line holding the cursor.
+      expect(container.querySelector(".cm-cursorLayer")).not.toBeNull();
+      expect(container.querySelector(".cm-activeLine")).not.toBeNull();
+    });
+  });
 });
