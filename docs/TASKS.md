@@ -175,7 +175,7 @@ Entirely headless and test-driven (D18, D19, D20).
       (D23, D24).
   - *Tests:* same model at two widths → different system counts.
 - [ ] **T3.5 — Stems + beams (the fiddly one, D25).** Sub-tasked aggressively; heavy test coverage.
-  - [ ] T3.5a — Beat grouping: partition a measure's notes into beam groups by beat.
+  - [x] T3.5a — Beat grouping: partition a measure's notes into beam groups by beat.
   - [ ] T3.5b — Stem geometry (direction/length, below the numbers per tab convention).
   - [ ] T3.5c — Primary beams (slope, thickness) across a group.
   - [ ] T3.5d — Flags for unbeamed/solo notes.
