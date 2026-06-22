@@ -29,7 +29,14 @@ const fake: CompileResult = {
       },
     ],
   },
-  diagnostics: [],
+  diagnostics: [
+    {
+      severity: "error",
+      span: { start: 0, end: 5 },
+      message: "bad",
+      help: null,
+    },
+  ],
   tokens: [],
 };
 
@@ -51,5 +58,15 @@ describe("App", () => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
     expect(container.querySelector("text")?.textContent).toBe("0");
+  });
+
+  it("renders the valid tab and surfaces diagnostics together (best-effort)", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() => {
+      // The render still shows valid parts even though the compile reported an
+      // error, and the diagnostic is underlined in the editor.
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+      expect(container.querySelector(".cm-diag-error")).not.toBeNull();
+    });
   });
 });

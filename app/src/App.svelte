@@ -35,7 +35,12 @@
   <h1>cadtab</h1>
   <div class="panes">
     <div class="editor-pane">
-      <Editor doc={initialDoc} {onChange} tokens={result?.tokens ?? []} />
+      <Editor
+        doc={initialDoc}
+        {onChange}
+        tokens={result?.tokens ?? []}
+        diagnostics={result?.diagnostics ?? []}
+      />
     </div>
     <div class="render-pane">
       {#if result}

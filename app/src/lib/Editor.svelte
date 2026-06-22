@@ -10,16 +10,22 @@
   } from "@codemirror/view";
   import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
   import { syntaxHighlighting, setTokens } from "./highlight";
-  import type { Token } from "./types";
+  import {
+    diagnostics as diagnosticsExtension,
+    setDiagnostics,
+  } from "./diagnostics";
+  import type { Token, Diagnostic } from "./types";
 
   let {
     doc = "",
     onChange,
     tokens = [],
+    diagnostics = [],
   }: {
     doc?: string;
     onChange?: (value: string) => void;
     tokens?: Token[];
+    diagnostics?: Diagnostic[];
   } = $props();
 
   let container: HTMLDivElement;
@@ -37,6 +43,7 @@
         highlightActiveLine(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         syntaxHighlighting,
+        diagnosticsExtension,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange?.(update.state.doc.toString());
@@ -52,6 +59,11 @@
   // view exists). Decorations remap through edits in between.
   $effect(() => {
     view?.dispatch({ effects: setTokens.of(tokens) });
+  });
+
+  // Likewise for diagnostics: underline squiggles + hover tooltips.
+  $effect(() => {
+    view?.dispatch({ effects: setDiagnostics.of(diagnostics) });
   });
 
   onDestroy(() => view?.destroy());

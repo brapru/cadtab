@@ -1,7 +1,7 @@
 import { render } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import Editor from "./Editor.svelte";
-import type { Token } from "./types";
+import type { Token, Diagnostic } from "./types";
 
 describe("Editor highlighting", () => {
   it("decorates tokens pushed in via the tokens prop", async () => {
@@ -25,6 +25,26 @@ describe("Editor highlighting", () => {
       // marks the line holding the cursor.
       expect(container.querySelector(".cm-cursorLayer")).not.toBeNull();
       expect(container.querySelector(".cm-activeLine")).not.toBeNull();
+    });
+  });
+
+  it("underlines diagnostics pushed in via the diagnostics prop", async () => {
+    const diagnostics: Diagnostic[] = [
+      {
+        severity: "error",
+        span: { start: 0, end: 5 },
+        message: "bad",
+        help: null,
+      },
+    ];
+    const { container } = render(Editor, {
+      props: { doc: "score", diagnostics },
+    });
+
+    await vi.waitFor(() => {
+      const squiggle = container.querySelector(".cm-diag-error");
+      expect(squiggle).not.toBeNull();
+      expect(squiggle?.textContent).toBe("score");
     });
   });
 });
