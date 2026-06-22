@@ -39,7 +39,7 @@ A task is **done** only when all of the following pass — locally *and* in CI:
   arithmetic, auto-barring beat accumulation.
 - **Frontend component tests** (`vitest` + `@testing-library/svelte`) for the SVG painter,
   highlighting, diagnostics, and bidirectional mapping.
-- **§6's example program** (Cripple Creek) is the canonical end-to-end fixture, reused across
+- **§6's example program** (Syntax Showcase) is the canonical end-to-end fixture, reused across
   milestones as it becomes parseable → compilable → renderable.
 
 ---

@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn metadata_header_snapshot() {
-        let lexed = lex("title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130");
+        let lexed = lex("title \"Syntax Showcase\"\ncomposer \"cadtab\"\ntempo 130");
         assert!(lexed.diagnostics.is_empty());
         insta::assert_debug_snapshot!(lexed.tokens);
     }
@@ -710,16 +710,16 @@ mod tests {
         );
     }
 
-    /// The canonical example program (`examples/cripple_creek.ctab` at the repo
+    /// The canonical example program (`examples/showcase.ctab` at the repo
     /// root) must now lex with no `Error` tokens and no diagnostics.
-    const CRIPPLE_CREEK: &str = include_str!(concat!(
+    const SHOWCASE: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../examples/cripple_creek.ctab"
+        "/../../examples/showcase.ctab"
     ));
 
     #[test]
-    fn cripple_creek_lexes_cleanly() {
-        let lexed = lex(CRIPPLE_CREEK);
+    fn showcase_lexes_cleanly() {
+        let lexed = lex(SHOWCASE);
         assert!(lexed.diagnostics.is_empty(), "{:?}", lexed.diagnostics);
         assert!(
             !lexed.tokens.iter().any(|t| t.kind == TokenKind::Error),

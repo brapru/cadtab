@@ -12,7 +12,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "kind": "text",
       "x": 6.3,
       "y": 1.5,
-      "content": "Cripple Creek",
+      "content": "Syntax Showcase",
       "role": "title",
       "span": null
     },

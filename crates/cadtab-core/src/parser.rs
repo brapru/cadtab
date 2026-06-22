@@ -1016,12 +1016,12 @@ mod tests {
 
     #[test]
     fn string_declarations() {
-        match only_item("title \"Cripple Creek\"") {
-            ItemKind::Title(s) => assert_eq!(s.value, "Cripple Creek"),
+        match only_item("title \"Syntax Showcase\"") {
+            ItemKind::Title(s) => assert_eq!(s.value, "Syntax Showcase"),
             other => panic!("{other:?}"),
         }
-        match only_item("composer \"trad.\"") {
-            ItemKind::Composer(s) => assert_eq!(s.value, "trad."),
+        match only_item("composer \"cadtab\"") {
+            ItemKind::Composer(s) => assert_eq!(s.value, "cadtab"),
             other => panic!("{other:?}"),
         }
         match only_item("capo \"5th string @ 2\"") {
@@ -1105,7 +1105,7 @@ mod tests {
     #[test]
     fn metadata_header_snapshot() {
         let parsed = parse(
-            "title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130\n\
+            "title \"Syntax Showcase\"\ncomposer \"cadtab\"\ntempo 130\n\
              instrument banjo\ntuning openG\ncapo \"5th string @ 2\"",
         );
         assert!(parsed.diagnostics.is_empty());
@@ -1578,16 +1578,16 @@ mod tests {
         assert_eq!(parsed.program.items.len(), 3);
     }
 
-    // --- valid-program capstone: the Cripple Creek example -------------------------
+    // --- valid-program capstone: the showcase example -------------------------
 
-    const CRIPPLE_CREEK: &str = include_str!(concat!(
+    const SHOWCASE: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../examples/cripple_creek.ctab"
+        "/../../examples/showcase.ctab"
     ));
 
     #[test]
-    fn cripple_creek_parses_cleanly() {
-        let parsed = parse(CRIPPLE_CREEK);
+    fn showcase_parses_cleanly() {
+        let parsed = parse(SHOWCASE);
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         // No error nodes anywhere a top-level item or score item.
         assert!(

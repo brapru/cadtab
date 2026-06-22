@@ -1804,14 +1804,14 @@ score {
     #[test]
     fn metadata_becomes_score_meta() {
         let (score, diags) = program_score(
-            "title \"Cripple Creek\"\ncomposer \"trad.\"\ntempo 130\ninstrument banjo\nscore {}",
+            "title \"Syntax Showcase\"\ncomposer \"cadtab\"\ntempo 130\ninstrument banjo\nscore {}",
         );
         assert!(diags.is_empty());
         assert_eq!(
             score.meta,
             ScoreMeta {
-                title: Some("Cripple Creek".to_string()),
-                composer: Some("trad.".to_string()),
+                title: Some("Syntax Showcase".to_string()),
+                composer: Some("cadtab".to_string()),
                 tempo: Some(130),
             }
         );
@@ -1891,8 +1891,8 @@ score {
     }
 
     #[test]
-    fn cripple_creek_compiles_to_a_golden_score() {
-        let src = include_str!("../../../examples/cripple_creek.ctab");
+    fn showcase_compiles_to_a_golden_score() {
+        let src = include_str!("../../../examples/showcase.ctab");
         let parsed = parse(src);
         assert!(parsed.diagnostics.is_empty());
         let (score, _) = eval_program(&parsed.program);

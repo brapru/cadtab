@@ -12,7 +12,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "kind": "text",
       "x": 17.300001,
       "y": 1.5,
-      "content": "Cripple Creek",
+      "content": "Syntax Showcase",
       "role": "title",
       "span": null
     },
@@ -20,7 +20,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "kind": "text",
       "x": 17.300001,
       "y": 3.1,
-      "content": "trad.",
+      "content": "cadtab",
       "role": "composer",
       "span": null
     },
@@ -399,8 +399,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 199,
-                "end": 204
+                "start": 202,
+                "end": 207
               }
             },
             {
@@ -418,8 +418,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 199,
-                "end": 204
+                "start": 202,
+                "end": 207
               }
             },
             {
@@ -429,8 +429,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 205,
-                "end": 210
+                "start": 208,
+                "end": 213
               }
             },
             {
@@ -448,8 +448,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 205,
-                "end": 210
+                "start": 208,
+                "end": 213
               }
             },
             {
@@ -462,8 +462,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 199,
-            "end": 210
+            "start": 202,
+            "end": 213
           }
         },
         {
@@ -481,8 +481,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 315,
-                "end": 320
+                "start": 318,
+                "end": 323
               }
             },
             {
@@ -500,8 +500,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 315,
-                "end": 320
+                "start": 318,
+                "end": 323
               }
             },
             {
@@ -511,8 +511,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 322,
-                "end": 327
+                "start": 325,
+                "end": 330
               }
             },
             {
@@ -530,8 +530,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 322,
-                "end": 327
+                "start": 325,
+                "end": 330
               }
             },
             {
@@ -541,8 +541,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 329,
-                "end": 334
+                "start": 332,
+                "end": 337
               }
             },
             {
@@ -560,8 +560,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 329,
-                "end": 334
+                "start": 332,
+                "end": 337
               }
             },
             {
@@ -571,8 +571,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 337,
-                "end": 342
+                "start": 340,
+                "end": 345
               }
             },
             {
@@ -590,8 +590,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 337,
-                "end": 342
+                "start": 340,
+                "end": 345
               }
             },
             {
@@ -601,8 +601,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 344,
-                "end": 349
+                "start": 347,
+                "end": 352
               }
             },
             {
@@ -620,8 +620,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 344,
-                "end": 349
+                "start": 347,
+                "end": 352
               }
             },
             {
@@ -631,8 +631,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 351,
-                "end": 356
+                "start": 354,
+                "end": 359
               }
             },
             {
@@ -650,8 +650,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 351,
-                "end": 356
+                "start": 354,
+                "end": 359
               }
             },
             {
@@ -661,8 +661,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 384,
-                "end": 399
+                "start": 387,
+                "end": 402
               }
             },
             {
@@ -672,8 +672,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 384,
-                "end": 399
+                "start": 387,
+                "end": 402
               }
             },
             {
@@ -691,8 +691,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 384,
-                "end": 399
+                "start": 387,
+                "end": 402
               }
             },
             {
@@ -702,8 +702,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 384,
-                "end": 399
+                "start": 387,
+                "end": 402
               }
             },
             {
@@ -732,8 +732,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 315,
-            "end": 399
+            "start": 318,
+            "end": 402
           }
         },
         {
@@ -751,8 +751,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "𝄾",
               "role": "rest",
               "span": {
-                "start": 453,
-                "end": 456
+                "start": 456,
+                "end": 459
               }
             },
             {
@@ -762,8 +762,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 458,
-                "end": 461
+                "start": 461,
+                "end": 464
               }
             },
             {
@@ -778,8 +778,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "kind": "path",
               "cmds": "M 17 10.9 Q 17.5 10.099999 18 10.9",
               "span": {
-                "start": 458,
-                "end": 461
+                "start": 461,
+                "end": 464
               }
             },
             {
@@ -789,8 +789,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 464,
-                "end": 467
+                "start": 467,
+                "end": 470
               }
             },
             {
@@ -819,8 +819,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 453,
-            "end": 467
+            "start": 456,
+            "end": 470
           }
         },
         {
@@ -838,8 +838,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 517,
-                "end": 522
+                "start": 520,
+                "end": 525
               }
             },
             {
@@ -857,8 +857,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 517,
-                "end": 522
+                "start": 520,
+                "end": 525
               }
             },
             {
@@ -868,8 +868,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 523,
-                "end": 528
+                "start": 526,
+                "end": 531
               }
             },
             {
@@ -887,8 +887,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 523,
-                "end": 528
+                "start": 526,
+                "end": 531
               }
             },
             {
@@ -901,8 +901,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 517,
-            "end": 528
+            "start": 520,
+            "end": 531
           }
         },
         {
@@ -920,8 +920,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 564,
-                "end": 567
+                "start": 567,
+                "end": 570
               }
             },
             {
@@ -939,8 +939,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "4",
               "role": "fretNumber",
               "span": {
-                "start": 568,
-                "end": 571
+                "start": 571,
+                "end": 574
               }
             },
             {
@@ -958,8 +958,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 564,
-                "end": 567
+                "start": 567,
+                "end": 570
               }
             },
             {
@@ -977,8 +977,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "4",
               "role": "fretNumber",
               "span": {
-                "start": 568,
-                "end": 571
+                "start": 571,
+                "end": 574
               }
             },
             {
@@ -1007,8 +1007,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 564,
-            "end": 571
+            "start": 567,
+            "end": 574
           }
         },
         {
@@ -1026,8 +1026,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 680,
-                "end": 696
+                "start": 683,
+                "end": 699
               }
             },
             {
@@ -1045,8 +1045,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 680,
-                "end": 696
+                "start": 683,
+                "end": 699
               }
             },
             {
@@ -1064,8 +1064,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "h",
               "role": "technique",
               "span": {
-                "start": 680,
-                "end": 696
+                "start": 683,
+                "end": 699
               }
             },
             {
@@ -1075,8 +1075,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "7",
               "role": "fretNumber",
               "span": {
-                "start": 735,
-                "end": 744
+                "start": 738,
+                "end": 747
               }
             },
             {
@@ -1091,8 +1091,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "kind": "path",
               "cmds": "M 31.800001 8.9 Q 32.100002 7.8999996 32.4 7.8999996",
               "span": {
-                "start": 735,
-                "end": 744
+                "start": 738,
+                "end": 747
               }
             },
             {
@@ -1113,8 +1113,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             }
           ],
           "span": {
-            "start": 680,
-            "end": 744
+            "start": 683,
+            "end": 747
           }
         }
       ]

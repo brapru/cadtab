@@ -5,10 +5,10 @@ expression: score
 Score {
     meta: ScoreMeta {
         title: Some(
-            "Cripple Creek",
+            "Syntax Showcase",
         ),
         composer: Some(
-            "trad.",
+            "cadtab",
         ),
         tempo: Some(
             130,
@@ -76,8 +76,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 199,
-                        end: 204,
+                        start: 202,
+                        end: 207,
                     },
                 },
                 Event {
@@ -101,8 +101,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 205,
-                        end: 210,
+                        start: 208,
+                        end: 213,
                     },
                 },
             ],
@@ -140,8 +140,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 315,
-                        end: 320,
+                        start: 318,
+                        end: 323,
                     },
                 },
                 Event {
@@ -165,8 +165,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 322,
-                        end: 327,
+                        start: 325,
+                        end: 330,
                     },
                 },
                 Event {
@@ -190,8 +190,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 329,
-                        end: 334,
+                        start: 332,
+                        end: 337,
                     },
                 },
                 Event {
@@ -215,8 +215,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 337,
-                        end: 342,
+                        start: 340,
+                        end: 345,
                     },
                 },
                 Event {
@@ -240,8 +240,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 344,
-                        end: 349,
+                        start: 347,
+                        end: 352,
                     },
                 },
                 Event {
@@ -265,8 +265,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 351,
-                        end: 356,
+                        start: 354,
+                        end: 359,
                     },
                 },
                 Event {
@@ -303,8 +303,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 384,
-                        end: 399,
+                        start: 387,
+                        end: 402,
                     },
                 },
             ],
@@ -324,8 +324,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 453,
-                        end: 456,
+                        start: 456,
+                        end: 459,
                     },
                 },
                 Event {
@@ -345,8 +345,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 458,
-                        end: 461,
+                        start: 461,
+                        end: 464,
                     },
                 },
                 Event {
@@ -366,8 +366,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 464,
-                        end: 467,
+                        start: 467,
+                        end: 470,
                     },
                 },
             ],
@@ -402,8 +402,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 517,
-                        end: 522,
+                        start: 520,
+                        end: 525,
                     },
                 },
                 Event {
@@ -427,8 +427,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 523,
-                        end: 528,
+                        start: 526,
+                        end: 531,
                     },
                 },
             ],
@@ -459,8 +459,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 564,
-                        end: 567,
+                        start: 567,
+                        end: 570,
                     },
                 },
                 Event {
@@ -480,8 +480,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 568,
-                        end: 571,
+                        start: 571,
+                        end: 574,
                     },
                 },
                 Event {
@@ -501,8 +501,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 564,
-                        end: 567,
+                        start: 567,
+                        end: 570,
                     },
                 },
                 Event {
@@ -522,8 +522,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 568,
-                        end: 571,
+                        start: 571,
+                        end: 574,
                     },
                 },
             ],
@@ -552,8 +552,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 680,
-                        end: 696,
+                        start: 683,
+                        end: 699,
                     },
                 },
                 Event {
@@ -575,8 +575,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 680,
-                        end: 696,
+                        start: 683,
+                        end: 699,
                     },
                 },
                 Event {
@@ -598,8 +598,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 735,
-                        end: 744,
+                        start: 738,
+                        end: 747,
                     },
                 },
             ],

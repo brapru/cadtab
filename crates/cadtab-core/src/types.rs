@@ -359,8 +359,8 @@ mod tests {
     }
 
     #[test]
-    fn cripple_creek_type_checks_cleanly() {
-        let src = include_str!("../../../examples/cripple_creek.ctab");
+    fn showcase_type_checks_cleanly() {
+        let src = include_str!("../../../examples/showcase.ctab");
         assert_eq!(diags(src), vec![]);
     }
 

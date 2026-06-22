@@ -264,7 +264,7 @@ forward_roll(...g_chord)  => call( forward_roll, [ spread(ident g_chord) ] )
 
 ---
 
-## 6. Worked corpus anchor — §6 "Cripple Creek" — `[CORE]`
+## 6. Worked corpus anchor — §6 "Syntax Showcase" — `[CORE]`
 
 The §6 program is the canonical end-to-end fixture (TASKS.md testing strategy). Every construct
 it uses is `[CORE]` above:

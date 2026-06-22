@@ -1587,7 +1587,7 @@ mod tests {
             note(5, 0, 12),
         ])]);
         score.meta = ScoreMeta {
-            title: Some("Cripple Creek".to_string()),
+            title: Some("Syntax Showcase".to_string()),
             composer: None,
             tempo: Some(120),
         };
@@ -1668,9 +1668,9 @@ mod tests {
     }
 
     #[test]
-    fn cripple_creek_render_tree_snapshot() {
+    fn showcase_render_tree_snapshot() {
         // The canonical example, end to end: source -> Score -> render tree.
-        let src = include_str!("../../../examples/cripple_creek.ctab");
+        let src = include_str!("../../../examples/showcase.ctab");
         let parsed = crate::parser::parse(src);
         let (score, _) = crate::eval::eval_program(&parsed.program);
         let tree = layout(&score, LayoutConfig { width: 80.0 });

@@ -262,9 +262,9 @@ mod tests {
     }
 
     #[test]
-    fn cripple_creek_resolves_cleanly() {
+    fn showcase_resolves_cleanly() {
         // hammer / bend are builtins; no user names.
-        let src = include_str!("../../../examples/cripple_creek.ctab");
+        let src = include_str!("../../../examples/showcase.ctab");
         assert_eq!(diags(src), vec![]);
     }
 

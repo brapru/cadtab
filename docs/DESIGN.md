@@ -136,8 +136,8 @@ Decisions:
 ## 6. DSL surface syntax — resolved
 
 ```
-title    "Cripple Creek"
-composer "trad."
+title    "Syntax Showcase"
+composer "cadtab"
 tempo    130                // metadata → sheet header (D34)
 
 instrument banjo            // builtin: 5 strings, Open G default
