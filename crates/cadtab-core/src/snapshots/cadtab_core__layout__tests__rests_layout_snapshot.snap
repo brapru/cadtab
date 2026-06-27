@@ -224,9 +224,9 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 4.8,
+              "x1": 4.76,
               "y1": 8.09,
-              "x2": 5.8,
+              "x2": 5.84,
               "y2": 8.09,
               "weight": 0.18
             }

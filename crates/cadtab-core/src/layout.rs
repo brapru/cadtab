@@ -292,12 +292,15 @@ fn build_system(
         // A group of two or more shares one flat beam across its stem ends; a
         // lone beamable note takes flags at its stem end instead. The beam's top
         // edge sits flush with the stem ends (beam_y) and the bar hangs below, so
-        // stems meet the beam cleanly rather than poking through its middle.
+        // stems meet the beam cleanly rather than poking through its middle. The
+        // bar overhangs each outer stem by half a stem-width so it reaches the
+        // outer edge of the stem rather than stopping at its centerline.
         let beam_render_y = beam_y + BEAM_WEIGHT / 2.0;
+        let beam_overhang = STEM_WEIGHT / 2.0;
         for g in mbeams {
             if g.members.len() >= 2 {
-                let x0 = mx0 + plan.events[g.members[0]].rel_x;
-                let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x;
+                let x0 = mx0 + plan.events[g.members[0]].rel_x - beam_overhang;
+                let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x + beam_overhang;
                 prims.push(beam_bar(x0, x1, beam_render_y));
             } else if let Some(&idx) = g.members.first() {
                 let x = mx0 + plan.events[idx].rel_x;
@@ -1121,13 +1124,15 @@ mod tests {
         let tree = layout(&banjo_score(vec![m]), cfg());
         let beams = beams(&tree);
         assert_eq!(beams.len(), 1);
-        // Flat, and spanning the two note x-positions.
+        // Flat, and spanning the two note x-positions — overhanging each outer
+        // stem by half a stem-width so the bar reaches the stems' outer edges.
         let nums = fret_numbers(&tree);
+        let overhang = STEM_WEIGHT / 2.0;
         match beams[0] {
             Primitive::Line { x1, y1, x2, y2, .. } => {
                 assert_eq!(y1, y2);
-                assert!((x1 - x_of(nums[0])).abs() < 1e-5);
-                assert!((x2 - x_of(nums[1])).abs() < 1e-5);
+                assert!((x1 - (x_of(nums[0]) - overhang)).abs() < 1e-5);
+                assert!((x2 - (x_of(nums[1]) + overhang)).abs() < 1e-5);
             }
             _ => unreachable!(),
         }
