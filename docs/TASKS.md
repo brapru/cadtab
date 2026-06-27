@@ -259,13 +259,59 @@ Entirely headless and test-driven (D18, D19, D20).
         above the primary, since stems point down), with partial-beam stubs for isolated values.
         *(Known edge: a 32nd on a length-clamped 5th-string stem may not reach its 3rd beam —
         rare; revisit if 32nds get real use.)*
-  - [ ] T4.7p — **Dense-rhythm crowding.** Spacing is purely time-proportional (a 16th = 0.5
-        units) while fret digits are ~1 unit wide, so 16th runs overlap. Add a minimum per-event
-        spacing floor while keeping proportional spacing for longer values.
+  - [x] T4.7p — **Dense-rhythm crowding.** Event spacing is time-proportional but now floored at
+        `MIN_EVENT_GAP` (0.9, just under an eighth's 1.0), so 16th/32nd runs no longer pack their
+        fret numbers together while eighths-and-longer keep proportional spacing.
+  - [ ] T4.7q — **Bidirectional mapping for structural elements.** Cursor↔render mapping (T4.5)
+        only covers span-bearing text/notes; repeat barlines, ending (volta) brackets, and
+        `measure {}` boxes don't light up. Thread spans onto those render primitives and add a
+        highlight treatment for non-text primitives (lines/paths/box outlines) so clicking or
+        cursoring a repeat / ending / measure highlights it. *(Extends T4.5.)*
+  - [ ] T4.7r — **Bidirectional highlight treatment.** The active cursor↔primitive highlight
+        reuses the orange `--accent` and reads wrong against the rest of the UI. Pick a calmer
+        highlight colour/treatment, decided alongside the look-and-feel pass (T4.7h/n); touches
+        the theme accent token + `.active` styles in `Tab.svelte`.
+  - [ ] T4.7s — **Even out intra-measure spacing.** A bar's last note gets trailing space equal
+        to its full duration, so it reads as having noticeably more room on its right than the
+        small leading pad — uneven on a fully-filled measure. Do a spacing pass (revisit
+        trailing-space vs leading-pad symmetry / even distribution). Pairs with T4.7t.
+  - [ ] T4.7t — **Justify systems to full width.** A line holding only one (or a few) measures
+        renders at its natural width, leaving the system short. Stretch measures/events to fill
+        the system line width (justified systems) so even a single bar fills the line, padding
+        with empty space as needed. Layout justification pass; relates to T3.3/T3.4 and T4.7s.
   - *Parked:* the showcase still emits 3 under-full-bar warnings on inherently-partial demo
     blocks (two voltas + the explicit `measure {}` fragment). Whether voltas / explicit measures
     should trigger under-full diagnostics at all is a diagnostics-quality question → revisit in
     T6.1 (and showcase metric cleanup in T6.3).
+  - **Resume guide — pending T4.7 (cold-start order & pointers).** Letters a–t are stable IDs
+    (assigned by discovery order), not priority; this is the suggested sequence so shared files
+    and decisions are touched once. Every pending item is resume-able from its text; one *open
+    decision* is flagged.
+    1. **Editor quick wins** — j, k, l. Independent, no decisions; good warm-up.
+       `app/src/lib/Editor.svelte` (j: `indentWithTab` in the keymap), `app/src/App.svelte`
+       (k: global keydown → existing `zoomIn`/`zoomOut`/`zoomFit`, `preventDefault`),
+       `src-tauri/tauri.conf.json` (l: window size / maximized).
+    2. **Header & top region (core + painter)** — f, g. `crates/cadtab-core/src/layout.rs`:
+       strip the per-line `StringLabel` prims in `build_system` (f — the top `build_header`
+       keeps its `Tuning` text, confirmed, so tuning isn't lost); rework `build_header` for the
+       title—composer line + inline details row (g). New text roles get styling in
+       `app/src/lib/Tab.svelte` `TEXT_STYLE`.
+    3. **Horizontal spacing (core)** — s, t. One `layout.rs` pass: `plan_measure` trailing space
+       (s) and `build_system`/`pack_systems`/`overall_width` justification (t). Snapshot-heavy.
+    4. **Diagnostics UI (frontend)** — i, m. `app/src/lib/diagnostics.ts` (i: themed tooltip
+       bg/fg — same WKWebView caveat as T4.7b); new component + `App.svelte` (m: count button +
+       panel wired to `result.diagnostics`, click-to-jump via existing span→selection path).
+    5. **Visual feel pass (frontend)** — h, r, n. The cohesive colour/accent pass.
+       `app/src/lib/highlight.ts` + `Editor.svelte` (h), `app/src/app.css` `--accent` +
+       `Tab.svelte` `.active` (r), broad CSS (n). **DECISION PENDING (T4.7r):** the
+       bidirectional-highlight treatment is unchosen — pick it (e.g. desaturated fill vs
+       underline vs halo, and which token) via a quick question when this cluster starts; T4.7q
+       reuses whatever is chosen. `n` is the umbrella — h, i, g, r feed it; treat it as "make the
+       rest cohere," not a separate chunk.
+    6. **Structural bidirectional mapping (core + frontend)** — q. Do after 5 so the non-text
+       highlight reuses T4.7r's treatment. Core: thread spans onto repeat-barline / volta-bracket
+       / `measure {}`-box prims in `layout.rs`. Frontend: extend `Tab.svelte` `.active` beyond
+       `text`/`path` to line/box prims.
 
 **DoD M4:** the live editor works end to end on desktop + web; component/integration tests green.
 
