@@ -48,11 +48,22 @@ vi.mock("./lib/wasm", () => ({
 const openProjectMock = vi.fn();
 const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
+const saveSvgMock = vi.fn();
+const savePngMock = vi.fn();
 vi.mock("./lib/io", () => ({
   openProject: (...args: unknown[]) => openProjectMock(...args),
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
+  saveSvg: (...args: unknown[]) => saveSvgMock(...args),
+  savePng: (...args: unknown[]) => savePngMock(...args),
   defaultDocName: () => "untitled.ctab",
+}));
+
+const svgToPngBlobMock = vi.fn(
+  async (..._args: unknown[]) => new Blob(["png"], { type: "image/png" }),
+);
+vi.mock("./lib/png", () => ({
+  svgToPngBlob: (...args: unknown[]) => svgToPngBlobMock(...args),
 }));
 
 import App from "./App.svelte";
@@ -373,6 +384,44 @@ describe("App", () => {
     ];
     expect(bundle.entry).toBe("untitled.ctab");
     expect(bundle.files["untitled.ctab"]).toContain("Cripple Creek");
+  });
+
+  it("exports the rendered tab as a standalone SVG", async () => {
+    saveSvgMock.mockReset();
+    saveSvgMock.mockResolvedValue({ path: null, name: "untitled.svg" });
+    const { container, getByText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    await fireEvent.click(getByText("Export SVG"));
+
+    await vi.waitFor(() => expect(saveSvgMock).toHaveBeenCalled());
+    const [svg, target] = saveSvgMock.mock.calls[0] as [
+      string,
+      { path: string | null; suggestedName: string },
+    ];
+    // The real serializer ran on the current render tree.
+    expect(svg).toContain("<svg");
+    expect(target).toEqual({ path: null, suggestedName: "untitled.ctab" });
+  });
+
+  it("exports the rendered tab as a PNG via the rasterizer", async () => {
+    savePngMock.mockReset();
+    svgToPngBlobMock.mockClear();
+    savePngMock.mockResolvedValue({ path: null, name: "untitled.png" });
+    const { container, getByText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    await fireEvent.click(getByText("Export PNG"));
+
+    await vi.waitFor(() => expect(savePngMock).toHaveBeenCalled());
+    // The SVG was rasterized to a blob before saving.
+    expect(svgToPngBlobMock).toHaveBeenCalled();
+    const [blob] = savePngMock.mock.calls[0] as [Blob];
+    expect(blob.type).toBe("image/png");
   });
 
   it("clears dirty when edits are undone back to the saved baseline", async () => {

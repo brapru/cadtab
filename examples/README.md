@@ -46,6 +46,13 @@ The same project packed into one bundle file (`{ version, entry, files }` JSON).
   `.ctabz`. Round-trips on desktop too (the bundle's files are checked before the
   filesystem).
 
+## Exporting
+
+With any of these open, **Export SVG** / **Export PNG** in the toolbar save the
+rendered tab as a standalone image (a printable black-on-white sheet). The SVG is
+self-contained; the PNG is rasterized from it. Both work on desktop and in the
+browser.
+
 > The `.ctabz` is generated from `cripple-creek-project/`. If you change those
 > files, regenerate it so the two stay in sync (the app test above will fail
 > otherwise):

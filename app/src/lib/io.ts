@@ -8,9 +8,13 @@ import { parseBundle, serializeBundle, type ProjectBundle } from "./bundle";
 
 const CTAB_EXT = ".ctab";
 const BUNDLE_EXT = ".ctabz";
+const SVG_EXT = ".svg";
+const PNG_EXT = ".png";
 const CADTAB_EXTS = [CTAB_EXT, BUNDLE_EXT];
 const CTAB_FILTER = { name: "cadtab score", extensions: ["ctab"] };
 const BUNDLE_FILTER = { name: "cadtab project", extensions: ["ctabz"] };
+const SVG_FILTER = { name: "SVG image", extensions: ["svg"] };
+const PNG_FILTER = { name: "PNG image", extensions: ["png"] };
 
 type Filter = { name: string; extensions: string[] };
 
@@ -106,6 +110,27 @@ export function saveBundle(
   ]);
 }
 
+/// Export an SVG document (text) to `target`.
+export function saveSvg(
+  svg: string,
+  target: SaveTarget,
+): Promise<SaveResult | null> {
+  return writeFile(svg, target, SVG_EXT, [SVG_FILTER]);
+}
+
+/// Export a PNG image (binary) to `target`: writes the bytes on desktop, or
+/// downloads the blob in the browser.
+export async function savePng(
+  png: Blob,
+  target: SaveTarget,
+): Promise<SaveResult | null> {
+  if (isTauri()) {
+    const bytes = new Uint8Array(await png.arrayBuffer());
+    return writeBinaryTauri(bytes, target, [PNG_FILTER]);
+  }
+  return downloadBlobWeb(png, target.suggestedName, PNG_EXT);
+}
+
 // --- backend primitives -----------------------------------------------------
 
 function pickFile(filters: Filter[]): Promise<OpenedDoc | null> {
@@ -174,8 +199,36 @@ function downloadWeb(
   suggestedName: string,
   ext: string,
 ): Promise<SaveResult> {
+  return downloadBlobWeb(
+    new Blob([content], { type: "text/plain;charset=utf-8" }),
+    suggestedName,
+    ext,
+  );
+}
+
+async function writeBinaryTauri(
+  bytes: Uint8Array,
+  target: SaveTarget,
+  filters: Filter[],
+): Promise<SaveResult | null> {
+  const { writeFile } = await import("@tauri-apps/plugin-fs");
+  let path = target.path;
+  if (!path) {
+    const { save } = await import("@tauri-apps/plugin-dialog");
+    const chosen = await save({ defaultPath: target.suggestedName, filters });
+    if (typeof chosen !== "string") return null;
+    path = chosen;
+  }
+  await writeFile(path, bytes);
+  return { path, name: basename(path) };
+}
+
+function downloadBlobWeb(
+  blob: Blob,
+  suggestedName: string,
+  ext: string,
+): Promise<SaveResult> {
   const name = withExtension(suggestedName, ext);
-  const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

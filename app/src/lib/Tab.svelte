@@ -1,6 +1,7 @@
 <script lang="ts">
-  import type { RenderTree, Primitive, TextRole, Span } from "./types";
+  import type { RenderTree, Primitive, Span } from "./types";
   import { spansOverlap } from "./mapping";
+  import { TEXT_STYLE } from "./tabStyle";
 
   // The painter is thin: it positions primitives verbatim in the layout's
   // logical coordinate space (1 unit = string spacing) and lets the SVG viewBox
@@ -35,27 +36,6 @@
       onPrimitiveClick?.(span);
     }
   }
-
-  // Per-role text metrics, in logical units, tuned to the row heights the layout
-  // engine reserves for header rows so glyphs sit inside their allotted space.
-  // Intent lives in the role; geometry stays in the coordinates.
-  type TextStyle = { size: number; weight?: number; italic?: boolean };
-  const TEXT_STYLE: Record<TextRole, TextStyle> = {
-    title: { size: 1.5, weight: 600 },
-    composer: { size: 1.0, weight: 700 },
-    tuningName: { size: 0.85 },
-    tuningString: { size: 0.85 },
-    tempo: { size: 0.9, weight: 700 },
-    capo: { size: 0.85 },
-    fretNumber: { size: 1.3 },
-    stringLabel: { size: 1.1 },
-    timeSig: { size: 1.4, weight: 600 },
-    finger: { size: 0.95 },
-    strum: { size: 1.5 },
-    technique: { size: 0.95, italic: true },
-    ending: { size: 0.95 },
-    rest: { size: 1.5 },
-  };
 </script>
 
 {#snippet drawPrimitive(prim: Primitive)}

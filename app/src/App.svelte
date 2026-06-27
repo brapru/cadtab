@@ -13,8 +13,12 @@
     openProject,
     saveDocument,
     saveBundle,
+    saveSvg,
+    savePng,
     defaultDocName,
   } from "./lib/io";
+  import { renderTreeToSvg } from "./lib/svg";
+  import { svgToPngBlob } from "./lib/png";
   import type { CompileResult, Span } from "./lib/types";
 
   // A feature-rich starter so the app opens showing the header details row,
@@ -272,6 +276,21 @@ score {
     dirty = false;
   }
 
+  // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
+  // derived artifacts, so they always prompt for a destination (path: null).
+  async function exportSvg() {
+    if (!result) return;
+    const svg = renderTreeToSvg(result.renderTree);
+    await saveSvg(svg, { path: null, suggestedName: exportName() });
+  }
+  async function exportPng() {
+    if (!result) return;
+    const blob = await svgToPngBlob(renderTreeToSvg(result.renderTree));
+    await savePng(blob, { path: null, suggestedName: exportName() });
+  }
+  // The base name to seed an export with; `saveSvg`/`savePng` swap the extension.
+  const exportName = () => currentName ?? defaultDocName(source);
+
   // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves, Cmd/Ctrl+Shift+S saves the project;
   // preventDefault overrides the browser's native page-save / open shortcuts.
   function onIOKey(e: KeyboardEvent) {
@@ -311,6 +330,13 @@ score {
       <button
         onclick={saveProject}
         title="Save project bundle (Cmd/Ctrl+Shift+S)">Save Project</button
+      >
+      <span class="sep" aria-hidden="true"></span>
+      <button onclick={exportSvg} title="Export the tab as an SVG image"
+        >Export SVG</button
+      >
+      <button onclick={exportPng} title="Export the tab as a PNG image"
+        >Export PNG</button
       >
       <button
         class="theme-toggle"
@@ -418,6 +444,13 @@ score {
     display: flex;
     align-items: center;
     gap: 0.4rem;
+  }
+  /* A thin divider separating file actions from export actions. */
+  .sep {
+    width: 1px;
+    align-self: stretch;
+    margin: 0.15rem 0.15rem;
+    background: var(--border);
   }
   .actions button {
     border: 1px solid var(--border);

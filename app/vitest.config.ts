@@ -23,6 +23,8 @@ export default defineConfig({
       exclude: [
         "src/main.ts",
         "src/lib/wasm.ts",
+        // Browser-only canvas rasterization; exercised in the app, not jsdom.
+        "src/lib/png.ts",
         "src/lib/types.ts",
         "src/**/*.d.ts",
         "src/wasm-gen/**",

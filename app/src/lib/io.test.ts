@@ -4,6 +4,7 @@ const openMock = vi.fn();
 const saveMock = vi.fn();
 const readTextFileMock = vi.fn();
 const writeTextFileMock = vi.fn();
+const writeFileMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: (...args: unknown[]) => openMock(...args),
   save: (...args: unknown[]) => saveMock(...args),
@@ -11,6 +12,7 @@ vi.mock("@tauri-apps/plugin-dialog", () => ({
 vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: (...args: unknown[]) => readTextFileMock(...args),
   writeTextFile: (...args: unknown[]) => writeTextFileMock(...args),
+  writeFile: (...args: unknown[]) => writeFileMock(...args),
 }));
 
 import {
@@ -20,6 +22,8 @@ import {
   openProject,
   saveDocument,
   saveBundle,
+  saveSvg,
+  savePng,
 } from "./io";
 import { serializeBundle, type ProjectBundle } from "./bundle";
 
@@ -170,6 +174,39 @@ describe("io desktop (Tauri) backend", () => {
       files: { "tune.ctab": "score { 3:0 }" },
     });
   });
+
+  it("exports an SVG through the text writer", async () => {
+    writeTextFileMock.mockReset();
+    writeTextFileMock.mockResolvedValue(undefined);
+
+    const result = await saveSvg("<svg/>", {
+      path: "/x/tab.svg",
+      suggestedName: "tab.svg",
+    });
+
+    expect(result).toEqual({ path: "/x/tab.svg", name: "tab.svg" });
+    expect(writeTextFileMock).toHaveBeenCalledWith("/x/tab.svg", "<svg/>");
+  });
+
+  it("exports a PNG through the binary writer", async () => {
+    writeFileMock.mockReset();
+    writeFileMock.mockResolvedValue(undefined);
+    // jsdom's Blob has no arrayBuffer(); stub the bytes the writer reads.
+    const blob = {
+      type: "image/png",
+      arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+    } as unknown as Blob;
+
+    const result = await savePng(blob, {
+      path: "/x/tab.png",
+      suggestedName: "tab.png",
+    });
+
+    expect(result).toEqual({ path: "/x/tab.png", name: "tab.png" });
+    const [path, bytes] = writeFileMock.mock.calls[0] as [string, Uint8Array];
+    expect(path).toBe("/x/tab.png");
+    expect(Array.from(bytes)).toEqual([1, 2, 3]);
+  });
 });
 
 describe("io web backend", () => {
@@ -267,5 +304,44 @@ describe("io web backend", () => {
     // `tune.ctab` becomes `tune.ctabz`, not `tune.ctab.ctabz`.
     expect(result).toEqual({ path: null, name: "tune.ctabz" });
     expect(anchor.download).toBe("tune.ctabz");
+  });
+
+  it("downloads an SVG export, swapping the score extension", async () => {
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:svg"),
+      revokeObjectURL: vi.fn(),
+    });
+    const anchor = { href: "", download: "", click: vi.fn() };
+    vi.spyOn(document, "createElement").mockReturnValue(
+      anchor as unknown as HTMLElement,
+    );
+
+    const result = await saveSvg("<svg/>", {
+      path: null,
+      suggestedName: "tune.ctab",
+    });
+
+    expect(result).toEqual({ path: null, name: "tune.svg" });
+    expect(anchor.download).toBe("tune.svg");
+  });
+
+  it("downloads a PNG export blob with the .png extension", async () => {
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:png"),
+      revokeObjectURL: vi.fn(),
+    });
+    const anchor = { href: "", download: "", click: vi.fn() };
+    vi.spyOn(document, "createElement").mockReturnValue(
+      anchor as unknown as HTMLElement,
+    );
+    const blob = new Blob([new Uint8Array([1])], { type: "image/png" });
+
+    const result = await savePng(blob, {
+      path: null,
+      suggestedName: "tune.ctab",
+    });
+
+    expect(result).toEqual({ path: null, name: "tune.png" });
+    expect(anchor.download).toBe("tune.png");
   });
 });
