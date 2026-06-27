@@ -204,6 +204,7 @@ expression: measures
         repeat_end: false,
         ending: None,
         is_pickup: false,
+        section: None,
     },
     Measure {
         events: [
@@ -257,6 +258,7 @@ expression: measures
             1,
         ),
         is_pickup: false,
+        section: None,
     },
     Measure {
         events: [
@@ -310,5 +312,6 @@ expression: measures
             2,
         ),
         is_pickup: false,
+        section: None,
     },
 ]

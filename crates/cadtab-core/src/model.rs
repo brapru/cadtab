@@ -305,9 +305,20 @@ impl Phrase {
     }
 }
 
+/// A rehearsal mark (section label) drawn above a measure's start, e.g. the "A"
+/// part. The span ties it back to the `section "…"` source for bidirectional
+/// mapping (D20).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SectionLabel {
+    pub text: String,
+    pub span: Span,
+}
+
 /// One bar of the score. The compiler owns barline placement, so a measure is a
 /// run of events bounded by barlines. `meter` is set only where the meter
-/// changes; the repeat/ending/pickup flags are populated by later passes.
+/// changes; the repeat/ending/pickup flags and `section` mark are populated by
+/// later passes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Measure {
@@ -317,6 +328,7 @@ pub struct Measure {
     pub repeat_end: bool,
     pub ending: Option<u8>,
     pub is_pickup: bool,
+    pub section: Option<SectionLabel>,
 }
 
 impl Measure {
@@ -329,6 +341,7 @@ impl Measure {
             repeat_end: false,
             ending: None,
             is_pickup: false,
+            section: None,
         }
     }
 }

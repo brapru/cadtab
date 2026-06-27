@@ -53,6 +53,8 @@ pub enum TextRole {
     Ending,
     /// A rest glyph.
     Rest,
+    /// A section label (rehearsal mark) above the staff (e.g. the "A" part).
+    SectionLabel,
 }
 
 /// A positioned drawing primitive. Span-bearing variants carry the source span
@@ -145,6 +147,7 @@ mod tests {
         TextRole::Technique,
         TextRole::Ending,
         TextRole::Rest,
+        TextRole::SectionLabel,
     ];
 
     fn rect() -> Rect {

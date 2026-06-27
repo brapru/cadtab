@@ -47,6 +47,7 @@ pub enum Keyword {
     Ending,
     Loop,
     Measure,
+    Section,
     Def,
     Let,
 }
@@ -71,6 +72,7 @@ impl Keyword {
             Ending => "ending",
             Loop => "loop",
             Measure => "measure",
+            Section => "section",
             Def => "def",
             Let => "let",
         }
@@ -95,6 +97,7 @@ impl Keyword {
             "ending" => Ending,
             "loop" => Loop,
             "measure" => Measure,
+            "section" => Section,
             "def" => Def,
             "let" => Let,
             _ => return None,
@@ -202,7 +205,13 @@ mod tests {
 
     #[test]
     fn keyword_as_str_round_trips() {
-        for kw in [Keyword::Score, Keyword::Loop, Keyword::Def, Keyword::Ending] {
+        for kw in [
+            Keyword::Score,
+            Keyword::Loop,
+            Keyword::Def,
+            Keyword::Ending,
+            Keyword::Section,
+        ] {
             assert_eq!(Keyword::from_ident(kw.as_str()), Some(kw));
         }
     }

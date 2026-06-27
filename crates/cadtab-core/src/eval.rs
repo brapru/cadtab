@@ -11,7 +11,7 @@ use crate::diagnostics::Diagnostic;
 use crate::instrument::{Instrument, StringDef};
 use crate::model::{
     Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Pitch, Position,
-    RightHand, Score, ScoreMeta, Strum, Technique, TimeSig, split_measures,
+    RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig, split_measures,
 };
 use crate::span::Span;
 
@@ -221,13 +221,21 @@ impl Evaluator {
     pub fn eval_score_body(&mut self, items: &[ast::ScoreItem]) -> Vec<Measure> {
         let mut time = TimeSig::new(4, 4);
         let mut pending_meter = Some(time);
+        // A `section` mark waits to stamp the next measure's start (like a meter).
+        let mut pending_section: Option<SectionLabel> = None;
         let mut measures = Vec::new();
         let mut run: Vec<Event> = Vec::new();
 
         for item in items {
             match &item.kind {
                 ast::ScoreItemKind::Time(ts) => {
-                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
+                    flush_run(
+                        &mut measures,
+                        &mut run,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    );
                     if let Some(t) = self.eval_time_sig(ts) {
                         time = t;
                         pending_meter = Some(time);
@@ -236,6 +244,21 @@ impl Evaluator {
                 ast::ScoreItemKind::Default(frac) => {
                     self.set_default(Duration::new(frac.num.value, frac.den.value));
                 }
+                // A section mark falls on a barline: flush the current run, then
+                // hold the label for the next measure that opens.
+                ast::ScoreItemKind::Section(label) => {
+                    flush_run(
+                        &mut measures,
+                        &mut run,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    );
+                    pending_section = Some(SectionLabel {
+                        text: label.value.clone(),
+                        span: label.span,
+                    });
+                }
                 ast::ScoreItemKind::Event(e) => {
                     run.extend(self.eval_events(std::slice::from_ref(e)).events);
                 }
@@ -243,23 +266,62 @@ impl Evaluator {
                     run.extend(self.eval_loop(lb).events);
                 }
                 ast::ScoreItemKind::Measure(block) => {
-                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
-                    measures.push(self.block_measure(&block.events, false, &mut pending_meter));
+                    flush_run(
+                        &mut measures,
+                        &mut run,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    );
+                    measures.push(self.block_measure(
+                        &block.events,
+                        false,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    ));
                 }
                 // A pickup is a partial bar: taken verbatim and flagged so the
                 // fill check skips it and the layout renders it offset.
                 ast::ScoreItemKind::Pickup(block) => {
-                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
-                    measures.push(self.block_measure(&block.events, true, &mut pending_meter));
+                    flush_run(
+                        &mut measures,
+                        &mut run,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    );
+                    measures.push(self.block_measure(
+                        &block.events,
+                        true,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    ));
                 }
                 ast::ScoreItemKind::Repeat(r) => {
-                    flush_run(&mut measures, &mut run, time, &mut pending_meter);
-                    measures.extend(self.eval_repeat(r, time, &mut pending_meter));
+                    flush_run(
+                        &mut measures,
+                        &mut run,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    );
+                    measures.extend(self.eval_repeat(
+                        r,
+                        time,
+                        &mut pending_meter,
+                        &mut pending_section,
+                    ));
                 }
                 ast::ScoreItemKind::Error => {}
             }
         }
-        flush_run(&mut measures, &mut run, time, &mut pending_meter);
+        flush_run(
+            &mut measures,
+            &mut run,
+            time,
+            &mut pending_meter,
+            &mut pending_section,
+        );
         measures
     }
 
@@ -273,6 +335,7 @@ impl Evaluator {
         repeat: &ast::Repeat,
         time: TimeSig,
         pending_meter: &mut Option<TimeSig>,
+        pending_section: &mut Option<SectionLabel>,
     ) -> Vec<Measure> {
         let body_events = self.eval_events(&repeat.body).events;
         let mut measures = split_measures(body_events, time);
@@ -294,6 +357,7 @@ impl Evaluator {
 
         if let Some(first) = measures.first_mut() {
             first.meter = pending_meter.take();
+            first.section = pending_section.take();
             first.repeat_start = true;
         }
         if let Some(idx) = repeat_end {
@@ -309,10 +373,12 @@ impl Evaluator {
         events: &[ast::Event],
         is_pickup: bool,
         pending_meter: &mut Option<TimeSig>,
+        pending_section: &mut Option<SectionLabel>,
     ) -> Measure {
         let mut measure = Measure::new(self.eval_events(events).events);
         measure.is_pickup = is_pickup;
         measure.meter = pending_meter.take();
+        measure.section = pending_section.take();
         measure
     }
 
@@ -799,6 +865,7 @@ fn flush_run(
     run: &mut Vec<Event>,
     time: TimeSig,
     pending_meter: &mut Option<TimeSig>,
+    pending_section: &mut Option<SectionLabel>,
 ) {
     if run.is_empty() {
         return;
@@ -806,6 +873,7 @@ fn flush_run(
     let mut barred = split_measures(std::mem::take(run), time);
     if let Some(first) = barred.first_mut() {
         first.meter = pending_meter.take();
+        first.section = pending_section.take();
     }
     measures.append(&mut barred);
 }
@@ -2012,6 +2080,42 @@ score {
         let (score, _) = program_score("instrument banjo\nscore { default 1/4\n 3:0 2:0 1:0 5:0 }");
         assert_eq!(score.measures.len(), 1);
         assert_eq!(score.measures[0].events.len(), 4);
+    }
+
+    fn section_text(m: &Measure) -> Option<&str> {
+        m.section.as_ref().map(|s| s.text.as_str())
+    }
+
+    #[test]
+    fn a_section_mark_labels_the_next_measure() {
+        let (score, diags) = program_score("score { default 1/4\n section \"A\" 3:0 2:0 1:0 5:0 }");
+        assert!(diags.is_empty(), "{diags:?}");
+        assert_eq!(section_text(&score.measures[0]), Some("A"));
+    }
+
+    #[test]
+    fn a_section_mark_falls_on_a_barline_and_flushes_the_run() {
+        // The A bar fills, then `section "B"` opens a new labeled bar.
+        let (score, diags) =
+            program_score("score { default 1/4\n 3:0 2:0 1:0 5:0 section \"B\" 3:2 2:2 1:2 5:2 }");
+        assert!(diags.is_empty(), "{diags:?}");
+        assert_eq!(score.measures.len(), 2);
+        assert_eq!(section_text(&score.measures[0]), None);
+        assert_eq!(section_text(&score.measures[1]), Some("B"));
+    }
+
+    #[test]
+    fn a_section_mark_labels_a_following_measure_block() {
+        let (score, _) = program_score("score { section \"Chorus\" measure { 3:0 } }");
+        assert_eq!(section_text(&score.measures[0]), Some("Chorus"));
+    }
+
+    #[test]
+    fn a_section_mark_labels_the_first_measure_of_a_repeat() {
+        let (score, _) =
+            program_score("score { default 1/4\n section \"B\" repeat { 3:0 2:0 1:0 5:0 } }");
+        assert_eq!(section_text(&score.measures[0]), Some("B"));
+        assert!(score.measures[0].repeat_start);
     }
 
     #[test]

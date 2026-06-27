@@ -134,7 +134,10 @@ impl Resolver {
                 }
                 ScoreItemKind::Loop(l) => self.resolve_block(&l.body, &empty),
                 ScoreItemKind::Repeat(r) => self.resolve_repeat(r, &empty),
-                ScoreItemKind::Time(_) | ScoreItemKind::Default(_) | ScoreItemKind::Error => {}
+                ScoreItemKind::Time(_)
+                | ScoreItemKind::Default(_)
+                | ScoreItemKind::Section(_)
+                | ScoreItemKind::Error => {}
             }
         }
     }

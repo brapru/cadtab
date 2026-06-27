@@ -228,6 +228,8 @@ pub enum ScoreItemKind {
     Repeat(Repeat),
     Loop(LoopBlock),
     Measure(Block),
+    /// A `section "A"` rehearsal mark attaching a label to the next measure.
+    Section(StringLit),
     Event(Event),
     Error,
 }

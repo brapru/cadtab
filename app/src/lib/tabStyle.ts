@@ -21,6 +21,7 @@ export const TEXT_STYLE: Record<TextRole, TextStyle> = {
   technique: { size: 0.95, italic: true },
   ending: { size: 0.95 },
   rest: { size: 1.5 },
+  sectionLabel: { size: 1.2, weight: 700 },
 };
 
 // The left-aligned header block anchors at its start x rather than centring.
@@ -28,6 +29,7 @@ const START_ANCHORED: ReadonlySet<TextRole> = new Set([
   "tuningName",
   "tuningString",
   "capo",
+  "sectionLabel",
 ]);
 
 // Hand/technique annotations and the header tuning block read as secondary ink.

@@ -40,6 +40,9 @@ const SYSTEM_GAP: f32 = 3.5;
 // Vertical room reserved above the staff for volta brackets, when any exist.
 const VOLTA_SPACE: f32 = 1.2;
 const VOLTA_GAP: f32 = 0.8;
+// Vertical room reserved above the staff for a section label, when any system
+// carries one. It sits at the top of the above-staff band, above any voltas.
+const SECTION_SPACE: f32 = 1.4;
 
 // Horizontal metrics.
 const LEFT_MARGIN: f32 = 2.0;
@@ -173,14 +176,20 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     let mut last_bottom = cursor;
     for &(start, end) in &groups {
         let measures = &score.measures[start..end];
+        // The above-staff band stacks (top → staff): section label, then volta.
+        let has_section = measures.iter().any(|m| m.section.is_some());
         let has_volta = measures.iter().any(|m| m.ending.is_some());
-        let staff_top = cursor + if has_volta { VOLTA_SPACE } else { 0.0 };
+        let band_top = cursor;
+        let above = if has_section { SECTION_SPACE } else { 0.0 }
+            + if has_volta { VOLTA_SPACE } else { 0.0 };
+        let staff_top = band_top + above;
         let staff_bottom = staff_top + staff_height;
         systems.push(build_system(
             measures,
             &plans[start..end],
             &beams[start..end],
             width,
+            band_top,
             staff_top,
             staff_height,
             n_strings,
@@ -270,6 +279,7 @@ fn build_system(
     plans: &[MeasurePlan],
     beams: &[Vec<beam::BeamGroup>],
     width: f32,
+    band_top: f32,
     staff_top: f32,
     staff_height: f32,
     n_strings: usize,
@@ -396,6 +406,7 @@ fn build_system(
     }
     sys_prims.extend(barlines(measures, &ranges, staff_top, staff_bottom));
     sys_prims.extend(volta_brackets(measures, &ranges, staff_top));
+    sys_prims.extend(section_labels(measures, &ranges, band_top));
 
     System {
         bounds: Rect {
@@ -780,6 +791,26 @@ fn volta_brackets(measures: &[Measure], ranges: &[(f32, f32)], staff_top: f32) -
         });
     }
     prims
+}
+
+/// Section labels (rehearsal marks) above the staff: each measure carrying a
+/// `section` mark gets its label left-anchored at the measure's start, at the
+/// top of the above-staff band. Span-tagged so it maps back to its source.
+fn section_labels(measures: &[Measure], ranges: &[(f32, f32)], band_top: f32) -> Vec<Primitive> {
+    let baseline = band_top + SECTION_SPACE / 2.0;
+    measures
+        .iter()
+        .zip(ranges)
+        .filter_map(|(m, &(x0, _))| {
+            m.section.as_ref().map(|label| Primitive::Text {
+                x: x0,
+                y: baseline,
+                content: label.text.clone(),
+                role: TextRole::SectionLabel,
+                span: Some(label.span),
+            })
+        })
+        .collect()
 }
 
 /// Build the header block: a centred title/composer at the top, then a
@@ -1404,6 +1435,80 @@ mod tests {
         m.ending = Some(1);
         let with_volta = layout(&banjo_score(vec![m]), cfg());
         assert!(with_volta.meta.height > plain.meta.height);
+    }
+
+    fn section_prims(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.prims.iter())
+            .filter(|p| {
+                matches!(
+                    p,
+                    Primitive::Text {
+                        role: TextRole::SectionLabel,
+                        ..
+                    }
+                )
+            })
+            .collect()
+    }
+
+    fn labeled(text: &str, string: u8, fret: u8) -> Measure {
+        let mut m = Measure::new(vec![note(string, fret, 0)]);
+        m.section = Some(crate::model::SectionLabel {
+            text: text.into(),
+            span: Span::new(0, 1),
+        });
+        m
+    }
+
+    #[test]
+    fn a_section_label_draws_above_the_staff_at_the_measure_start() {
+        let tree = layout(&banjo_score(vec![labeled("A", 3, 0)]), cfg());
+        let labels = section_prims(&tree);
+        assert_eq!(labels.len(), 1);
+        match labels[0] {
+            Primitive::Text {
+                content, x, span, ..
+            } => {
+                assert_eq!(content, "A");
+                // Left-anchored at the system's left margin (first measure start).
+                assert!((x - LEFT_MARGIN).abs() < 1e-5);
+                assert!(span.is_some()); // span-tagged for bidi mapping (D20)
+            }
+            _ => unreachable!(),
+        }
+        // Above the staff: smaller y than the fret number.
+        assert!(y_of(labels[0]) < y_of(fret_numbers(&tree)[0]));
+    }
+
+    #[test]
+    fn a_section_label_reserves_room_above_the_staff() {
+        let plain = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        let labeled = layout(&banjo_score(vec![labeled("A", 3, 0)]), cfg());
+        assert!(labeled.meta.height > plain.meta.height);
+    }
+
+    #[test]
+    fn a_section_label_stacks_above_a_volta_bracket() {
+        let mut m = labeled("A", 3, 0);
+        m.ending = Some(1);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let label_y = y_of(section_prims(&tree)[0]);
+        let ending_y = tree.systems[0]
+            .prims
+            .iter()
+            .find_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::Ending,
+                    y,
+                    ..
+                } => Some(*y),
+                _ => None,
+            })
+            .unwrap();
+        // The rehearsal mark sits at the very top, above the volta number.
+        assert!(label_y < ending_y);
     }
 
     #[test]

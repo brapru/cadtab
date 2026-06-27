@@ -461,6 +461,13 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ScoreItemKind::Measure(self.parse_block())
             }
+            TokenKind::Keyword(Keyword::Section) => {
+                self.bump();
+                match self.parse_string_lit() {
+                    Some(s) => ScoreItemKind::Section(s),
+                    None => ScoreItemKind::Error,
+                }
+            }
             TokenKind::Keyword(Keyword::Repeat) => {
                 self.bump();
                 self.parse_repeat()
@@ -1230,6 +1237,27 @@ mod tests {
         let items = score_items("score { pickup { } measure { } }");
         assert!(matches!(items[0].kind, ScoreItemKind::Pickup(_)));
         assert!(matches!(items[1].kind, ScoreItemKind::Measure(_)));
+    }
+
+    #[test]
+    fn section_mark_carries_its_label() {
+        let items = score_items("score { section \"A\" 3:0 }");
+        match &items[0].kind {
+            ScoreItemKind::Section(s) => assert_eq!(s.value, "A"),
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(items[1].kind, ScoreItemKind::Event(_)));
+    }
+
+    #[test]
+    fn section_without_a_label_is_an_error_node() {
+        let parsed = parse("score { section 3:0 }");
+        assert!(
+            parsed
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("expected string"))
+        );
     }
 
     #[test]

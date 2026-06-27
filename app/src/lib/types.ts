@@ -49,7 +49,8 @@ export type TextRole =
   | "strum"
   | "technique"
   | "ending"
-  | "rest";
+  | "rest"
+  | "sectionLabel";
 
 export type Primitive =
   | {

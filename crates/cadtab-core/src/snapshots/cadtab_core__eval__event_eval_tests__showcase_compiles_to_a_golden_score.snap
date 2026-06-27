@@ -119,6 +119,7 @@ Score {
             repeat_end: false,
             ending: None,
             is_pickup: true,
+            section: None,
         },
         Measure {
             events: [
@@ -143,8 +144,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 331,
-                        end: 336,
+                        start: 405,
+                        end: 410,
                     },
                 },
                 Event {
@@ -168,8 +169,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 338,
-                        end: 343,
+                        start: 412,
+                        end: 417,
                     },
                 },
                 Event {
@@ -193,8 +194,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 345,
-                        end: 350,
+                        start: 419,
+                        end: 424,
                     },
                 },
                 Event {
@@ -218,8 +219,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 353,
-                        end: 358,
+                        start: 427,
+                        end: 432,
                     },
                 },
                 Event {
@@ -243,8 +244,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 360,
-                        end: 365,
+                        start: 434,
+                        end: 439,
                     },
                 },
                 Event {
@@ -268,8 +269,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 367,
-                        end: 372,
+                        start: 441,
+                        end: 446,
                     },
                 },
                 Event {
@@ -306,8 +307,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 400,
-                        end: 415,
+                        start: 474,
+                        end: 489,
                     },
                 },
             ],
@@ -316,6 +317,15 @@ Score {
             repeat_end: false,
             ending: None,
             is_pickup: false,
+            section: Some(
+                SectionLabel {
+                    text: "A",
+                    span: Span {
+                        start: 270,
+                        end: 273,
+                    },
+                },
+            ),
         },
         Measure {
             events: [
@@ -327,8 +337,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 496,
-                        end: 499,
+                        start: 570,
+                        end: 573,
                     },
                 },
                 Event {
@@ -348,8 +358,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 501,
-                        end: 504,
+                        start: 575,
+                        end: 578,
                     },
                 },
                 Event {
@@ -369,8 +379,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 507,
-                        end: 510,
+                        start: 581,
+                        end: 584,
                     },
                 },
             ],
@@ -381,6 +391,7 @@ Score {
                 1,
             ),
             is_pickup: false,
+            section: None,
         },
         Measure {
             events: [
@@ -405,8 +416,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 560,
-                        end: 565,
+                        start: 634,
+                        end: 639,
                     },
                 },
                 Event {
@@ -430,8 +441,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 566,
-                        end: 571,
+                        start: 640,
+                        end: 645,
                     },
                 },
             ],
@@ -442,6 +453,7 @@ Score {
                 2,
             ),
             is_pickup: false,
+            section: None,
         },
         Measure {
             events: [
@@ -462,8 +474,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 687,
-                        end: 690,
+                        start: 799,
+                        end: 802,
                     },
                 },
                 Event {
@@ -483,8 +495,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 691,
-                        end: 694,
+                        start: 803,
+                        end: 806,
                     },
                 },
                 Event {
@@ -504,8 +516,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 687,
-                        end: 690,
+                        start: 799,
+                        end: 802,
                     },
                 },
                 Event {
@@ -525,8 +537,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 691,
-                        end: 694,
+                        start: 803,
+                        end: 806,
                     },
                 },
             ],
@@ -535,6 +547,15 @@ Score {
             repeat_end: false,
             ending: None,
             is_pickup: false,
+            section: Some(
+                SectionLabel {
+                    text: "B",
+                    span: Span {
+                        start: 680,
+                        end: 683,
+                    },
+                },
+            ),
         },
         Measure {
             events: [
@@ -555,8 +576,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 820,
-                        end: 836,
+                        start: 932,
+                        end: 948,
                     },
                 },
                 Event {
@@ -578,8 +599,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 820,
-                        end: 836,
+                        start: 932,
+                        end: 948,
                     },
                 },
                 Event {
@@ -601,8 +622,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 875,
-                        end: 884,
+                        start: 987,
+                        end: 996,
                     },
                 },
             ],
@@ -611,6 +632,7 @@ Score {
             repeat_end: false,
             ending: None,
             is_pickup: false,
+            section: None,
         },
     ],
 }

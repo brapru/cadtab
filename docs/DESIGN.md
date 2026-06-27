@@ -443,6 +443,16 @@ user-defined tunings. Decisions are captured here as each task lands.
   malformed pitch diagnoses and the prior tuning stands. No new render-tree shape, so export and the
   live painter pick it up for free.
 
+- **D43 — Section labels (rehearsal marks) + the above-staff band.** A score-body marker
+  `section "A"` attaches a label to the *next* measure boundary: it falls on a barline (flushes the
+  current auto-barred run, like a meter change) and stamps the label onto the measure that opens
+  after it — threaded through eval as a `pending_section` parallel to `pending_meter`, landing on
+  `Measure.section` (text + span, D20). Layout grows a reusable **above-staff band**: per system,
+  vertical room is reserved above the staff (`band_top → staff_top`), stacked top→staff as *section
+  label, then volta*. The label is a span-tagged `Text` of new role `SectionLabel`, left-anchored at
+  the measure's start. This band is the shared machinery T6.2 (chord symbols, placed at a beat
+  onset) and T6.3 (bar numbers) build on. The role flows to export for free via `tabStyle.ts` (D30).
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -464,4 +474,5 @@ dependency-ordered build plan.
 - *2026-06-27* — Workspace shell resolved: D41 (see §11d). View registry + editor-groups layout (splits / tab-stacks / maximize); document-bound vs global-singleton views; free-floating docking deferred. Reshapes M7.
 - *2026-06-27* — Revised D38: `import` resolution via a file-provider abstraction; **web supports multi-file projects** via a single project bundle (JSON `{ entry, files }`), superseding web = single-file/stdlib-only. Shapes T5.1/T5.2 + keeps the M7 project UI cross-platform.
 - *2026-06-27* — Custom tunings resolved: D42 (see §11e). Inline `tuning { … }` per-string spec (scientific-notation pitches, optional name) extends D35 additively; header caption now optional. Completes T6.4.
+- *2026-06-27* — Section labels resolved: D43 (see §11e). `section "A"` marker → `Measure.section`; layout gains a reusable above-staff band (section over volta). Completes T6.1; T6.2/T6.3 reuse the band.
 - *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.

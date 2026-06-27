@@ -183,7 +183,10 @@ impl Checker {
                 }
                 ScoreItemKind::Loop(l) => self.check_block(&l.body),
                 ScoreItemKind::Repeat(r) => self.check_repeat(r),
-                ScoreItemKind::Time(_) | ScoreItemKind::Default(_) | ScoreItemKind::Error => {}
+                ScoreItemKind::Time(_)
+                | ScoreItemKind::Default(_)
+                | ScoreItemKind::Section(_)
+                | ScoreItemKind::Error => {}
             }
         }
     }
