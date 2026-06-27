@@ -25,6 +25,7 @@ use crate::layout::{LayoutConfig, layout};
 use crate::lexer::lex;
 use crate::parser::parse;
 use crate::render::RenderTree;
+use crate::resolve::ImportEnv;
 use crate::token::Token;
 
 /// Everything a single compile produces for the frontend: the positioned render
@@ -42,8 +43,8 @@ pub struct CompileResult {
 ///
 /// Resilient by construction: every stage recovers and reports rather than
 /// bailing, so a malformed document still yields highlight tokens, the
-/// diagnostics it provoked, and a best-effort partial render tree. Lexer and
-/// parser diagnostics precede evaluation diagnostics.
+/// diagnostics it provoked, and a best-effort partial render tree. Diagnostics
+/// are ordered by pass: parse → name resolution → type check → evaluation.
 ///
 /// Highlight tokens come from a dedicated lex of the source rather than the
 /// parser's stream, because the parser drops comment and error trivia that the
@@ -56,10 +57,21 @@ pub fn compile(source: &str, config: LayoutConfig) -> CompileResult {
         .collect();
 
     let parsed = parse(source);
+
+    // Semantic passes on the (possibly partial) AST. Resolution owns unknown-name
+    // reporting; eval stays silent on those by design. Stdlib licks are ambient
+    // names so calls to them resolve rather than flagging as unknown.
+    let resolve_diagnostics =
+        resolve::resolve_with_ambient(&parsed.program, &ImportEnv::empty(), &stdlib::names())
+            .diagnostics;
+    let type_diagnostics = types::check(&parsed.program).diagnostics;
+
     let (score, eval_diagnostics) = eval_program(&parsed.program);
     let render_tree = layout(&score, config);
 
     let mut diagnostics = parsed.diagnostics;
+    diagnostics.extend(resolve_diagnostics);
+    diagnostics.extend(type_diagnostics);
     diagnostics.extend(eval_diagnostics);
 
     CompileResult {
@@ -156,6 +168,53 @@ mod tests {
         let result = compile("3:0", LayoutConfig { width: 800.0 });
         assert!(!result.diagnostics.is_empty());
         assert!(!result.tokens.is_empty());
+    }
+
+    #[test]
+    fn unknown_name_in_a_score_surfaces_as_a_diagnostic() {
+        // Regression: the resolve pass must run inside compile(). A bare unknown
+        // identifier in a score block was previously swallowed silently.
+        let src = "score {\n  3:0 2:0 1:0\n  gibberish\n}";
+        let result = compile(src, LayoutConfig { width: 800.0 });
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|d| d.severity == Severity::Error
+                    && d.message.contains("unknown name `gibberish`")),
+            "expected an unknown-name error, got {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn a_call_arity_error_surfaces_as_a_diagnostic() {
+        // Regression: the type-check pass must run inside compile() too.
+        let src = "def f(a) { a.0 }\nscore { f() }";
+        let result = compile(src, LayoutConfig { width: 800.0 });
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("`f` expects 1 argument")),
+            "expected an arity error, got {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn stdlib_licks_resolve_without_false_unknowns() {
+        // The default licks are ambient: calling one must not flag as unknown.
+        let src = "score { default 1/8\n forward_roll([3:0 2:0 1:0]) }";
+        let result = compile(src, LayoutConfig { width: 800.0 });
+        assert!(
+            !result
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("unknown name")),
+            "stdlib lick should resolve, got {:?}",
+            result.diagnostics
+        );
     }
 
     #[test]

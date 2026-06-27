@@ -8,7 +8,7 @@
 //! `def`'s parameter list. Lookup checks parameters, then top-level names, then
 //! builtins, then imports.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use crate::ast::{
     Block, Def, Event, EventKind, Expr, ExprKind, ItemKind, Let, Program, Repeat, Score,
@@ -63,9 +63,21 @@ pub fn resolve(program: &Program) -> Resolved {
 
 /// Resolve `program`, drawing imported names from `imports`.
 pub fn resolve_with_imports(program: &Program, imports: &ImportEnv) -> Resolved {
+    resolve_with_ambient(program, imports, &[])
+}
+
+/// Resolve `program`, treating `ambient` as names always in scope (the embedded
+/// stdlib licks, which every score gets by default). These resolve like
+/// builtins; a user `def`/`let` of the same name still shadows them.
+pub fn resolve_with_ambient(
+    program: &Program,
+    imports: &ImportEnv,
+    ambient: &[String],
+) -> Resolved {
     let mut r = Resolver {
         globals: HashMap::new(),
         imported: HashMap::new(),
+        ambient: ambient.iter().cloned().collect(),
         diagnostics: Vec::new(),
     };
     r.collect_top_level(program, imports);
@@ -80,6 +92,8 @@ struct Resolver {
     globals: HashMap<String, Span>,
     /// Name brought in by an `import` → the import's span.
     imported: HashMap<String, Span>,
+    /// Names always in scope from the embedded stdlib (default licks).
+    ambient: HashSet<String>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -232,6 +246,7 @@ impl Resolver {
         let known = scope.contains_key(name)
             || self.globals.contains_key(name)
             || BUILTINS.contains(&name)
+            || self.ambient.contains(name)
             || self.imported.contains_key(name);
         if !known {
             self.diagnostics.push(

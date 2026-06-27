@@ -104,10 +104,19 @@ const diagnosticHover = hoverTooltip((view, pos) => {
   };
 });
 
+// WKWebView (the macOS webview Tauri embeds) ignores the standard
+// `text-decoration: underline wavy <color>` shorthand and needs the
+// `-webkit-text-decoration` form, so set both. Without the prefixed property the
+// squiggles render on web (Chromium/Firefox) but are invisible on desktop.
+const wavy = (color: string) => ({
+  textDecoration: `underline wavy ${color}`,
+  WebkitTextDecoration: `underline wavy ${color}`,
+});
+
 const diagnosticTheme = EditorView.baseTheme({
-  ".cm-diag-error": { textDecoration: "underline wavy #e45649" },
-  ".cm-diag-warning": { textDecoration: "underline wavy #c18401" },
-  ".cm-diag-info": { textDecoration: "underline wavy #4078f2" },
+  ".cm-diag-error": wavy("#e45649"),
+  ".cm-diag-warning": wavy("#c18401"),
+  ".cm-diag-info": wavy("#4078f2"),
   ".cm-diag-tooltip": {
     padding: "3px 7px",
     maxWidth: "320px",
