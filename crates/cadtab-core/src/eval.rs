@@ -10,8 +10,9 @@ use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, Mar
 use crate::diagnostics::Diagnostic;
 use crate::instrument::{Instrument, StringDef};
 use crate::model::{
-    Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Pitch, Position,
-    RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig, split_measures,
+    Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger, Measure, Note, Phrase,
+    Pitch, Position, RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig,
+    split_measures,
 };
 use crate::span::Span;
 
@@ -123,6 +124,8 @@ pub struct Evaluator {
     env: Env,
     defs: HashMap<String, Def>,
     call_depth: usize,
+    /// A `chord "…"` marker waiting to attach to the next event's onset.
+    pending_chord: Option<ChordSymbol>,
     diagnostics: Vec<Diagnostic>,
 }
 
@@ -134,6 +137,7 @@ impl Evaluator {
             env: Env::new(),
             defs: HashMap::new(),
             call_depth: 0,
+            pending_chord: None,
             diagnostics: Vec::new(),
         }
     }
@@ -400,6 +404,24 @@ impl Evaluator {
     }
 
     fn eval_event_into(&mut self, ev: &ast::Event, out: &mut Phrase) {
+        // A chord-symbol marker carries no time: hold it for the next event.
+        if let ast::EventKind::ChordSymbol(sym) = &ev.kind {
+            self.pending_chord = Some(ChordSymbol {
+                text: sym.value.clone(),
+                span: sym.span,
+            });
+            return;
+        }
+        // Attach any pending chord symbol to the first event this produces (a
+        // note, chord, rest, or the head of a spliced phrase).
+        let before = out.events.len();
+        self.eval_event_kind_into(ev, out);
+        if self.pending_chord.is_some() && out.events.len() > before {
+            out.events[before].chord = self.pending_chord.take();
+        }
+    }
+
+    fn eval_event_kind_into(&mut self, ev: &ast::Event, out: &mut Phrase) {
         match &ev.kind {
             ast::EventKind::Note(note) => {
                 if let Some(e) = self.eval_note(note, ev.span) {
@@ -427,7 +449,8 @@ impl Evaluator {
                 _ => {}
             },
             ast::EventKind::Tie(tie) => self.eval_tie_into(tie, out),
-            ast::EventKind::Error => {}
+            // Handled in `eval_event_into` before dispatch; never reaches here.
+            ast::EventKind::ChordSymbol(_) | ast::EventKind::Error => {}
         }
     }
 
@@ -2116,6 +2139,41 @@ score {
             program_score("score { default 1/4\n section \"B\" repeat { 3:0 2:0 1:0 5:0 } }");
         assert_eq!(section_text(&score.measures[0]), Some("B"));
         assert!(score.measures[0].repeat_start);
+    }
+
+    fn chord_text(e: &Event) -> Option<&str> {
+        e.chord.as_ref().map(|c| c.text.as_str())
+    }
+
+    #[test]
+    fn a_chord_symbol_attaches_to_the_next_events_onset() {
+        let (phrase, diags) = eval_score("score { default 1/4\n chord \"G\" 3:0 2:0 }");
+        assert!(diags.is_empty(), "{diags:?}");
+        assert_eq!(chord_text(&phrase.events[0]), Some("G"));
+        assert_eq!(chord_text(&phrase.events[1]), None);
+    }
+
+    #[test]
+    fn a_chord_symbol_attaches_to_a_chord_event() {
+        let (phrase, _) = eval_score("score { chord \"C\" [1:0 2:1]_4 }");
+        assert!(matches!(phrase.events[0].kind, EventKind::Chord(_)));
+        assert_eq!(chord_text(&phrase.events[0]), Some("C"));
+    }
+
+    #[test]
+    fn chord_symbols_work_inside_a_measure_block() {
+        let (score, _) = program_score("score { measure { chord \"G\" 3:0 chord \"C\" 2:1 } }");
+        let evs = &score.measures[0].events;
+        assert_eq!(chord_text(&evs[0]), Some("G"));
+        assert_eq!(chord_text(&evs[1]), Some("C"));
+    }
+
+    #[test]
+    fn a_trailing_chord_symbol_with_no_following_event_is_dropped() {
+        let (phrase, diags) = eval_score("score { 3:0 chord \"G\" }");
+        assert!(diags.is_empty(), "{diags:?}");
+        assert_eq!(phrase.len(), 1);
+        assert_eq!(chord_text(&phrase.events[0]), None);
     }
 
     #[test]

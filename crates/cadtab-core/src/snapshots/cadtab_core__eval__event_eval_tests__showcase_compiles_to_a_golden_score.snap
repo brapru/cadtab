@@ -82,6 +82,7 @@ Score {
                         start: 215,
                         end: 220,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -107,6 +108,7 @@ Score {
                         start: 221,
                         end: 226,
                     },
+                    chord: None,
                 },
             ],
             meter: Some(
@@ -144,9 +146,18 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 405,
-                        end: 410,
+                        start: 478,
+                        end: 483,
                     },
+                    chord: Some(
+                        ChordSymbol {
+                            text: "G",
+                            span: Span {
+                                start: 411,
+                                end: 414,
+                            },
+                        },
+                    ),
                 },
                 Event {
                     kind: Note(
@@ -169,9 +180,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 412,
-                        end: 417,
+                        start: 485,
+                        end: 490,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -194,9 +206,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 419,
-                        end: 424,
+                        start: 492,
+                        end: 497,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -219,9 +232,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 427,
-                        end: 432,
+                        start: 500,
+                        end: 505,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -244,9 +258,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 434,
-                        end: 439,
+                        start: 507,
+                        end: 512,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -269,9 +284,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 441,
-                        end: 446,
+                        start: 514,
+                        end: 519,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Chord(
@@ -307,9 +323,18 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 474,
-                        end: 489,
+                        start: 561,
+                        end: 576,
                     },
+                    chord: Some(
+                        ChordSymbol {
+                            text: "C",
+                            span: Span {
+                                start: 553,
+                                end: 556,
+                            },
+                        },
+                    ),
                 },
             ],
             meter: None,
@@ -337,9 +362,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 570,
-                        end: 573,
+                        start: 657,
+                        end: 660,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -358,9 +384,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 575,
-                        end: 578,
+                        start: 662,
+                        end: 665,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -379,9 +406,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 581,
-                        end: 584,
+                        start: 668,
+                        end: 671,
                     },
+                    chord: None,
                 },
             ],
             meter: None,
@@ -416,9 +444,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 634,
-                        end: 639,
+                        start: 721,
+                        end: 726,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -441,9 +470,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 640,
-                        end: 645,
+                        start: 727,
+                        end: 732,
                     },
+                    chord: None,
                 },
             ],
             meter: None,
@@ -474,9 +504,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 799,
-                        end: 802,
+                        start: 886,
+                        end: 889,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -495,9 +526,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 803,
-                        end: 806,
+                        start: 890,
+                        end: 893,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -516,9 +548,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 799,
-                        end: 802,
+                        start: 886,
+                        end: 889,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -537,9 +570,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 803,
-                        end: 806,
+                        start: 890,
+                        end: 893,
                     },
+                    chord: None,
                 },
             ],
             meter: None,
@@ -551,8 +585,8 @@ Score {
                 SectionLabel {
                     text: "B",
                     span: Span {
-                        start: 680,
-                        end: 683,
+                        start: 767,
+                        end: 770,
                     },
                 },
             ),
@@ -576,9 +610,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 932,
-                        end: 948,
+                        start: 1019,
+                        end: 1035,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -599,9 +634,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 932,
-                        end: 948,
+                        start: 1019,
+                        end: 1035,
                     },
+                    chord: None,
                 },
                 Event {
                     kind: Note(
@@ -622,9 +658,10 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 987,
-                        end: 996,
+                        start: 1074,
+                        end: 1083,
                     },
+                    chord: None,
                 },
             ],
             meter: None,

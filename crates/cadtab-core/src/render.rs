@@ -55,6 +55,8 @@ pub enum TextRole {
     Rest,
     /// A section label (rehearsal mark) above the staff (e.g. the "A" part).
     SectionLabel,
+    /// A chord symbol above the staff at a beat (e.g. "G", "D7").
+    ChordSymbol,
 }
 
 /// A positioned drawing primitive. Span-bearing variants carry the source span
@@ -148,6 +150,7 @@ mod tests {
         TextRole::Ending,
         TextRole::Rest,
         TextRole::SectionLabel,
+        TextRole::ChordSymbol,
     ];
 
     fn rect() -> Rect {

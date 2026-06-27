@@ -618,6 +618,18 @@ impl<'a> Parser<'a> {
     /// splice. Returns `None` if no event begins here.
     fn parse_unit(&mut self) -> Option<Event> {
         let start = self.peek().span.start;
+        // `chord "G"` — a beat-positioned chord-symbol annotation. `chord` is a
+        // contextual keyword: only an ident `chord` immediately followed by a
+        // string is the marker, so `chord` stays usable as an ordinary name
+        // (e.g. the stdlib's `forward_roll(chord)`).
+        if self.at(TokenKind::Ident)
+            && self.text(self.peek().span) == "chord"
+            && self.peek2_kind() == TokenKind::Str
+        {
+            self.bump(); // `chord`
+            let s = self.parse_string_lit().expect("peeked a string");
+            return Some(Event::new(EventKind::ChordSymbol(s), self.span_from(start)));
+        }
         match self.peek_kind() {
             TokenKind::LBracket => {
                 let chord = self.parse_chord();
@@ -1258,6 +1270,18 @@ mod tests {
                 .iter()
                 .any(|d| d.message.contains("expected string"))
         );
+    }
+
+    #[test]
+    fn chord_symbol_marker_carries_its_name() {
+        let items = score_items("score { chord \"D7\" 3:0 }");
+        match &items[0].kind {
+            ScoreItemKind::Event(ev) => match &ev.kind {
+                EventKind::ChordSymbol(s) => assert_eq!(s.value, "D7"),
+                other => panic!("{other:?}"),
+            },
+            other => panic!("{other:?}"),
+        }
     }
 
     #[test]

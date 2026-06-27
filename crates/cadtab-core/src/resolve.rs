@@ -166,7 +166,11 @@ impl Resolver {
                 self.resolve_event(&t.right, scope);
             }
             // Chords and rests are positions/durations only — no names.
-            EventKind::Chord(_) | EventKind::Rest(_) | EventKind::Error => {}
+            // Chords, rests, and chord-symbol markers carry no names.
+            EventKind::Chord(_)
+            | EventKind::Rest(_)
+            | EventKind::ChordSymbol(_)
+            | EventKind::Error => {}
         }
     }
 

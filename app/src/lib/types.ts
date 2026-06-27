@@ -50,7 +50,8 @@ export type TextRole =
   | "technique"
   | "ending"
   | "rest"
-  | "sectionLabel";
+  | "sectionLabel"
+  | "chordSymbol";
 
 export type Primitive =
   | {

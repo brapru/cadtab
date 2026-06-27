@@ -218,7 +218,10 @@ impl Checker {
                 self.check_event(&t.left);
                 self.check_event(&t.right);
             }
-            EventKind::Chord(_) | EventKind::Rest(_) | EventKind::Error => {}
+            EventKind::Chord(_)
+            | EventKind::Rest(_)
+            | EventKind::ChordSymbol(_)
+            | EventKind::Error => {}
         }
     }
 

@@ -43,6 +43,9 @@ const VOLTA_GAP: f32 = 0.8;
 // Vertical room reserved above the staff for a section label, when any system
 // carries one. It sits at the top of the above-staff band, above any voltas.
 const SECTION_SPACE: f32 = 1.4;
+// Vertical room reserved above the staff for chord symbols, when any system
+// carries one. It sits below the section-label row and above any voltas.
+const CHORD_SPACE: f32 = 1.3;
 
 // Horizontal metrics.
 const LEFT_MARGIN: f32 = 2.0;
@@ -176,11 +179,16 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     let mut last_bottom = cursor;
     for &(start, end) in &groups {
         let measures = &score.measures[start..end];
-        // The above-staff band stacks (top → staff): section label, then volta.
+        // The above-staff band stacks (top → staff): section label, chord
+        // symbols, then volta bracket.
         let has_section = measures.iter().any(|m| m.section.is_some());
+        let has_chord = measures
+            .iter()
+            .any(|m| m.events.iter().any(|e| e.chord.is_some()));
         let has_volta = measures.iter().any(|m| m.ending.is_some());
         let band_top = cursor;
         let above = if has_section { SECTION_SPACE } else { 0.0 }
+            + if has_chord { CHORD_SPACE } else { 0.0 }
             + if has_volta { VOLTA_SPACE } else { 0.0 };
         let staff_top = band_top + above;
         let staff_bottom = staff_top + staff_height;
@@ -288,6 +296,10 @@ fn build_system(
     let beam_y = staff_bottom + BEAM_DROP;
     let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
 
+    // Chord symbols sit one row below any section labels in the above-staff band.
+    let has_section = measures.iter().any(|m| m.section.is_some());
+    let chord_row_y = band_top + if has_section { SECTION_SPACE } else { 0.0 } + CHORD_SPACE / 2.0;
+
     let mut number_xs: Vec<Vec<f32>> = vec![Vec::new(); n_strings];
     let mut boxes = Vec::with_capacity(plans.len());
     let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(plans.len());
@@ -305,6 +317,16 @@ fn build_system(
         }
         for (j, (placed, event)) in plan.events.iter().zip(&measure.events).enumerate() {
             let x = mx0 + placed.rel_x;
+            // A chord symbol landing on this onset sits above the staff at its x.
+            if let Some(sym) = &event.chord {
+                prims.push(Primitive::Text {
+                    x,
+                    y: chord_row_y,
+                    content: sym.text.clone(),
+                    role: TextRole::ChordSymbol,
+                    span: Some(sym.span),
+                });
+            }
             let dots = beam::augmentation_dots(event.duration());
             for &(string, fret) in &placed.positions {
                 if (1..=n_strings as u8).contains(&string) {
@@ -1509,6 +1531,88 @@ mod tests {
             .unwrap();
         // The rehearsal mark sits at the very top, above the volta number.
         assert!(label_y < ending_y);
+    }
+
+    fn chord_prims(tree: &RenderTree) -> Vec<&Primitive> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter(|p| {
+                matches!(
+                    p,
+                    Primitive::Text {
+                        role: TextRole::ChordSymbol,
+                        ..
+                    }
+                )
+            })
+            .collect()
+    }
+
+    fn note_with_chord(text: &str, string: u8, fret: u8) -> Event {
+        let mut e = note(string, fret, 0);
+        e.chord = Some(crate::model::ChordSymbol {
+            text: text.into(),
+            span: Span::new(0, 1),
+        });
+        e
+    }
+
+    #[test]
+    fn a_chord_symbol_draws_above_the_staff_at_its_beat() {
+        let m = Measure::new(vec![note_with_chord("G", 3, 0), note(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let chords = chord_prims(&tree);
+        assert_eq!(chords.len(), 1);
+        match chords[0] {
+            Primitive::Text { content, span, .. } => {
+                assert_eq!(content, "G");
+                assert!(span.is_some()); // span-tagged (D20)
+            }
+            _ => unreachable!(),
+        }
+        // Above the staff, and aligned to its note's column (same x as the fret).
+        assert!(y_of(chords[0]) < y_of(fret_numbers(&tree)[0]));
+        assert!((x_of(chords[0]) - x_of(fret_numbers(&tree)[0])).abs() < 1e-5);
+    }
+
+    #[test]
+    fn chord_symbols_reserve_room_above_the_staff() {
+        let plain = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        let with_chord = layout(
+            &banjo_score(vec![Measure::new(vec![note_with_chord("G", 3, 0)])]),
+            cfg(),
+        );
+        assert!(with_chord.meta.height > plain.meta.height);
+    }
+
+    #[test]
+    fn chord_symbols_sit_below_section_labels_and_above_voltas() {
+        let mut m = Measure::new(vec![note_with_chord("G", 3, 0)]);
+        m.section = Some(crate::model::SectionLabel {
+            text: "A".into(),
+            span: Span::new(0, 1),
+        });
+        m.ending = Some(1);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let section_y = y_of(section_prims(&tree)[0]);
+        let chord_y = y_of(chord_prims(&tree)[0]);
+        let ending_y = tree.systems[0]
+            .prims
+            .iter()
+            .find_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::Ending,
+                    y,
+                    ..
+                } => Some(*y),
+                _ => None,
+            })
+            .unwrap();
+        // Top → staff: section label, chord symbol, volta number.
+        assert!(section_y < chord_y);
+        assert!(chord_y < ending_y);
     }
 
     #[test]

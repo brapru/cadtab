@@ -28,6 +28,7 @@ Phrase {
                 start: 20,
                 end: 23,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -53,6 +54,7 @@ Phrase {
                 start: 24,
                 end: 27,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -78,6 +80,7 @@ Phrase {
                 start: 28,
                 end: 31,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -103,6 +106,7 @@ Phrase {
                 start: 20,
                 end: 23,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -128,6 +132,7 @@ Phrase {
                 start: 24,
                 end: 27,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -153,6 +158,7 @@ Phrase {
                 start: 28,
                 end: 31,
             },
+            chord: None,
         },
     ],
 }

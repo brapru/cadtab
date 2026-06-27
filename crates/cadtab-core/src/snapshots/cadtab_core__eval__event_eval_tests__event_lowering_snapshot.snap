@@ -28,6 +28,7 @@ Phrase {
                 start: 24,
                 end: 29,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -49,6 +50,7 @@ Phrase {
                 start: 31,
                 end: 34,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -74,6 +76,7 @@ Phrase {
                 start: 36,
                 end: 41,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -95,6 +98,7 @@ Phrase {
                 start: 44,
                 end: 49,
             },
+            chord: None,
         },
         Event {
             kind: Note(
@@ -116,6 +120,7 @@ Phrase {
                 start: 51,
                 end: 54,
             },
+            chord: None,
         },
         Event {
             kind: Chord(
@@ -154,6 +159,7 @@ Phrase {
                 start: 57,
                 end: 72,
             },
+            chord: None,
         },
         Event {
             kind: Rest(
@@ -166,6 +172,7 @@ Phrase {
                 start: 75,
                 end: 78,
             },
+            chord: None,
         },
         Event {
             kind: Rest(
@@ -178,6 +185,7 @@ Phrase {
                 start: 80,
                 end: 81,
             },
+            chord: None,
         },
     ],
 }

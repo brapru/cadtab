@@ -332,9 +332,10 @@ re-ordering decision so M5 ships first and export later covers these.)*
       to a measure boundary. Layout: text above the staff at that measure, span-tagged for
       bidirectional mapping. (Banjo tunes are commonly split into A/B parts.) *(Done — D43:
       `section "A"` marker → `Measure.section`; reusable above-staff band, `SectionLabel` role.)*
-- [ ] **T6.2 — Chord symbols over bars.** Place a chord name (G, C, D7…) at the start or a beat
+- [x] **T6.2 — Chord symbols over bars.** Place a chord name (G, C, D7…) at the start or a beat
       within a bar so the progression sits above the tab. Language: a chord-annotation construct
-      positioned at a beat. Layout: text above the staff aligned to that beat; span-tagged.
+      positioned at a beat. Layout: text above the staff aligned to that beat; span-tagged. *(Done —
+      D44: `chord "G"` contextual-keyword marker → `Event.chord`; chord row in the above-staff band.)*
 - [ ] **T6.3 — Bar numbering.** Number measures above the staff. Default: number only the first
       bar of each system line. Options: number every bar; turn all numbering off. Language: a
       directive to set the mode (e.g. `barnumbers lines|all|off`). Layout: a small number above

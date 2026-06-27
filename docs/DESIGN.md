@@ -453,6 +453,17 @@ user-defined tunings. Decisions are captured here as each task lands.
   the measure's start. This band is the shared machinery T6.2 (chord symbols, placed at a beat
   onset) and T6.3 (bar numbers) build on. The role flows to export for free via `tabStyle.ts` (D30).
 
+- **D44 — Chord symbols (`chord "G"`) at a beat.** A beat-positioned annotation that places a
+  chord name above the staff. Unlike section labels (measure-boundary, D43), chord symbols are
+  *event-level*: the marker carries no duration and attaches its name to the **next event's onset**
+  (threaded through eval as `pending_chord`, landing on `Event.chord`), so it works inside
+  `measure`/`repeat`/`loop` blocks and bare runs alike; a trailing marker with no following event is
+  dropped. `chord` is a **contextual keyword** — only an ident `chord` immediately followed by a
+  string is the marker, so `chord` stays usable as an ordinary name (e.g. the stdlib's
+  `forward_roll(chord)`); no reserved word added. Layout reuses the above-staff band (D43): chord
+  symbols occupy a row below section labels and above voltas, each a span-tagged `Text` of new role
+  `ChordSymbol`, centered over its note's column. Flows to export via `tabStyle.ts` (D30).
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -475,4 +486,5 @@ dependency-ordered build plan.
 - *2026-06-27* — Revised D38: `import` resolution via a file-provider abstraction; **web supports multi-file projects** via a single project bundle (JSON `{ entry, files }`), superseding web = single-file/stdlib-only. Shapes T5.1/T5.2 + keeps the M7 project UI cross-platform.
 - *2026-06-27* — Custom tunings resolved: D42 (see §11e). Inline `tuning { … }` per-string spec (scientific-notation pitches, optional name) extends D35 additively; header caption now optional. Completes T6.4.
 - *2026-06-27* — Section labels resolved: D43 (see §11e). `section "A"` marker → `Measure.section`; layout gains a reusable above-staff band (section over volta). Completes T6.1; T6.2/T6.3 reuse the band.
+- *2026-06-27* — Chord symbols resolved: D44 (see §11e). `chord "G"` contextual-keyword marker → `Event.chord` (attaches to next onset); above-staff band gains a chord row (under section, over volta). Completes T6.2.
 - *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.

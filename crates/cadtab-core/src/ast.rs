@@ -284,6 +284,8 @@ pub enum EventKind {
     /// A bare expression event (call/ident/spread) that splices a phrase.
     Phrase(Expr),
     Tie(Tie),
+    /// A `chord "G"` marker: zero-duration, attaches its name to the next event.
+    ChordSymbol(StringLit),
     Error,
 }
 

@@ -242,17 +242,33 @@ pub struct Chord {
     pub notes: Vec<ChordNote>,
 }
 
-/// A timed event in a phrase, carrying the span of the source that produced it.
+/// A chord symbol (e.g. `G`, `D7`) sounding from a beat. It attaches to the
+/// event at that onset and is drawn above the staff; the span ties it back to
+/// its `chord "…"` source for bidirectional mapping (D20).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ChordSymbol {
+    pub text: String,
+    pub span: Span,
+}
+
+/// A timed event in a phrase, carrying the span of the source that produced it
+/// and any chord symbol that lands on its onset.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Event {
     pub kind: EventKind,
     pub span: Span,
+    pub chord: Option<ChordSymbol>,
 }
 
 impl Event {
     pub fn new(kind: EventKind, span: Span) -> Self {
-        Self { kind, span }
+        Self {
+            kind,
+            span,
+            chord: None,
+        }
     }
 
     /// The duration this event occupies.

@@ -22,6 +22,7 @@ export const TEXT_STYLE: Record<TextRole, TextStyle> = {
   ending: { size: 0.95 },
   rest: { size: 1.5 },
   sectionLabel: { size: 1.2, weight: 700 },
+  chordSymbol: { size: 1.05, weight: 600 },
 };
 
 // The left-aligned header block anchors at its start x rather than centring.
