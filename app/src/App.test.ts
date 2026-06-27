@@ -40,15 +40,18 @@ const fake: CompileResult = {
   tokens: [],
 };
 
+const wasmCompileMock = vi.fn(async (..._args: unknown[]) => fake);
 vi.mock("./lib/wasm", () => ({
-  compile: vi.fn(async () => fake),
+  compile: (...args: unknown[]) => wasmCompileMock(...args),
 }));
 
-const openDocumentMock = vi.fn();
+const openProjectMock = vi.fn();
 const saveDocumentMock = vi.fn();
+const saveBundleMock = vi.fn();
 vi.mock("./lib/io", () => ({
-  openDocument: (...args: unknown[]) => openDocumentMock(...args),
+  openProject: (...args: unknown[]) => openProjectMock(...args),
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
+  saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   defaultDocName: () => "untitled.ctab",
 }));
 
@@ -202,9 +205,10 @@ describe("App", () => {
     expect(level()).toBe("100%");
   });
 
-  it("opens a document, shows its name, and stays clean", async () => {
-    openDocumentMock.mockReset();
-    openDocumentMock.mockResolvedValue({
+  it("opens a single score, shows its name, and stays clean", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "single",
       path: "/scores/loaded.ctab",
       name: "loaded.ctab",
       content: "score { 1:0 }",
@@ -221,10 +225,43 @@ describe("App", () => {
     });
   });
 
+  it("opens a project bundle: loads the entry and passes libs to compile", async () => {
+    openProjectMock.mockReset();
+    wasmCompileMock.mockClear();
+    openProjectMock.mockResolvedValue({
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+
+    // The entry becomes the open document...
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "tune.ctab",
+      );
+    });
+    // ...and the sibling lib (not the entry) flows to compile as the bundle map.
+    await vi.waitFor(() => {
+      const libsArgs = wasmCompileMock.mock.calls.map((c) => c[2]);
+      expect(libsArgs).toContainEqual({ "lib.ctab": "def roll() { 3:0 }" });
+    });
+  });
+
   it("saves an opened file in place, reusing its path (no re-prompt)", async () => {
-    openDocumentMock.mockReset();
+    openProjectMock.mockReset();
     saveDocumentMock.mockReset();
-    openDocumentMock.mockResolvedValue({
+    openProjectMock.mockResolvedValue({
+      kind: "single",
       path: "/scores/loaded.ctab",
       name: "loaded.ctab",
       content: "score { 1:0 }",
@@ -236,7 +273,7 @@ describe("App", () => {
     const { getByText } = render(App);
 
     await fireEvent.click(getByText("Open"));
-    await vi.waitFor(() => expect(openDocumentMock).toHaveBeenCalled());
+    await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
 
     await fireEvent.click(getByText("Save"));
     await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
@@ -287,7 +324,7 @@ describe("App", () => {
   });
 
   it("marks the document dirty on edit and guards an unsaved open", async () => {
-    openDocumentMock.mockReset();
+    openProjectMock.mockReset();
     const { container } = render(App);
 
     let content!: Element;
@@ -305,17 +342,37 @@ describe("App", () => {
     // Declining the discard prompt aborts the open; accepting proceeds.
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
     await fireEvent.keyDown(window, { key: "o", metaKey: true });
-    expect(openDocumentMock).not.toHaveBeenCalled();
+    expect(openProjectMock).not.toHaveBeenCalled();
 
     confirmSpy.mockReturnValue(true);
-    openDocumentMock.mockResolvedValue({
+    openProjectMock.mockResolvedValue({
+      kind: "single",
       path: "/x.ctab",
       name: "x.ctab",
       content: "score {}",
     });
     await fireEvent.keyDown(window, { key: "o", metaKey: true });
-    await vi.waitFor(() => expect(openDocumentMock).toHaveBeenCalled());
+    await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
     confirmSpy.mockRestore();
+  });
+
+  it("saves a project bundle from the Save Project button", async () => {
+    saveBundleMock.mockReset();
+    saveBundleMock.mockResolvedValue({
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+    });
+    const { getByText } = render(App);
+
+    await fireEvent.click(getByText("Save Project"));
+
+    await vi.waitFor(() => expect(saveBundleMock).toHaveBeenCalled());
+    // The bundle carries the entry name plus the live editor source under it.
+    const [bundle] = saveBundleMock.mock.calls[0] as [
+      { entry: string; files: Record<string, string> },
+    ];
+    expect(bundle.entry).toBe("untitled.ctab");
+    expect(bundle.files["untitled.ctab"]).toContain("Cripple Creek");
   });
 
   it("clears dirty when edits are undone back to the saved baseline", async () => {

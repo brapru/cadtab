@@ -314,4 +314,31 @@ mod tests {
             }
         )));
     }
+
+    #[test]
+    fn standalone_example_compiles_cleanly() {
+        // The shipped single-file example must stay valid (and warning-free).
+        let src = include_str!("../../../examples/cripple-creek.ctab");
+        let result = compile(src, LayoutConfig { width: 800.0 });
+        assert!(
+            result.diagnostics.is_empty(),
+            "examples/cripple-creek.ctab should compile cleanly, got {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn project_example_compiles_with_its_lib() {
+        // The multi-file example: the entry resolves `licks.ctab` through the
+        // provider, mirroring desktop fs / web bundle resolution.
+        let entry = include_str!("../../../examples/cripple-creek-project/cripple-creek.ctab");
+        let licks = include_str!("../../../examples/cripple-creek-project/licks.ctab");
+        let provider = crate::provider::MapProvider::new().with_file("licks.ctab", licks);
+        let result = compile_with_provider(entry, LayoutConfig { width: 800.0 }, &provider);
+        assert!(
+            result.diagnostics.is_empty(),
+            "the project example should compile cleanly with its lib, got {:?}",
+            result.diagnostics
+        );
+    }
 }

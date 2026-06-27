@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "entry": "cripple-creek.ctab",
+  "files": {
+    "cripple-creek.ctab": "title    \"Cripple Creek (arranged)\"\ncomposer \"traditional\"\ntempo    130\n\ninstrument banjo\ntuning     openG\n\n// The entry score of a multi-file project. It pulls custom licks from a sibling\n// file; `forward_roll` comes from the embedded stdlib (no import needed). Open\n// this on desktop and `licks.ctab` resolves beside it; in the browser, open the\n// bundle (../cripple-creek.ctabz) so the import resolves from the project map.\nimport \"licks.ctab\"\n\nscore {\n  time 4/4\n  default 1/8\n\n  // A stdlib roll over the imported G chord.\n  forward_roll(g_chord)\n\n  // A custom lick defined in licks.ctab.\n  tag(g_chord)\n\n  // A plain melody bar.\n  3:2 3:4 2:0 1:0 5:0 1:0 2:0 3:0\n}\n",
+    "licks.ctab": "// A small lick library, imported by the entry score. This is the file that\n// `import \"licks.ctab\"` resolves to — on desktop as a sibling on disk, in the\n// browser from the project bundle.\n\n// A G chord shape, reused across the arrangement.\nlet g_chord = [3:0 2:0 1:0]\n\n// A closing tag lick: eight notes, fills one 4/4 bar at the default 1/8.\ndef tag(c) {\n  c.0  c.1  c.2  c.1  c.0  c.1  c.2  c.0\n}\n"
+  }
+}

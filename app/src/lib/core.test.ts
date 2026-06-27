@@ -45,22 +45,24 @@ describe("core backend dispatch", () => {
     setTauri(true);
     invokeMock.mockResolvedValue(fake);
 
+    const files = { "rolls.ctab": "def r() { 3:0 }" };
     const result = await compile(
       "3:0",
       { width: 800 },
-      { basePath: "/x/a.ctab" },
+      { basePath: "/x/a.ctab", files },
     );
 
     expect(invokeMock).toHaveBeenCalledWith("compile", {
       source: "3:0",
       config: { width: 800 },
       basePath: "/x/a.ctab",
+      files,
     });
     expect(wasmCompileMock).not.toHaveBeenCalled();
     expect(result).toBe(fake);
   });
 
-  it("defaults the base path to null when no context is given", async () => {
+  it("defaults the base path and files when no context is given", async () => {
     setTauri(true);
     invokeMock.mockResolvedValue(fake);
 
@@ -70,6 +72,7 @@ describe("core backend dispatch", () => {
       source: "3:0",
       config: { width: 800 },
       basePath: null,
+      files: {},
     });
   });
 

@@ -17,11 +17,13 @@ async function tauriBackend(
   ctx?: ProjectContext,
 ): Promise<CompileResult> {
   const { invoke } = await import("@tauri-apps/api/core");
-  // Desktop resolves imports on the filesystem, relative to the open document.
+  // Desktop resolves imports from the bundle map first, then the filesystem
+  // (relative to the open document), so an opened bundle works on desktop too.
   return invoke<CompileResult>("compile", {
     source,
     config,
     basePath: ctx?.basePath ?? null,
+    files: ctx?.files ?? {},
   });
 }
 

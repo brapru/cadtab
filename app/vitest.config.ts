@@ -6,6 +6,9 @@ export default defineConfig({
   resolve: {
     conditions: ["browser"],
   },
+  // Allow tests to `?raw`-import shipped fixtures from the repo's examples/ dir,
+  // which sits one level above this app root.
+  server: { fs: { allow: [".."] } },
   test: {
     environment: "jsdom",
     globals: true,

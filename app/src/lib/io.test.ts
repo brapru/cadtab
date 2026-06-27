@@ -17,9 +17,11 @@ import {
   basename,
   withCtabExtension,
   defaultDocName,
-  openDocument,
+  openProject,
   saveDocument,
+  saveBundle,
 } from "./io";
+import { serializeBundle, type ProjectBundle } from "./bundle";
 
 function setTauri(present: boolean) {
   const w = window as unknown as { __TAURI_INTERNALS__?: unknown };
@@ -62,13 +64,14 @@ describe("io desktop (Tauri) backend", () => {
   });
   afterEach(() => setTauri(false));
 
-  it("opens via the dialog then reads the picked path", async () => {
+  it("opens a single score via the dialog and reads the picked path", async () => {
     openMock.mockResolvedValue("/Users/x/foo.ctab");
     readTextFileMock.mockResolvedValue("CONTENT");
 
-    const result = await openDocument();
+    const result = await openProject();
 
     expect(result).toEqual({
+      kind: "single",
       path: "/Users/x/foo.ctab",
       name: "foo.ctab",
       content: "CONTENT",
@@ -76,9 +79,33 @@ describe("io desktop (Tauri) backend", () => {
     expect(readTextFileMock).toHaveBeenCalledWith("/Users/x/foo.ctab");
   });
 
+  it("opens a `.ctabz` as a parsed project bundle", async () => {
+    const bundle: ProjectBundle = {
+      entry: "tune.ctab",
+      files: { "tune.ctab": "score { 3:0 }", "lib.ctab": "def l() { 3:0 }" },
+    };
+    openMock.mockResolvedValue("/Users/x/proj.ctabz");
+    readTextFileMock.mockResolvedValue(serializeBundle(bundle));
+
+    const result = await openProject();
+
+    expect(result).toEqual({
+      kind: "bundle",
+      path: "/Users/x/proj.ctabz",
+      name: "proj.ctabz",
+      bundle,
+    });
+  });
+
+  it("rejects when a chosen bundle is malformed", async () => {
+    openMock.mockResolvedValue("/Users/x/bad.ctabz");
+    readTextFileMock.mockResolvedValue("{not json");
+    await expect(openProject()).rejects.toThrow(/invalid JSON/);
+  });
+
   it("returns null when the open dialog is cancelled", async () => {
     openMock.mockResolvedValue(null);
-    expect(await openDocument()).toBeNull();
+    expect(await openProject()).toBeNull();
     expect(readTextFileMock).not.toHaveBeenCalled();
   });
 
@@ -116,6 +143,33 @@ describe("io desktop (Tauri) backend", () => {
     ).toBeNull();
     expect(writeTextFileMock).not.toHaveBeenCalled();
   });
+
+  it("saves a project bundle as serialized `.ctabz`, prompting for a path", async () => {
+    saveMock.mockResolvedValue("/Users/x/proj.ctabz");
+    writeTextFileMock.mockResolvedValue(undefined);
+    const bundle: ProjectBundle = {
+      entry: "tune.ctab",
+      files: { "tune.ctab": "score { 3:0 }" },
+    };
+
+    const result = await saveBundle(bundle, {
+      path: null,
+      // Seeded from the score name; the dialog filter offers `.ctabz`.
+      suggestedName: "tune.ctab",
+    });
+
+    expect(result).toEqual({ path: "/Users/x/proj.ctabz", name: "proj.ctabz" });
+    // The score name is normalized to the bundle extension for the dialog.
+    expect(saveMock).toHaveBeenCalledWith(
+      expect.objectContaining({ defaultPath: "tune.ctab" }),
+    );
+    const [, written] = writeTextFileMock.mock.calls[0] as [string, string];
+    expect(JSON.parse(written)).toEqual({
+      version: 1,
+      entry: "tune.ctab",
+      files: { "tune.ctab": "score { 3:0 }" },
+    });
+  });
 });
 
 describe("io web backend", () => {
@@ -148,7 +202,8 @@ describe("io web backend", () => {
       input as unknown as HTMLElement,
     );
 
-    expect(await openDocument()).toEqual({
+    expect(await openProject()).toEqual({
+      kind: "single",
       path: null,
       name: "tune.ctab",
       content: "DOC",
@@ -161,7 +216,7 @@ describe("io web backend", () => {
     vi.spyOn(document, "createElement").mockReturnValue(
       input as unknown as HTMLElement,
     );
-    expect(await openDocument()).toBeNull();
+    expect(await openProject()).toBeNull();
   });
 
   it("resolves null when the picker returns no file", async () => {
@@ -170,7 +225,7 @@ describe("io web backend", () => {
     vi.spyOn(document, "createElement").mockReturnValue(
       input as unknown as HTMLElement,
     );
-    expect(await openDocument()).toBeNull();
+    expect(await openProject()).toBeNull();
   });
 
   it("saves by downloading a named .ctab blob", async () => {
@@ -192,5 +247,25 @@ describe("io web backend", () => {
     expect(anchor.download).toBe("My Song.ctab");
     expect(anchor.click).toHaveBeenCalled();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:1");
+  });
+
+  it("downloads a bundle as `.ctabz`, swapping the score extension", async () => {
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:2"),
+      revokeObjectURL: vi.fn(),
+    });
+    const anchor = { href: "", download: "", click: vi.fn() };
+    vi.spyOn(document, "createElement").mockReturnValue(
+      anchor as unknown as HTMLElement,
+    );
+
+    const result = await saveBundle(
+      { entry: "tune.ctab", files: { "tune.ctab": "score { 3:0 }" } },
+      { path: null, suggestedName: "tune.ctab" },
+    );
+
+    // `tune.ctab` becomes `tune.ctabz`, not `tune.ctab.ctabz`.
+    expect(result).toEqual({ path: null, name: "tune.ctabz" });
+    expect(anchor.download).toBe("tune.ctabz");
   });
 });

@@ -9,7 +9,12 @@
   import { clampSplit, splitFromPointer } from "./lib/split";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
-  import { openDocument, saveDocument, defaultDocName } from "./lib/io";
+  import {
+    openProject,
+    saveDocument,
+    saveBundle,
+    defaultDocName,
+  } from "./lib/io";
   import type { CompileResult, Span } from "./lib/types";
 
   // A feature-rich starter so the app opens showing the header details row,
@@ -57,18 +62,29 @@ score {
 
   function recompile(src: string) {
     source = src;
-    // Import context: desktop resolves beside the open file (basePath); web will
-    // resolve from the bundle map (empty until the project-bundle step).
-    void live.run(src, { width: layoutWidth }, { basePath: currentPath });
+    // Import context: desktop resolves beside the open file (basePath) and from
+    // the bundle map; web resolves from the bundle map alone.
+    void live.run(
+      src,
+      { width: layoutWidth },
+      { basePath: currentPath, files: projectFiles },
+    );
   }
 
   // Document session: the name we last opened/saved as, and whether there are
   // unsaved edits. Tabs/dirty-per-doc arrive with the M7 dock; for now it is a
   // single in-place document.
   let currentName = $state<string | null>(null);
-  // The opened/saved file's path (desktop); null for the default doc or on web.
-  // A known path lets Save overwrite in place instead of re-prompting.
+  // The open score's standalone path (desktop); null for the default doc, on
+  // web, or when the score lives inside an opened bundle. A known path lets Save
+  // overwrite in place instead of re-prompting.
   let currentPath = $state<string | null>(null);
+  // The project's importable libs (path -> contents), backing import resolution
+  // on web; populated when a `.ctabz` bundle is opened. The entry score is the
+  // editor buffer, not in here.
+  let projectFiles = $state<Record<string, string>>({});
+  // The opened/saved bundle's path (desktop), for in-place "Save Project".
+  let bundlePath = $state<string | null>(null);
   let dirty = $state(false);
   // The text as of the last open/save: the baseline the dirty flag compares
   // against, so editing then undoing back to it clears dirty (and a programmatic
@@ -172,21 +188,63 @@ score {
     else root.setAttribute("data-theme", theme);
   });
 
-  // Open a `.ctab`, guarding unsaved edits first (single-document MVP). Pushes
-  // the loaded text into the editor and renders it immediately.
-  async function openFile() {
-    if (dirty && !window.confirm("Discard unsaved changes?")) return;
-    const doc = await openDocument();
-    if (!doc) return;
-    savedContent = doc.content;
-    currentPath = doc.path;
-    currentName = doc.name;
+  // Make `content` the open document: reset the dirty baseline, swap the editor
+  // buffer (fresh history), and render. `path`/`bundlePath` track where Save and
+  // Save Project write; `libs` are the importable files for the provider.
+  function loadDocument(opts: {
+    path: string | null;
+    bundlePath: string | null;
+    name: string;
+    content: string;
+    libs: Record<string, string>;
+  }) {
+    savedContent = opts.content;
+    currentPath = opts.path;
+    bundlePath = opts.bundlePath;
+    currentName = opts.name;
+    projectFiles = opts.libs;
     dirty = false;
-    loadRequest = { content: doc.content, token: ++loadToken };
-    recompile(doc.content);
+    loadRequest = { content: opts.content, token: ++loadToken };
+    recompile(opts.content);
   }
 
-  // Save the current source. Overwrites the known path in place; for a never-
+  // Open a score (`.ctab`) or a whole project bundle (`.ctabz`), guarding unsaved
+  // edits first. A bundle loads its entry into the editor and its other files as
+  // importable libs; a single score loads with no libs.
+  async function openFile() {
+    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    let opened;
+    try {
+      opened = await openProject();
+    } catch (e) {
+      window.alert(`Could not open project: ${(e as Error).message}`);
+      return;
+    }
+    if (!opened) return;
+
+    if (opened.kind === "single") {
+      loadDocument({
+        path: opened.path,
+        bundlePath: null,
+        name: opened.name,
+        content: opened.content,
+        libs: {},
+      });
+      return;
+    }
+    const { entry, files } = opened.bundle;
+    const libs = { ...files };
+    delete libs[entry];
+    loadDocument({
+      path: null,
+      bundlePath: opened.path,
+      name: entry,
+      content: files[entry],
+      libs,
+    });
+  }
+
+  // Save the current score. Overwrites the known path in place; for a never-
   // saved doc, prompts a dialog seeded from the open file's name or the title.
   async function saveFile() {
     const saved = await saveDocument(source, {
@@ -200,13 +258,28 @@ score {
     dirty = false;
   }
 
-  // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves; preventDefault overrides the browser's
-  // native page-save / open shortcuts.
+  // Save the whole project as one `.ctabz` bundle: the importable libs plus the
+  // live entry source. Overwrites the known bundle path in place, else prompts.
+  async function saveProject() {
+    const entry = currentName ?? defaultDocName(source);
+    const saved = await saveBundle(
+      { entry, files: { ...projectFiles, [entry]: source } },
+      { path: bundlePath, suggestedName: entry },
+    );
+    if (!saved) return;
+    bundlePath = saved.path;
+    savedContent = source;
+    dirty = false;
+  }
+
+  // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves, Cmd/Ctrl+Shift+S saves the project;
+  // preventDefault overrides the browser's native page-save / open shortcuts.
   function onIOKey(e: KeyboardEvent) {
-    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
     const key = e.key.toLowerCase();
-    if (key === "o") void openFile();
-    else if (key === "s") void saveFile();
+    if (key === "o" && !e.shiftKey) void openFile();
+    else if (key === "s" && e.shiftKey) void saveProject();
+    else if (key === "s" && !e.shiftKey) void saveFile();
     else return;
     e.preventDefault();
   }
@@ -231,8 +304,14 @@ score {
       </span>
     </div>
     <div class="actions">
-      <button onclick={openFile} title="Open (Cmd/Ctrl+O)">Open</button>
-      <button onclick={saveFile} title="Save (Cmd/Ctrl+S)">Save</button>
+      <button onclick={openFile} title="Open score or project (Cmd/Ctrl+O)"
+        >Open</button
+      >
+      <button onclick={saveFile} title="Save score (Cmd/Ctrl+S)">Save</button>
+      <button
+        onclick={saveProject}
+        title="Save project bundle (Cmd/Ctrl+Shift+S)">Save Project</button
+      >
       <button
         class="theme-toggle"
         onclick={cycleTheme}

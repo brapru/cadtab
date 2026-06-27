@@ -1,0 +1,11 @@
+// A small lick library, imported by the entry score. This is the file that
+// `import "licks.ctab"` resolves to — on desktop as a sibling on disk, in the
+// browser from the project bundle.
+
+// A G chord shape, reused across the arrangement.
+let g_chord = [3:0 2:0 1:1]
+
+// A closing tag lick: eight notes, fills one 4/4 bar at the default 1/8.
+def tag(c) {
+  c.0  c.1  c.2  c.1  c.0  c.1  c.2  c.0
+}

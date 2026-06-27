@@ -1,0 +1,26 @@
+title    "Cripple Creek (arranged)"
+composer "traditional"
+tempo    130
+
+instrument banjo
+tuning     openG
+
+// The entry score of a multi-file project. It pulls custom licks from a sibling
+// file; `forward_roll` comes from the embedded stdlib (no import needed). Open
+// this on desktop and `licks.ctab` resolves beside it; in the browser, open the
+// bundle (../cripple-creek.ctabz) so the import resolves from the project map.
+import "licks.ctab"
+
+score {
+  time 4/4
+  default 1/8
+
+  // A stdlib roll over the imported G chord.
+  forward_roll(g_chord)
+
+  // A custom lick defined in licks.ctab.
+  tag(g_chord)
+
+  // A plain melody bar.
+  3:2 3:4 2:0 1:0 5:0 1:0 2:0 3:0
+}
