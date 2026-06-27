@@ -406,7 +406,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 2.8,
-              "y1": 13.2,
+              "y1": 10.7,
               "x2": 2.8,
               "y2": 14.4,
               "weight": 0.08
@@ -436,7 +436,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 3.8,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 3.8,
               "y2": 14.4,
               "weight": 0.08
@@ -488,7 +488,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 6.4,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 6.4,
               "y2": 14.4,
               "weight": 0.08
@@ -518,7 +518,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 7.3999996,
-              "y1": 13.2,
+              "y1": 10.7,
               "x2": 7.3999996,
               "y2": 14.4,
               "weight": 0.08
@@ -548,7 +548,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 8.4,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 8.4,
               "y2": 14.4,
               "weight": 0.08
@@ -578,7 +578,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 9.4,
-              "y1": 13.2,
+              "y1": 13.7,
               "x2": 9.4,
               "y2": 14.4,
               "weight": 0.08
@@ -608,7 +608,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 10.4,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 10.4,
               "y2": 14.4,
               "weight": 0.08
@@ -638,7 +638,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 11.4,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 11.4,
               "y2": 14.4,
               "weight": 0.08
@@ -679,7 +679,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 12.4,
-              "y1": 13.2,
+              "y1": 13.7,
               "x2": 12.4,
               "y2": 14.4,
               "weight": 0.08
@@ -769,7 +769,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 17.0,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 17.0,
               "y2": 14.4,
               "weight": 0.08
@@ -796,7 +796,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 18.0,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 18.0,
               "y2": 14.4,
               "weight": 0.08
@@ -845,7 +845,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 20.6,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 20.6,
               "y2": 14.4,
               "weight": 0.08
@@ -875,7 +875,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 21.6,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 21.6,
               "y2": 14.4,
               "weight": 0.08
@@ -927,7 +927,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 24.2,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 24.2,
               "y2": 14.4,
               "weight": 0.08
@@ -946,7 +946,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 25.2,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 25.2,
               "y2": 14.4,
               "weight": 0.08
@@ -965,7 +965,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 26.2,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 26.2,
               "y2": 14.4,
               "weight": 0.08
@@ -984,7 +984,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 27.2,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 27.2,
               "y2": 14.4,
               "weight": 0.08
@@ -1033,7 +1033,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 29.800001,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 29.800001,
               "y2": 14.4,
               "weight": 0.08
@@ -1052,7 +1052,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 30.800001,
-              "y1": 13.2,
+              "y1": 11.7,
               "x2": 30.800001,
               "y2": 14.4,
               "weight": 0.08
@@ -1082,7 +1082,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 31.800001,
-              "y1": 13.2,
+              "y1": 9.7,
               "x2": 31.800001,
               "y2": 14.4,
               "weight": 0.08

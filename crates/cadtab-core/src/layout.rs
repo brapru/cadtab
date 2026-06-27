@@ -56,10 +56,15 @@ const THICK_WEIGHT: f32 = 0.25;
 // Spacing of the thin line and dots that ornament a repeat barline.
 const REPEAT_GAP: f32 = 0.22;
 const DOT_R: f32 = 0.12;
-// Stems hang straight down below the staff (tab convention): a small gap below
-// the bottom string line, then a fixed length.
-const STEM_GAP: f32 = 0.3;
-const STEM_LENGTH: f32 = 1.2;
+// A stem connects an event to its rhythm: it hangs from a small gap below the
+// event's lowest fret number down to the beam line. STEM_NOTE_GAP is measured
+// from the number's center; a fret digit reaches ~0.45 below center, so 0.8
+// leaves a slight visible gap between the glyph and the stem. The beam sits a
+// fixed drop below the bottom string line, and a stem is never shorter than
+// STEM_MIN so a bottom (5th) string note still reads as stemmed.
+const STEM_NOTE_GAP: f32 = 0.8;
+const STEM_MIN: f32 = 0.6;
+const BEAM_DROP: f32 = 1.5;
 const STEM_WEIGHT: f32 = 0.08;
 // A beam is a thick flat bar joining a group's stem ends; tab has no pitch
 // staff, so beams never slope.
@@ -225,7 +230,7 @@ fn build_system(
     n_strings: usize,
 ) -> System {
     let staff_bottom = staff_top + staff_height;
-    let beam_y = staff_bottom + STEM_GAP + STEM_LENGTH;
+    let beam_y = staff_bottom + BEAM_DROP;
     let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
 
     let mut number_xs: Vec<Vec<f32>> = vec![Vec::new(); n_strings];
@@ -270,7 +275,15 @@ fn build_system(
                 }
             }
             if beam::has_stem(event) {
-                prims.push(stem(x, staff_bottom));
+                // Hang the stem from just below this event's lowest fret number
+                // (largest y), clamped so it keeps a minimum visible length.
+                let low_y = placed
+                    .positions
+                    .iter()
+                    .map(|&(string, _)| line_y(string))
+                    .fold(f32::MIN, f32::max);
+                let stem_top = (low_y + STEM_NOTE_GAP).min(beam_y - STEM_MIN);
+                prims.push(stem(x, stem_top, beam_y));
             }
             let next_x = plan.events.get(j + 1).map(|p| mx0 + p.rel_x);
             prims.extend(marks_for(event, x, next_x, staff_top, staff_bottom));
@@ -393,10 +406,10 @@ fn vline(x: f32, y1: f32, y2: f32, weight: f32) -> Primitive {
     }
 }
 
-/// A note's stem: a vertical line hanging down from just below the staff.
-fn stem(x: f32, staff_bottom: f32) -> Primitive {
-    let top = staff_bottom + STEM_GAP;
-    vline(x, top, top + STEM_LENGTH, STEM_WEIGHT)
+/// A note's stem: a vertical line from just below its lowest fret number (`top`)
+/// down to the shared beam line (`beam_y`).
+fn stem(x: f32, top: f32, beam_y: f32) -> Primitive {
+    vline(x, top, beam_y, STEM_WEIGHT)
 }
 
 /// A primary beam: a thick flat bar joining the stem ends of a group.
@@ -455,7 +468,7 @@ fn marks_for(
     staff_top: f32,
     staff_bottom: f32,
 ) -> Vec<Primitive> {
-    let rh_y = staff_bottom + STEM_GAP + STEM_LENGTH + RH_ROW_GAP;
+    let rh_y = staff_bottom + BEAM_DROP + RH_ROW_GAP;
     let line_y = |s: u8| staff_top + f32::from(s.saturating_sub(1)) * STRING_SPACING;
     let mut out = Vec::new();
     match &event.kind {
@@ -995,38 +1008,54 @@ mod tests {
     }
 
     #[test]
-    fn each_note_gets_one_downward_stem() {
+    fn each_note_gets_one_connected_downward_stem() {
+        // Notes on strings 3 then 2 (string 2 sits higher on the staff).
         let m = Measure::new(vec![note(3, 0, 0), note(2, 1, 4)]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         let stems = stems(&tree);
         assert_eq!(stems.len(), 2);
-        for s in stems {
+        let mut ends = Vec::new();
+        let mut lens = Vec::new();
+        for s in &stems {
             match s {
-                // Direction is down (y2 > y1) and the length is fixed.
                 Primitive::Line { y1, y2, weight, .. } => {
-                    assert!(y2 > y1);
-                    assert!((y2 - y1 - STEM_LENGTH).abs() < 1e-5);
+                    assert!(y2 > y1, "stem points down");
                     assert_eq!(*weight, STEM_WEIGHT);
+                    ends.push(*y2);
+                    lens.push(*y2 - *y1);
                 }
                 _ => unreachable!(),
             }
         }
+        // Every stem hangs to the same beam line...
+        assert!((ends[0] - ends[1]).abs() < 1e-5);
+        // ...but the higher note (string 2) gets the longer stem: stems connect
+        // to their own number rather than being a fixed length.
+        assert!(lens[1] > lens[0]);
     }
 
     #[test]
-    fn a_stem_hangs_below_the_staff() {
+    fn a_stem_connects_its_note_to_a_beam_below_the_staff() {
+        // A top-string note: its stem starts just below that number (near the top
+        // of the staff) and runs down past the bottom string line to the beam.
         let tree = layout(&banjo_score(vec![Measure::new(vec![note(1, 0, 0)])]), cfg());
-        // The lowest string line is the largest y among the staff's lines.
-        let bottom_line_y = tree.systems[0]
+        let lines: Vec<f32> = tree.systems[0]
             .prims
             .iter()
             .filter_map(|p| match p {
                 Primitive::Line { y1, y2, .. } if y1 == y2 => Some(*y1),
                 _ => None,
             })
-            .fold(f32::MIN, f32::max);
+            .collect();
+        let top_line_y = lines.iter().copied().fold(f32::MAX, f32::min);
+        let bottom_line_y = lines.iter().copied().fold(f32::MIN, f32::max);
         match stems(&tree)[0] {
-            Primitive::Line { y1, .. } => assert!(*y1 > bottom_line_y),
+            Primitive::Line { y1, y2, .. } => {
+                // Starts just below the top string's number...
+                assert!((*y1 - (top_line_y + STEM_NOTE_GAP)).abs() < 1e-5);
+                // ...and ends on the beam, below the bottom string line.
+                assert!(*y2 > bottom_line_y);
+            }
             _ => unreachable!(),
         }
     }
