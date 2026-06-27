@@ -1,4 +1,4 @@
-import { render } from "@testing-library/svelte";
+import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import Editor from "./Editor.svelte";
 import type { Token, Diagnostic } from "./types";
@@ -45,6 +45,47 @@ describe("Editor highlighting", () => {
       const squiggle = container.querySelector(".cm-diag-error");
       expect(squiggle).not.toBeNull();
       expect(squiggle?.textContent).toBe("score");
+    });
+  });
+
+  it("inserts indentation on Tab instead of moving focus out", async () => {
+    const onChange = vi.fn();
+    const { container } = render(Editor, { props: { doc: "x", onChange } });
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    // Cursor starts at the document head; Tab indents the line rather than
+    // letting the browser advance focus.
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(last).toBeDefined();
+      expect(last).not.toBe("x");
+      expect(/^\s/.test(last!)).toBe(true);
+    });
+  });
+
+  it("selects the whole line on Cmd/Ctrl-L", async () => {
+    const onCursor = vi.fn();
+    const { container } = render(Editor, {
+      props: { doc: "abc\ndef", onCursor },
+    });
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    // Cursor starts at line 1; Mod-L expands the selection to cover the whole
+    // line including its trailing newline, so the head lands at pos 4.
+    await fireEvent.keyDown(content, { key: "l", ctrlKey: true });
+    await vi.waitFor(() => {
+      expect(onCursor).toHaveBeenLastCalledWith(4);
     });
   });
 

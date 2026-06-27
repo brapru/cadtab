@@ -8,7 +8,13 @@
     dropCursor,
     highlightActiveLine,
   } from "@codemirror/view";
-  import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+  import {
+    defaultKeymap,
+    history,
+    historyKeymap,
+    indentWithTab,
+    selectLine,
+  } from "@codemirror/commands";
   import { syntaxHighlighting, setTokens } from "./highlight";
   import {
     diagnostics as diagnosticsExtension,
@@ -45,7 +51,14 @@
         drawSelection(),
         dropCursor(),
         highlightActiveLine(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        // Tab inserts indentation rather than moving focus out; Cmd/Ctrl-L
+        // selects the whole line (Mod maps to Cmd on macOS, Ctrl elsewhere).
+        keymap.of([
+          ...defaultKeymap,
+          ...historyKeymap,
+          indentWithTab,
+          { key: "Mod-l", run: selectLine },
+        ]),
         // Bind the editor surface to the app's semantic theme tokens so it
         // re-themes (background, caret, selection) with everything else.
         EditorView.theme({

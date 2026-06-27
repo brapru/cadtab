@@ -163,6 +163,37 @@ describe("App", () => {
     expect(level()).toBe("100%");
   });
 
+  it("zooms from Cmd/Ctrl +/- and fits with Cmd/Ctrl 0", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+    });
+    const level = () => container.querySelector(".zoom-level")?.textContent;
+    expect(level()).toBe("100%");
+
+    await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    expect(level()).toBe("120%");
+
+    await fireEvent.keyDown(window, { key: "-", ctrlKey: true });
+    expect(level()).toBe("100%");
+
+    await fireEvent.keyDown(window, { key: "=", metaKey: true });
+    expect(level()).toBe("120%");
+
+    await fireEvent.keyDown(window, { key: "0", metaKey: true });
+    expect(level()).toBe("100%");
+  });
+
+  it("ignores +/- without a Cmd/Ctrl modifier", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+    });
+    const level = () => container.querySelector(".zoom-level")?.textContent;
+    await fireEvent.keyDown(window, { key: "=" });
+    expect(level()).toBe("100%");
+  });
+
   it("cycles the colour theme onto the document root", async () => {
     const { container } = render(App);
     const toggle = container.querySelector(".theme-toggle")!;

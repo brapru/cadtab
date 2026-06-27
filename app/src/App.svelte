@@ -104,6 +104,21 @@
   const zoomOut = () => (zoom = clampZoom(zoom / ZOOM_STEP));
   const zoomFit = () => (zoom = 1);
 
+  // Cmd/Ctrl +/- zoom the render and Cmd/Ctrl 0 fits, overriding the browser's
+  // native page zoom. `=`/`+` share a key (shift), as do `-`/`_`.
+  function onZoomKey(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+    if (e.key === "=" || e.key === "+") zoomIn();
+    else if (e.key === "-" || e.key === "_") zoomOut();
+    else if (e.key === "0") zoomFit();
+    else return;
+    e.preventDefault();
+  }
+  $effect(() => {
+    window.addEventListener("keydown", onZoomKey);
+    return () => window.removeEventListener("keydown", onZoomKey);
+  });
+
   // Theme: "system" follows the OS; light/dark force a mode via a root attribute
   // the semantic CSS tokens key off.
   let theme = $state<Theme>("system");
