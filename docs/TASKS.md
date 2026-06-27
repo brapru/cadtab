@@ -279,6 +279,12 @@ Entirely headless and test-driven (D18, D19, D20).
         renders at its natural width, leaving the system short. Stretch measures/events to fill
         the system line width (justified systems) so even a single bar fills the line, padding
         with empty space as needed. Layout justification pass; relates to T3.3/T3.4 and T4.7s.
+        *Includes:* **pin the page width to the layout target** so the header (centered on the
+        page) and the zoom stop reflowing as measures are added. Root cause: `width` in `layout()`
+        is `overall_width(...)` (content-derived = `LEFT_MARGIN + widest system + RIGHT_MARGIN`),
+        so it grows with measure count and shifts the `width/2`-centered header. Fix is
+        `overall_width(...).max(config.width)` (then justify within that fixed page). User flagged
+        this during T4.7u and chose to fold it in here.
   - [ ] T4.7u — **Header redesign (lead-sheet style) + whole-sheet serif.** Supersedes the
         T4.7g inline details row with a traditional banjo lead-sheet header (ref:
         `docs/example-header.png`): centered title + bold composer, a left-aligned tuning block
