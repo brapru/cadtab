@@ -296,23 +296,27 @@ Entirely headless and test-driven (D18, D19, D20).
 
 **Goal:** open/save and share (D29, D30, D38).
 
-- [ ] **T5.1 — Open/Save `.ctab` + project bundle.** Desktop fs dialogs (single `.ctab`; folder
+- [x] **T5.1 — Open/Save `.ctab` + project bundle.** Desktop fs dialogs (single `.ctab`; folder
       projects). Web: File System Access API / download-upload for a single `.ctab` **and** a
       **project bundle** — one file serializing `{ entry, files }` (JSON map for MVP) so a complete
       multi-file project opens in the browser (D38).
   - *Tests:* save→open round-trip for both a single file and a bundle.
-- [ ] **T5.2 — `import` resolution via a file-provider.** Resolve `import` in core through a
+- [x] **T5.2 — `import` resolution via a file-provider.** Resolve `import` in core through a
       file-provider abstraction (path → contents), not fs-coupled: desktop = real fs (multi-file);
       web = in-memory map from the loaded bundle; embedded stdlib available on both (D38). This
       abstraction is what makes web multi-file possible and keeps the M7 project dock/tabs
       cross-platform.
   - *Tests:* headless resolution against an in-memory provider — stdlib, bundle, and
     missing/unresolved-file cases.
-- [ ] **T5.3 — Export SVG + PNG (D30).** Render tree → SVG string → PNG raster.
+- [x] **T5.3 — Export SVG + PNG (D30).** Render tree → SVG string → PNG raster. *(PDF is also an
+      MVP export — tracked as T7.9, post-M6; see D30.)*
   - *Tests:* export emits valid SVG; PNG non-empty.
-- [ ] **T5.4 — New-from-template / recent files** (nice-to-have; sub-task if time-boxed).
+- [x] **T5.4 — New-from-template.** Toolbar "New…" dropdown with banjo/guitar/blank starter
+      scaffolds (compile-checked). *(Recent files deferred to M7's project dock, where it's
+      cross-platform; web has no persistent paths.)*
 
-**DoD M5:** round-trip persistence + SVG/PNG export; green.
+**DoD M5:** ✅ round-trip persistence (single + bundle) + SVG/PNG export; green. *(Verify the file
+dialogs / PNG raster in `just dev` / `just web` — they can't run headless.)*
 
 ---
 
@@ -381,6 +385,15 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
 - [ ] **T7.6 — Print-preview view.** *(document-bound)* The final printed (light) output regardless
       of editor theme. *Recommendation:* implement as a mode reusing the export styling (T5.3),
       **not** a separate pipeline, so it isn't duplicative of the live render.
+- [ ] **T7.9 — PDF export (paginated, MVP — D30).** The MVP's third export format and the
+      distribution standard for tab. Unlike SVG/PNG (one continuous canvas, shipped in T5.3), PDF
+      needs **pagination**: fixed Letter/A4 pages, systems packed per page, margins, and a per-page
+      sheet header. This is layout work, not a serializer — it builds on the pinned-page width
+      (T4.7t) and reuses the print styling (T5.3 / preview T7.6). Sequenced here (post-M6) so it
+      paginates the *final* above-staff layout once. Save via the existing io seam (binary write on
+      desktop, download on web).
+  - *Tests:* page-break placement (systems-per-page) golden cases; multi-page doc emits N pages;
+    one-page doc emits one; valid PDF bytes (header + page count).
 
 **Editor & theme:**
 
@@ -429,8 +442,9 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
       clicking or cursoring a repeat / ending / measure lights it up. *(Extends T4.5.)*
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
-+ web; justified systems with a fixed page; readable diagnostics + panel; dark-by-default cohesive
-themed UI; structural elements participate in bidirectional mapping. Green.
++ web; justified systems with a fixed page; **paginated PDF export (T7.9)**; readable diagnostics +
+panel; dark-by-default cohesive themed UI; structural elements participate in bidirectional mapping.
+Green.
 
 ---
 
@@ -447,7 +461,7 @@ themed UI; structural elements participate in bidirectional mapping. Green.
 
 **DoD / MVP ship:** author `.ctab` banjo tab live (highlighting, diagnostics, rhythm via
 stems+beams, licks, repeats, pickups, metadata), bidirectional mapping, open/save, export
-SVG+PNG — on desktop and web. CI green; packaged.
+SVG+PNG+PDF (paginated, T7.9) — on desktop and web. CI green; packaged.
 
 ---
 

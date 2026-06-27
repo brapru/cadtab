@@ -300,7 +300,14 @@ stale). Click note → span → editor selection; cursor move → span → highl
 - **D29 — Persistence = single-file `.ctab` docs.** One `.ctab` text file = one score. Lick
   libraries are separate `.ctab` files pulled in via `import`; the **stdlib lick set is
   embedded in the binary** (`include_str!`). Git-friendly, easy to share.
-- **D30 — Export = SVG + PNG in MVP** (reuse render tree → SVG). **PDF deferred** post-MVP.
+- **D30 — Export = SVG + PNG + PDF in MVP** (reuse render tree → SVG). SVG/PNG shipped in
+  M5 (T5.3). **PDF is an MVP deliverable too** — it's the distribution standard for tab —
+  but **sequenced post-M6** (tracked as T7.9; see 2026-06-27 changelog). The value of PDF
+  is paginated, print-ready Letter/A4 output, which is a *layout-engine* feature (page
+  breaks, systems-per-page, margins/headers), not a serialization add-on. It builds on
+  M7's pinned-page layout (T4.7t) and shares the print styling (T5.3 / print-preview
+  T7.6); sequencing it after M6's above-staff notation keeps pagination from being built
+  twice.
 - **D31 — Diagnostics = squiggles + hover, best-effort render.** CodeMirror squiggles +
   hover tooltips; the tab **renders its valid parts even with errors** (never blanks — honors
   resilient parsing, D19). Diagnostic = `{ severity, span, message, help: Option<…> }`.
@@ -438,3 +445,4 @@ dependency-ordered build plan.
 - *2026-06-20* — Dependency stack resolved: D40 (see §11c). Hand-rolled lexer, Svelte 5 + Vite SPA, `just`, browser-canvas PNG.
 - *2026-06-27* — Workspace shell resolved: D41 (see §11d). View registry + editor-groups layout (splits / tab-stacks / maximize); document-bound vs global-singleton views; free-floating docking deferred. Reshapes M7.
 - *2026-06-27* — Revised D38: `import` resolution via a file-provider abstraction; **web supports multi-file projects** via a single project bundle (JSON `{ entry, files }`), superseding web = single-file/stdlib-only. Shapes T5.1/T5.2 + keeps the M7 project UI cross-platform.
+- *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.
