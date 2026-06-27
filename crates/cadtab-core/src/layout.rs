@@ -66,9 +66,10 @@ const STEM_NOTE_GAP: f32 = 0.8;
 const STEM_MIN: f32 = 0.6;
 const BEAM_DROP: f32 = 1.5;
 const STEM_WEIGHT: f32 = 0.08;
-// A beam is a thick flat bar joining a group's stem ends; tab has no pitch
-// staff, so beams never slope.
-const BEAM_WEIGHT: f32 = 0.3;
+// A beam is a flat bar joining a group's stem ends (tab has no pitch staff, so
+// beams never slope). Kept fairly thin — a heavy beam reads as a block against
+// the hairline stems and string lines.
+const BEAM_WEIGHT: f32 = 0.18;
 // A flag is a short beam-like stub at a lone note's stem end; repeated flags
 // stack upward toward the staff.
 const FLAG_LENGTH: f32 = 0.6;
@@ -289,16 +290,19 @@ fn build_system(
             prims.extend(marks_for(event, x, next_x, staff_top, staff_bottom));
         }
         // A group of two or more shares one flat beam across its stem ends; a
-        // lone beamable note takes flags at its stem end instead.
+        // lone beamable note takes flags at its stem end instead. The beam's top
+        // edge sits flush with the stem ends (beam_y) and the bar hangs below, so
+        // stems meet the beam cleanly rather than poking through its middle.
+        let beam_render_y = beam_y + BEAM_WEIGHT / 2.0;
         for g in mbeams {
             if g.members.len() >= 2 {
                 let x0 = mx0 + plan.events[g.members[0]].rel_x;
                 let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x;
-                prims.push(beam_bar(x0, x1, beam_y));
+                prims.push(beam_bar(x0, x1, beam_render_y));
             } else if let Some(&idx) = g.members.first() {
                 let x = mx0 + plan.events[idx].rel_x;
                 let count = beam::flag_count(measure.events[idx].duration());
-                prims.extend(flags(x, beam_y, count));
+                prims.extend(flags(x, beam_render_y, count));
             }
         }
         boxes.push(MeasureBox {
@@ -1158,17 +1162,19 @@ mod tests {
     }
 
     #[test]
-    fn a_beam_sits_at_the_stem_ends() {
+    fn a_beam_top_edge_sits_flush_with_the_stem_ends() {
         let m = Measure::new(vec![eighth(3, 0, 0), eighth(2, 0, 4)]);
         let tree = layout(&banjo_score(vec![m]), cfg());
-        let beam_y = match beams(&tree)[0] {
+        let beam_center = match beams(&tree)[0] {
             Primitive::Line { y1, .. } => *y1,
             _ => unreachable!(),
         };
-        // Every stem's lower end reaches the beam.
+        // The beam hangs below the stem ends: its top edge (center minus half its
+        // weight) is flush with every stem's lower end.
+        let beam_top = beam_center - BEAM_WEIGHT / 2.0;
         for s in stems(&tree) {
             match s {
-                Primitive::Line { y2, .. } => assert!((y2 - beam_y).abs() < 1e-5),
+                Primitive::Line { y2, .. } => assert!((y2 - beam_top).abs() < 1e-5),
                 _ => unreachable!(),
             }
         }
@@ -1220,8 +1226,9 @@ mod tests {
             })
             .collect();
         ys.sort_by(|a, b| b.partial_cmp(a).unwrap());
-        // The outermost flag is at the stem end; the next is higher (smaller y).
-        assert!((ys[0] - stem_end).abs() < 1e-5);
+        // The outermost flag's top edge is flush with the stem end; the next is
+        // higher (smaller y), stacking toward the staff.
+        assert!((ys[0] - (stem_end + BEAM_WEIGHT / 2.0)).abs() < 1e-5);
         assert!(ys[1] < ys[0]);
     }
 

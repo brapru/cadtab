@@ -61,14 +61,15 @@ describe("Tab painter", () => {
     expect(svg!.getAttribute("viewBox")).toBe("0 0 12 8");
   });
 
-  // Line primitives carry their weight as stroke-width.
-  it("paints lines with their weight and rounded caps", () => {
+  // Line primitives carry their weight as stroke-width, with butt caps so thick
+  // beams end exactly at the stems rather than overshooting with rounded ends.
+  it("paints lines with their weight and butt caps", () => {
     const { container } = render(Tab, { props: { tree } });
     const lines = container.querySelectorAll("line");
     expect(lines).toHaveLength(2);
     expect(lines[0].getAttribute("stroke-width")).toBe("0.06");
     expect(lines[1].getAttribute("stroke-width")).toBe("0.25");
-    expect(lines[0].getAttribute("stroke-linecap")).toBe("round");
+    expect(lines[0].getAttribute("stroke-linecap")).toBe("butt");
   });
 
   // Text primitives are tagged by role and sized per role.

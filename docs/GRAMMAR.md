@@ -131,7 +131,7 @@ score_item  = setting
             | event
 
 setting     = "time"    INT "/" INT      // meter; may recur (meter change) (D12, D32)
-            | "default" INT "/" INT      // sticky default duration as a fraction, e.g. 1/8 (D11)
+            | "default" INT "/" INT      // baseline duration for unmarked notes, e.g. 1/8 (D11)
 
 pickup_block  = "pickup"  block                       // anacrusis, excluded from barring (D33)
 loop_block    = "loop" INT block                      // unroll N copies (D32; renamed from repeat N)
@@ -181,7 +181,8 @@ dur_body  = INT { "." }                  // [CORE]  denominator + dotted dots: _
 - **`[CORE]`** `_N` = note worth `1/N` of a whole note; `N` is the denominator (`_4` quarter,
   `_8` eighth, `_16` sixteenth). Trailing `.` = dotted (`_4.` dotted quarter); multiple dots
   allowed syntactically (`_4..`), semantics validated in M2.
-- Omitted ⇒ inherit the sticky default (D11); `default` seeds it.
+- Omitted ⇒ use the current `default` baseline; an explicit `_N` is one-shot (this note only,
+  never threads forward). `default` is a cascading directive that may recur mid-score (D11).
 - **`[PROVISIONAL]` tuplet syntax** — the D11 TBD. **Not pinned in T1.0 by design.** Candidate
   forms (decide in T1.2d when the construct is actually lexed/parsed):
   - `_8t` (triplet marker letter appended), or

@@ -58,13 +58,15 @@
 
 {#snippet drawPrimitive(prim: Primitive)}
   {#if prim.kind === "line"}
+    <!-- Butt caps so thick beams/flags end exactly at their endpoints rather
+         than bulging past the outer stems with rounded blobs. -->
     <line
       x1={prim.x1}
       y1={prim.y1}
       x2={prim.x2}
       y2={prim.y2}
       stroke-width={prim.weight}
-      stroke-linecap="round"
+      stroke-linecap="butt"
     />
   {:else if prim.kind === "text"}
     {@const style = TEXT_STYLE[prim.role]}

@@ -76,8 +76,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 202,
-                        end: 207,
+                        start: 215,
+                        end: 220,
                     },
                 },
                 Event {
@@ -101,8 +101,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 208,
-                        end: 213,
+                        start: 221,
+                        end: 226,
                     },
                 },
             ],
@@ -140,8 +140,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 318,
-                        end: 323,
+                        start: 331,
+                        end: 336,
                     },
                 },
                 Event {
@@ -165,8 +165,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 325,
-                        end: 330,
+                        start: 338,
+                        end: 343,
                     },
                 },
                 Event {
@@ -190,8 +190,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 332,
-                        end: 337,
+                        start: 345,
+                        end: 350,
                     },
                 },
                 Event {
@@ -215,8 +215,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 340,
-                        end: 345,
+                        start: 353,
+                        end: 358,
                     },
                 },
                 Event {
@@ -240,8 +240,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 347,
-                        end: 352,
+                        start: 360,
+                        end: 365,
                     },
                 },
                 Event {
@@ -265,8 +265,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 354,
-                        end: 359,
+                        start: 367,
+                        end: 372,
                     },
                 },
                 Event {
@@ -303,8 +303,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 387,
-                        end: 402,
+                        start: 400,
+                        end: 415,
                     },
                 },
             ],
@@ -324,8 +324,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 456,
-                        end: 459,
+                        start: 496,
+                        end: 499,
                     },
                 },
                 Event {
@@ -345,8 +345,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 461,
-                        end: 464,
+                        start: 501,
+                        end: 504,
                     },
                 },
                 Event {
@@ -366,8 +366,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 467,
-                        end: 470,
+                        start: 507,
+                        end: 510,
                     },
                 },
             ],
@@ -402,8 +402,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 520,
-                        end: 525,
+                        start: 560,
+                        end: 565,
                     },
                 },
                 Event {
@@ -427,8 +427,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 526,
-                        end: 531,
+                        start: 566,
+                        end: 571,
                     },
                 },
             ],
@@ -451,7 +451,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: None,
@@ -459,8 +459,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 567,
-                        end: 570,
+                        start: 687,
+                        end: 690,
                     },
                 },
                 Event {
@@ -472,7 +472,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: None,
@@ -480,8 +480,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 571,
-                        end: 574,
+                        start: 691,
+                        end: 694,
                     },
                 },
                 Event {
@@ -493,7 +493,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: None,
@@ -501,8 +501,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 567,
-                        end: 570,
+                        start: 687,
+                        end: 690,
                     },
                 },
                 Event {
@@ -514,7 +514,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: None,
@@ -522,8 +522,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 571,
-                        end: 574,
+                        start: 691,
+                        end: 694,
                     },
                 },
             ],
@@ -544,7 +544,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: None,
@@ -552,8 +552,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 683,
-                        end: 699,
+                        start: 820,
+                        end: 836,
                     },
                 },
                 Event {
@@ -565,7 +565,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: Some(
@@ -575,8 +575,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 683,
-                        end: 699,
+                        start: 820,
+                        end: 836,
                     },
                 },
                 Event {
@@ -588,7 +588,7 @@ Score {
                             },
                             dur: Duration {
                                 num: 1,
-                                den: 8,
+                                den: 4,
                             },
                             right_hand: None,
                             technique: Some(
@@ -598,8 +598,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 738,
-                        end: 747,
+                        start: 875,
+                        end: 884,
                     },
                 },
             ],

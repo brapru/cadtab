@@ -216,7 +216,7 @@ expression: measures
                         },
                         dur: Duration {
                             num: 1,
-                            den: 4,
+                            den: 8,
                         },
                         right_hand: None,
                         technique: None,
@@ -237,7 +237,7 @@ expression: measures
                         },
                         dur: Duration {
                             num: 1,
-                            den: 4,
+                            den: 8,
                         },
                         right_hand: None,
                         technique: None,
@@ -269,7 +269,7 @@ expression: measures
                         },
                         dur: Duration {
                             num: 1,
-                            den: 4,
+                            den: 8,
                         },
                         right_hand: None,
                         technique: None,
@@ -290,7 +290,7 @@ expression: measures
                         },
                         dur: Duration {
                             num: 1,
-                            den: 4,
+                            den: 8,
                         },
                         right_hand: None,
                         technique: None,

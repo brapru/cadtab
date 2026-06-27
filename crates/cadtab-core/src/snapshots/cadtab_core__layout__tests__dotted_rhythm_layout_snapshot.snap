@@ -208,10 +208,10 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 5.8,
-              "y1": 8.0,
+              "y1": 8.09,
               "x2": 6.4,
-              "y2": 8.0,
-              "weight": 0.3
+              "y2": 8.09,
+              "weight": 0.18
             }
           ],
           "span": {

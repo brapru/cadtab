@@ -218,6 +218,53 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T4.6d — Theme (light/dark) + visual polish pass.
   - *Note:* editor cursor/selection basics (`drawSelection`, `dropCursor`,
     active-line, autofocus) were pulled forward during T4.3.
+- [ ] **T4.7 — Post-polish fixes & refinements (from first real-use review).** Exercising the
+      app end-to-end after T4.6 surfaced a batch of render, editor, and shell issues. Tracked
+      here so the spine does not advance past M4 with known regressions. Green-gate each.
+  - [x] T4.7a — **Surface semantic diagnostics.** `compile()` skipped name resolution *and* the
+        type checker, so unknown-name/type errors never reached the editor (a bare `gibberish`
+        showed nothing). Wired both passes in (parse → resolve → typecheck → eval); stdlib lick
+        names seeded as ambient so they still resolve.
+  - [x] T4.7b — **Desktop squiggles render.** WKWebView (Tauri's macOS webview) ignores the
+        `text-decoration: wavy` shorthand; added `-webkit-text-decoration`. Squiggles were
+        web-only before. *(Same WKWebView CSS exposure applies to T4.7i.)*
+  - [x] T4.7c — **Connected stems.** Stems now hang from a slight gap below each event's lowest
+        fret number to the beam line (was a fixed band): reaches upper-string notes, no longer
+        overlaps the 5th-string number.
+  - [x] T4.7d — **Beam thickness & flush join.** Thinner beams (0.18), butt line caps (no
+        rounded overshoot past the outer stems), beam top edge flush with the stem ends.
+  - [x] T4.7e — **Durations: `default` baseline + one-shot `_N` (revised D11).** Dropped the
+        Lilypond sticky-on-override model that competed with `default`; `_N` no longer threads
+        forward. DESIGN/GRAMMAR + showcase updated.
+  - [ ] T4.7f — **Strip per-line tuning.** Tuning shows at the top *and* repeats at each system
+        line start; keep it only at the top.
+  - [ ] T4.7g — **Header layout.** Replace the single stacked column with title — composer on
+        top and a compact inline details row (`♩=tempo · instrument · tuning · capo`).
+  - [ ] T4.7h — **Syntax highlighting.** Muted two-tone palette (desaturated blue structure,
+        warm tan numbers, muted green strings, gray italic comments); replace the dramatic
+        full-width active-line bar with a faint left-edge tick so the cursor stays readable.
+  - [ ] T4.7i — **Diagnostic tooltip readability.** Currently white-on-white until selected;
+        give it themed background/foreground/border keyed to the semantic tokens.
+  - [ ] T4.7j — **Tab key indents.** Tab moves focus out of the editor instead of inserting
+        indentation; add `indentWithTab`.
+  - [ ] T4.7k — **Keyboard zoom.** Bind Cmd/Ctrl +/- (and Cmd/Ctrl 0 to fit) to the existing
+        zoom controls; preventDefault to override native zoom.
+  - [ ] T4.7l — **Launch desktop maximized** (currently a small 800×600 window).
+  - [ ] T4.7m — **Diagnostics panel.** A warning/error count button at the bottom of the editor
+        that opens an exhaustive list; clicking an entry jumps the editor selection to its span.
+  - [ ] T4.7n — **Zed-inspired accent polish.** A coherent accent/detail pass across topbar,
+        toolbar, gutter, and panels; fold in with T4.7g–i so the UI reads as one pass.
+  - [ ] T4.7o — **Secondary beams for 16ths/32nds.** A beamed group draws only one primary beam,
+        so beamed 16ths look like 8ths. Add per-level beams over runs of `flag_count ≥ level`
+        (above the primary, since stems point down) + partial-beam stubs for isolated values.
+        *(Lone notes already flag correctly.)*
+  - [ ] T4.7p — **Dense-rhythm crowding.** Spacing is purely time-proportional (a 16th = 0.5
+        units) while fret digits are ~1 unit wide, so 16th runs overlap. Add a minimum per-event
+        spacing floor while keeping proportional spacing for longer values.
+  - *Parked:* the showcase still emits 3 under-full-bar warnings on inherently-partial demo
+    blocks (two voltas + the explicit `measure {}` fragment). Whether voltas / explicit measures
+    should trigger under-full diagnostics at all is a diagnostics-quality question → revisit in
+    T6.1 (and showcase metric cleanup in T6.3).
 
 **DoD M4:** the live editor works end to end on desktop + web; component/integration tests green.
 

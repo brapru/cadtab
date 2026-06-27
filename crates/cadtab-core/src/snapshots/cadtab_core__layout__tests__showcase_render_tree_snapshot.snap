@@ -4,13 +4,13 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 ---
 {
   "meta": {
-    "width": 34.600002,
+    "width": 41.600002,
     "height": 15.7
   },
   "header": [
     {
       "kind": "text",
-      "x": 17.300001,
+      "x": 20.800001,
       "y": 1.5,
       "content": "Syntax Showcase",
       "role": "title",
@@ -18,7 +18,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 17.300001,
+      "x": 20.800001,
       "y": 3.1,
       "content": "cadtab",
       "role": "composer",
@@ -26,7 +26,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 17.300001,
+      "x": 20.800001,
       "y": 4.2,
       "content": "♩ = 130",
       "role": "tempo",
@@ -34,7 +34,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 17.300001,
+      "x": 20.800001,
       "y": 5.2,
       "content": "gDGBD",
       "role": "tuning",
@@ -42,7 +42,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 17.300001,
+      "x": 20.800001,
       "y": 6.2,
       "content": "Capo 5th string @ 2",
       "role": "capo",
@@ -54,7 +54,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "bounds": {
         "x": 0.0,
         "y": 8.9,
-        "w": 34.600002,
+        "w": 41.600002,
         "h": 4.0
       },
       "prims": [
@@ -94,15 +94,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "kind": "line",
           "x1": 22.2,
           "y1": 8.9,
-          "x2": 31.2,
+          "x2": 37.2,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 32.4,
+          "x1": 38.399998,
           "y1": 8.9,
-          "x2": 33.600002,
+          "x2": 40.6,
           "y2": 8.9,
           "weight": 0.06
         },
@@ -134,7 +134,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "kind": "line",
           "x1": 7.9999995,
           "y1": 9.9,
-          "x2": 33.600002,
+          "x2": 40.6,
           "y2": 9.9,
           "weight": 0.06
         },
@@ -180,17 +180,49 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "kind": "line",
-          "x1": 27.800001,
+          "x1": 24.800001,
           "y1": 10.9,
-          "x2": 29.2,
+          "x2": 25.6,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 31.400002,
+          "x1": 26.800001,
           "y1": 10.9,
-          "x2": 33.600002,
+          "x2": 27.6,
+          "y2": 10.9,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 28.800001,
+          "y1": 10.9,
+          "x2": 29.6,
+          "y2": 10.9,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 30.800001,
+          "y1": 10.9,
+          "x2": 33.2,
+          "y2": 10.9,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 34.399998,
+          "y1": 10.9,
+          "x2": 35.2,
+          "y2": 10.9,
+          "weight": 0.06
+        },
+        {
+          "kind": "line",
+          "x1": 36.399998,
+          "y1": 10.9,
+          "x2": 40.6,
           "y2": 10.9,
           "weight": 0.06
         },
@@ -206,7 +238,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "kind": "line",
           "x1": 2.0,
           "y1": 11.9,
-          "x2": 33.600002,
+          "x2": 40.6,
           "y2": 11.9,
           "weight": 0.06
         },
@@ -238,7 +270,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "kind": "line",
           "x1": 13.0,
           "y1": 12.9,
-          "x2": 33.600002,
+          "x2": 40.6,
           "y2": 12.9,
           "weight": 0.06
         },
@@ -320,17 +352,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "kind": "line",
-          "x1": 29.000002,
+          "x1": 33.0,
           "y1": 8.9,
-          "x2": 29.000002,
+          "x2": 33.0,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 33.600002,
+          "x1": 40.6,
           "y1": 8.9,
-          "x2": 33.600002,
+          "x2": 40.6,
           "y2": 12.9,
           "weight": 0.1
         },
@@ -399,8 +431,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 202,
-                "end": 207
+                "start": 215,
+                "end": 220
               }
             },
             {
@@ -418,8 +450,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 202,
-                "end": 207
+                "start": 215,
+                "end": 220
               }
             },
             {
@@ -429,8 +461,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 208,
-                "end": 213
+                "start": 221,
+                "end": 226
               }
             },
             {
@@ -448,22 +480,22 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 208,
-                "end": 213
+                "start": 221,
+                "end": 226
               }
             },
             {
               "kind": "line",
               "x1": 2.8,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 3.8,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             }
           ],
           "span": {
-            "start": 202,
-            "end": 213
+            "start": 215,
+            "end": 226
           }
         },
         {
@@ -481,8 +513,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 318,
-                "end": 323
+                "start": 331,
+                "end": 336
               }
             },
             {
@@ -500,8 +532,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 318,
-                "end": 323
+                "start": 331,
+                "end": 336
               }
             },
             {
@@ -511,8 +543,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 325,
-                "end": 330
+                "start": 338,
+                "end": 343
               }
             },
             {
@@ -530,8 +562,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 325,
-                "end": 330
+                "start": 338,
+                "end": 343
               }
             },
             {
@@ -541,8 +573,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 332,
-                "end": 337
+                "start": 345,
+                "end": 350
               }
             },
             {
@@ -560,8 +592,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 332,
-                "end": 337
+                "start": 345,
+                "end": 350
               }
             },
             {
@@ -571,8 +603,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 340,
-                "end": 345
+                "start": 353,
+                "end": 358
               }
             },
             {
@@ -590,8 +622,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 340,
-                "end": 345
+                "start": 353,
+                "end": 358
               }
             },
             {
@@ -601,8 +633,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 347,
-                "end": 352
+                "start": 360,
+                "end": 365
               }
             },
             {
@@ -620,8 +652,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "I",
               "role": "finger",
               "span": {
-                "start": 347,
-                "end": 352
+                "start": 360,
+                "end": 365
               }
             },
             {
@@ -631,8 +663,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 354,
-                "end": 359
+                "start": 367,
+                "end": 372
               }
             },
             {
@@ -650,8 +682,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 354,
-                "end": 359
+                "start": 367,
+                "end": 372
               }
             },
             {
@@ -661,8 +693,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 387,
-                "end": 402
+                "start": 400,
+                "end": 415
               }
             },
             {
@@ -672,8 +704,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 387,
-                "end": 402
+                "start": 400,
+                "end": 415
               }
             },
             {
@@ -691,8 +723,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 387,
-                "end": 402
+                "start": 400,
+                "end": 415
               }
             },
             {
@@ -702,38 +734,38 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "T",
               "role": "finger",
               "span": {
-                "start": 387,
-                "end": 402
+                "start": 400,
+                "end": 415
               }
             },
             {
               "kind": "line",
               "x1": 6.4,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 7.3999996,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             },
             {
               "kind": "line",
               "x1": 8.4,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 9.4,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             },
             {
               "kind": "line",
               "x1": 10.4,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 11.4,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             }
           ],
           "span": {
-            "start": 318,
-            "end": 402
+            "start": 331,
+            "end": 415
           }
         },
         {
@@ -751,8 +783,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "𝄾",
               "role": "rest",
               "span": {
-                "start": 456,
-                "end": 459
+                "start": 496,
+                "end": 499
               }
             },
             {
@@ -762,8 +794,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 461,
-                "end": 464
+                "start": 501,
+                "end": 504
               }
             },
             {
@@ -778,8 +810,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "kind": "path",
               "cmds": "M 17 10.9 Q 17.5 10.099999 18 10.9",
               "span": {
-                "start": 461,
-                "end": 464
+                "start": 501,
+                "end": 504
               }
             },
             {
@@ -789,8 +821,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 467,
-                "end": 470
+                "start": 507,
+                "end": 510
               }
             },
             {
@@ -804,23 +836,23 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             {
               "kind": "line",
               "x1": 17.0,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 17.6,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             },
             {
               "kind": "line",
               "x1": 18.0,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 18.6,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             }
           ],
           "span": {
-            "start": 456,
-            "end": 470
+            "start": 496,
+            "end": 510
           }
         },
         {
@@ -838,8 +870,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 520,
-                "end": 525
+                "start": 560,
+                "end": 565
               }
             },
             {
@@ -857,8 +889,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 520,
-                "end": 525
+                "start": 560,
+                "end": 565
               }
             },
             {
@@ -868,8 +900,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 526,
-                "end": 531
+                "start": 566,
+                "end": 571
               }
             },
             {
@@ -887,29 +919,29 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "M",
               "role": "finger",
               "span": {
-                "start": 526,
-                "end": 531
+                "start": 566,
+                "end": 571
               }
             },
             {
               "kind": "line",
               "x1": 20.6,
-              "y1": 14.4,
+              "y1": 14.49,
               "x2": 21.6,
-              "y2": 14.4,
-              "weight": 0.3
+              "y2": 14.49,
+              "weight": 0.18
             }
           ],
           "span": {
-            "start": 520,
-            "end": 531
+            "start": 560,
+            "end": 571
           }
         },
         {
           "bounds": {
             "x": 23.400002,
             "y": 8.9,
-            "w": 5.6000004,
+            "w": 9.6,
             "h": 4.0
           },
           "prims": [
@@ -920,8 +952,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 567,
-                "end": 570
+                "start": 687,
+                "end": 690
               }
             },
             {
@@ -934,32 +966,13 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 25.2,
+              "x": 26.2,
               "y": 10.9,
               "content": "4",
               "role": "fretNumber",
               "span": {
-                "start": 571,
-                "end": 574
-              }
-            },
-            {
-              "kind": "line",
-              "x1": 25.2,
-              "y1": 11.7,
-              "x2": 25.2,
-              "y2": 14.4,
-              "weight": 0.08
-            },
-            {
-              "kind": "text",
-              "x": 26.2,
-              "y": 10.9,
-              "content": "2",
-              "role": "fretNumber",
-              "span": {
-                "start": 567,
-                "end": 570
+                "start": 691,
+                "end": 694
               }
             },
             {
@@ -972,149 +985,136 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 27.2,
+              "x": 28.2,
               "y": 10.9,
-              "content": "4",
+              "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 571,
-                "end": 574
+                "start": 687,
+                "end": 690
               }
             },
             {
               "kind": "line",
-              "x1": 27.2,
+              "x1": 28.2,
               "y1": 11.7,
-              "x2": 27.2,
+              "x2": 28.2,
               "y2": 14.4,
               "weight": 0.08
             },
             {
-              "kind": "line",
-              "x1": 24.2,
-              "y1": 14.4,
-              "x2": 25.2,
-              "y2": 14.4,
-              "weight": 0.3
+              "kind": "text",
+              "x": 30.2,
+              "y": 10.9,
+              "content": "4",
+              "role": "fretNumber",
+              "span": {
+                "start": 691,
+                "end": 694
+              }
             },
             {
               "kind": "line",
-              "x1": 26.2,
-              "y1": 14.4,
-              "x2": 27.2,
+              "x1": 30.2,
+              "y1": 11.7,
+              "x2": 30.2,
               "y2": 14.4,
-              "weight": 0.3
+              "weight": 0.08
             }
           ],
           "span": {
-            "start": 567,
-            "end": 574
+            "start": 687,
+            "end": 694
           }
         },
         {
           "bounds": {
-            "x": 29.000002,
+            "x": 33.0,
             "y": 8.9,
-            "w": 4.6,
+            "w": 7.6000004,
             "h": 4.0
           },
           "prims": [
             {
               "kind": "text",
-              "x": 29.800001,
+              "x": 33.8,
               "y": 10.9,
               "content": "0",
               "role": "fretNumber",
               "span": {
-                "start": 683,
-                "end": 699
+                "start": 820,
+                "end": 836
               }
             },
             {
               "kind": "line",
-              "x1": 29.800001,
+              "x1": 33.8,
               "y1": 11.7,
-              "x2": 29.800001,
+              "x2": 33.8,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 30.800001,
+              "x": 35.8,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
               "span": {
-                "start": 683,
-                "end": 699
+                "start": 820,
+                "end": 836
               }
             },
             {
               "kind": "line",
-              "x1": 30.800001,
+              "x1": 35.8,
               "y1": 11.7,
-              "x2": 30.800001,
+              "x2": 35.8,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 31.2,
+              "x": 36.2,
               "y": 10.45,
               "content": "h",
               "role": "technique",
               "span": {
-                "start": 683,
-                "end": 699
+                "start": 820,
+                "end": 836
               }
             },
             {
               "kind": "text",
-              "x": 31.800001,
+              "x": 37.8,
               "y": 8.9,
               "content": "7",
               "role": "fretNumber",
               "span": {
-                "start": 738,
-                "end": 747
+                "start": 875,
+                "end": 884
               }
             },
             {
               "kind": "line",
-              "x1": 31.800001,
+              "x1": 37.8,
               "y1": 9.7,
-              "x2": 31.800001,
+              "x2": 37.8,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "path",
-              "cmds": "M 31.800001 8.9 Q 32.100002 7.8999996 32.4 7.8999996",
+              "cmds": "M 37.8 8.9 Q 38.1 7.8999996 38.399998 7.8999996",
               "span": {
-                "start": 738,
-                "end": 747
+                "start": 875,
+                "end": 884
               }
-            },
-            {
-              "kind": "line",
-              "x1": 29.800001,
-              "y1": 14.4,
-              "x2": 30.800001,
-              "y2": 14.4,
-              "weight": 0.3
-            },
-            {
-              "kind": "line",
-              "x1": 31.800001,
-              "y1": 14.4,
-              "x2": 32.4,
-              "y2": 14.4,
-              "weight": 0.3
             }
           ],
           "span": {
-            "start": 683,
-            "end": 747
+            "start": 820,
+            "end": 884
           }
         }
       ]

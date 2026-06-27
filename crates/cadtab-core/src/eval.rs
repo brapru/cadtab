@@ -1,6 +1,7 @@
 //! Evaluation: runtime values, the lexical environment, and lowering AST events
-//! into musical-model events. A note without a duration suffix inherits the last
-//! one (the sticky default); an explicit suffix updates it for following events.
+//! into musical-model events. A note without a duration suffix uses the current
+//! `default` baseline (a cascading directive); an explicit `_N` applies to that
+//! note only and never threads forward.
 //! Note positions are validated against the instrument as they are lowered.
 
 use std::collections::HashMap;
@@ -100,7 +101,7 @@ impl Env {
 }
 
 /// The default note duration before any `default` directive or `_N` suffix has
-/// seeded the sticky duration: a quarter note.
+/// set the baseline: a quarter note.
 const INITIAL_DURATION: Duration = Duration { num: 1, den: 4 };
 
 /// Functions expand into phrases; this bounds how deep that expansion may
@@ -111,14 +112,14 @@ const MAX_CALL_DEPTH: usize = 64;
 /// cannot freeze the live recompile. Real loops are tiny.
 const MAX_LOOP_ITERATIONS: u32 = 1024;
 
-/// Lowers AST events into musical-model events, threading the sticky default
+/// Lowers AST events into musical-model events, applying the cascading `default`
 /// duration across the run. `def`s expand into phrases that are spliced at the
 /// call site; `let`s bind reusable values. Diagnostics (out-of-range positions,
 /// malformed durations, runaway recursion) are collected; lowering is
 /// best-effort so a single bad event never drops the rest.
 pub struct Evaluator {
     instrument: Instrument,
-    sticky: Duration,
+    default_dur: Duration,
     env: Env,
     defs: HashMap<String, Def>,
     call_depth: usize,
@@ -129,7 +130,7 @@ impl Evaluator {
     pub fn new(instrument: Instrument) -> Self {
         Self {
             instrument,
-            sticky: INITIAL_DURATION,
+            default_dur: INITIAL_DURATION,
             env: Env::new(),
             defs: HashMap::new(),
             call_depth: 0,
@@ -137,9 +138,9 @@ impl Evaluator {
         }
     }
 
-    /// Seed the sticky default duration (the `default` directive).
+    /// Set the cascading `default` baseline duration.
     pub fn set_default(&mut self, dur: Duration) {
-        self.sticky = dur;
+        self.default_dur = dur;
     }
 
     /// Consume the evaluator, returning the diagnostics gathered so far.
@@ -175,7 +176,7 @@ impl Evaluator {
         }
     }
 
-    /// Lower a run of events, threading the sticky duration across them.
+    /// Lower a run of events, each unmarked event takes the `default` baseline.
     pub fn eval_events(&mut self, events: &[ast::Event]) -> Phrase {
         let mut phrase = Phrase::new();
         for ev in events {
@@ -185,7 +186,7 @@ impl Evaluator {
     }
 
     /// Unroll `loop N { body }`: evaluate the body `count` times in sequence,
-    /// threading the sticky duration across iterations. A count past the cap is
+    /// the `default` baseline carries across iterations. A count past the cap is
     /// clamped (with a diagnostic) so a typo cannot blow up the recompile.
     pub fn eval_loop(&mut self, block: &LoopBlock) -> Phrase {
         let mut count = block.count.value;
@@ -340,11 +341,11 @@ impl Evaluator {
                 Some(Value::Phrase(ph)) => out.events.extend(ph.events),
                 // A single-note technique value becomes one note event.
                 Some(Value::Note(note)) => out.push(Event::new(EventKind::Note(note), expr.span)),
-                // A bare indexed element re-times to a note at the sticky duration.
+                // A bare indexed element re-times to a note at the default duration.
                 Some(Value::Position(pos)) => out.push(Event::new(
                     EventKind::Note(Note {
                         pos,
-                        dur: self.sticky,
+                        dur: self.default_dur,
                         right_hand: None,
                         technique: None,
                         tie: false,
@@ -519,7 +520,7 @@ impl Evaluator {
         }
     }
 
-    /// `hammer/pull/slide(from, to)`: a phrase of the two notes (at the sticky
+    /// `hammer/pull/slide(from, to)`: a phrase of the two notes (at the default
     /// duration), with the technique mark on the target note.
     fn connecting_technique(
         &self,
@@ -541,7 +542,7 @@ impl Evaluator {
         Some(Value::Phrase(phrase))
     }
 
-    /// `bend/choke/ghost(pos)`: one note (at the sticky duration) carrying the
+    /// `bend/choke/ghost(pos)`: one note (at the default duration) carrying the
     /// technique mark.
     fn single_technique(&self, technique: Technique, args: &[Option<Value>]) -> Option<Value> {
         let pos = position_arg(args, 0)?;
@@ -551,7 +552,7 @@ impl Evaluator {
     fn technique_note(&self, pos: Position, technique: Option<Technique>) -> Note {
         Note {
             pos,
-            dur: self.sticky,
+            dur: self.default_dur,
             right_hand: None,
             technique,
             tie: false,
@@ -578,8 +579,8 @@ impl Evaluator {
     /// individual notes (the seam later passes index and spread over).
     fn chord_to_phrase(&mut self, chord: &ast::Chord) -> Phrase {
         let dur = match chord.duration.as_ref() {
-            Some(d) => self.lower_duration(d).unwrap_or(self.sticky),
-            None => self.sticky,
+            Some(d) => self.lower_duration(d).unwrap_or(self.default_dur),
+            None => self.default_dur,
         };
         let mut phrase = Phrase::new();
         for n in &chord.notes {
@@ -608,15 +609,14 @@ impl Evaluator {
         )
     }
 
-    /// Resolve a duration: an explicit `_N` updates and returns the sticky
-    /// duration; an omitted one inherits the current sticky.
+    /// Resolve a note's duration: an explicit `_N` applies to that note only; an
+    /// omitted one uses the current `default` baseline. A `_N` never threads
+    /// forward — only the cascading `default` directive moves the baseline.
     fn resolve_duration(&mut self, dur: Option<&ast::Duration>) -> Duration {
-        if let Some(d) = dur
-            && let Some(model) = self.lower_duration(d)
-        {
-            self.sticky = model;
+        match dur.and_then(|d| self.lower_duration(d)) {
+            Some(model) => model,
+            None => self.default_dur,
         }
-        self.sticky
     }
 
     /// Lower a `_N` suffix to a model duration, or diagnose a zero denominator.
@@ -949,9 +949,9 @@ mod event_eval_tests {
     }
 
     #[test]
-    fn sticky_duration_inherits_then_updates() {
-        // 1/8 seeds; the bare notes inherit it; `_4` updates the sticky for the
-        // notes that follow.
+    fn explicit_duration_applies_to_one_note_only() {
+        // `default 1/8` is the baseline; bare notes use it. An explicit `_4`
+        // applies to its own note only and does not leak onto the next note.
         let (phrase, diags) = eval_score("score { default 1/8\n 3:0 2:0 1:0_4 3:2 }");
         assert!(diags.is_empty());
         assert_eq!(
@@ -960,7 +960,7 @@ mod event_eval_tests {
                 Duration::new(1, 8),
                 Duration::new(1, 8),
                 Duration::new(1, 4),
-                Duration::new(1, 4),
+                Duration::new(1, 8),
             ]
         );
     }
@@ -972,12 +972,13 @@ mod event_eval_tests {
     }
 
     #[test]
-    fn dotted_duration_is_threaded() {
+    fn a_dotted_explicit_duration_applies_to_one_note() {
         let (phrase, _) = eval_score("score { 3:0_4. 2:0 }");
-        // A dotted quarter is 3/8; the following bare note inherits it.
+        // A dotted quarter is 3/8 for that note; the following bare note falls
+        // back to the baseline (an unseeded default is a quarter).
         assert_eq!(
             durs(&phrase),
-            vec![Duration::new(3, 8), Duration::new(3, 8)]
+            vec![Duration::new(3, 8), Duration::new(1, 4)]
         );
     }
 
@@ -1003,25 +1004,28 @@ mod event_eval_tests {
     }
 
     #[test]
-    fn chord_duration_updates_the_sticky() {
+    fn a_chord_explicit_duration_does_not_leak() {
         let (phrase, _) = eval_score("score { default 1/8\n [3:0 2:0]_4 1:0 }");
+        // The chord is a quarter; the following bare note stays at the default.
         assert_eq!(
             durs(&phrase),
-            vec![Duration::new(1, 4), Duration::new(1, 4)]
+            vec![Duration::new(1, 4), Duration::new(1, 8)]
         );
     }
 
     #[test]
-    fn rest_carries_duration_and_threads_sticky() {
+    fn a_rest_explicit_duration_does_not_leak() {
         let (phrase, diags) = eval_score("score { default 1/8\n r_4 r 3:0 }");
         assert!(diags.is_empty());
         assert!(matches!(phrase.events[0].kind, EventKind::Rest(_)));
+        // The explicit quarter rest is one-shot; the bare rest and note follow
+        // the 1/8 default.
         assert_eq!(
             durs(&phrase),
             vec![
                 Duration::new(1, 4),
-                Duration::new(1, 4),
-                Duration::new(1, 4)
+                Duration::new(1, 8),
+                Duration::new(1, 8)
             ]
         );
     }
@@ -1212,10 +1216,19 @@ score {
     }
 
     #[test]
-    fn loop_threads_the_sticky_duration_across_iterations() {
-        // `_4` in the first iteration sets the sticky; it persists into the next.
+    fn loop_uses_the_default_baseline_not_a_leaked_suffix() {
+        // Each iteration: an explicit `_4` (one-shot) then a bare note at the
+        // 1/8 default — the suffix never threads forward across iterations.
         let (phrase, _) = eval_score("score { default 1/8\n loop 2 { 3:2_4 3:4 } }");
-        assert_eq!(durs(&phrase), vec![Duration::new(1, 4); 4]);
+        assert_eq!(
+            durs(&phrase),
+            vec![
+                Duration::new(1, 4),
+                Duration::new(1, 8),
+                Duration::new(1, 4),
+                Duration::new(1, 8),
+            ]
+        );
     }
 
     #[test]

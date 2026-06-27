@@ -146,7 +146,7 @@ capo "5th string @ 2"       // display-only header note (D6)
 
 score {
   time 4/4
-  default 1/8               // sticky default duration
+  default 1/8               // baseline duration for unmarked notes
 
   pickup { 2:0.i 1:0.t }    // partial bar, excluded from barring check (D33)
 
@@ -169,8 +169,13 @@ score {
 - **D10 — Note literal `string:fret`** + optional right-hand mark suffix `.t/.i/.m`
   (`.d`/`.u` for strum down/up). Events are juxtaposed; whitespace incl. newlines separates
   only ⇒ free formatting.
-- **D11 — Sticky durations (Lilypond-style).** `_N` suffix (N = denominator; `.` = dotted;
-  tuplet marker TBD). Omitted ⇒ inherit last; `default` seeds it. Common case = zero typing.
+- **D11 — Durations: `default` baseline + one-shot `_N`.** `_N` suffix (N = denominator; `.` =
+  dotted; tuplet marker TBD). An omitted duration uses the current `default` — a cascading
+  directive (like `time`) that may recur mid-score to move the baseline. An explicit `_N`
+  overrides exactly its own note and never threads forward. Common case (a constant subdivision
+  set once via `default`) = zero per-note typing; a run of another value = change `default`
+  before it. *(Revised from the original Lilypond-style sticky model: a stray `_N` silently
+  rewriting every following note competed with `default` and surprised in practice.)*
 - **D12 — Auto-barring** from `time`, with explicit `measure { }` as override. The compiler
   owns barline insertion and **diagnoses over/under-full bars**.
 - **D13 — Program shape:** top-level declarations (`instrument`/`tuning`/`capo`) + `score { }`
