@@ -35,8 +35,14 @@ pub enum TextRole {
     Title,
     /// The composer credit in the header.
     Composer,
-    /// The compact performance-details row (tempo · instrument · tuning · capo).
-    Details,
+    /// The tuning's display name in the header (e.g. "Open G").
+    TuningName,
+    /// A header tuning-grid cell: a circled string number and its note (`①=D`).
+    TuningString,
+    /// The tempo marking in the header (`♩ = N`).
+    Tempo,
+    /// The capo label in the header.
+    Capo,
     /// A right-hand finger mark (T/I/M).
     Finger,
     /// A strum-direction glyph.
@@ -130,7 +136,10 @@ mod tests {
         TextRole::TimeSig,
         TextRole::Title,
         TextRole::Composer,
-        TextRole::Details,
+        TextRole::TuningName,
+        TextRole::TuningString,
+        TextRole::Tempo,
+        TextRole::Capo,
         TextRole::Finger,
         TextRole::Strum,
         TextRole::Technique,
@@ -206,7 +215,7 @@ mod tests {
                 width: 12.0,
                 height: 4.0,
             },
-            header: vec![text(TextRole::Title), text(TextRole::Details)],
+            header: vec![text(TextRole::Title), text(TextRole::Tempo)],
             systems: vec![system],
         };
         round_trip(&tree);

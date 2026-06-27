@@ -42,8 +42,11 @@
   type TextStyle = { size: number; weight?: number; italic?: boolean };
   const TEXT_STYLE: Record<TextRole, TextStyle> = {
     title: { size: 1.5, weight: 600 },
-    composer: { size: 0.9 },
-    details: { size: 0.8 },
+    composer: { size: 1.0, weight: 700 },
+    tuningName: { size: 0.85 },
+    tuningString: { size: 0.85 },
+    tempo: { size: 0.9, weight: 700 },
+    capo: { size: 0.85 },
     fretNumber: { size: 1.3 },
     stringLabel: { size: 1.1 },
     timeSig: { size: 1.4, weight: 600 },
@@ -157,14 +160,25 @@
     fill: var(--tab-ink);
     text-anchor: middle;
     dominant-baseline: central;
+    /* Engraved-sheet look: serif across all rendered text. */
+    font-family: Georgia, "Times New Roman", serif;
+  }
+  /* The left-aligned header block (tuning name, string grid, capo) anchors at
+     its start x rather than centring like the title and in-staff text. */
+  .tab text[data-role="tuningName"],
+  .tab text[data-role="tuningString"],
+  .tab text[data-role="capo"] {
+    text-anchor: start;
   }
   /* Hand/technique annotations read as secondary to the fret numbers; the
-     header details row reads as secondary to the title/composer. */
+     header tuning block reads as secondary to the title/composer. */
   .tab text[data-role="finger"],
   .tab text[data-role="technique"],
   .tab text[data-role="strum"],
   .tab text[data-role="ending"],
-  .tab text[data-role="details"] {
+  .tab text[data-role="tuningName"],
+  .tab text[data-role="tuningString"],
+  .tab text[data-role="capo"] {
     fill: var(--tab-muted);
   }
   /* Span-bearing primitives are interactive: clickable, and accented while the

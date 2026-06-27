@@ -31,6 +31,8 @@ const TITLE_H: f32 = 2.0;
 const COMPOSER_H: f32 = 1.2;
 const META_LINE_H: f32 = 1.0;
 const HEADER_GAP: f32 = 1.0;
+// Column width for one cell of the header tuning grid (e.g. "①=D").
+const TUNING_COL_W: f32 = 2.8;
 const STRING_SPACING: f32 = 1.0;
 const BOTTOM_MARGIN: f32 = 2.8;
 // Vertical gap between stacked systems (room below the numbers for stems/marks).
@@ -780,61 +782,136 @@ fn volta_brackets(measures: &[Measure], ranges: &[(f32, f32)], staff_top: f32) -
     prims
 }
 
-/// Build the header block of metadata text, centered on `width`, returning the
-/// primitives and the y at which the header ends.
+/// Build the header block: a centred title/composer at the top, then a
+/// left-aligned tuning block (tuning name over a circled-number string grid), a
+/// tempo line, and a capo line. Returns the primitives and the y it ends at.
 fn build_header(score: &Score, width: f32) -> (Vec<Primitive>, f32) {
     let cx = width / 2.0;
     let mut prims = Vec::new();
     let mut y = TOP_MARGIN;
-    let mut row = |prims: &mut Vec<Primitive>, content: String, role: TextRole, h: f32| {
+    let line =
+        |prims: &mut Vec<Primitive>, x: f32, baseline: f32, content: String, role: TextRole| {
+            prims.push(Primitive::Text {
+                x,
+                y: baseline,
+                content,
+                role,
+                span: None,
+            });
+        };
+
+    // Title and composer, centred at the top.
+    if let Some(title) = &score.meta.title {
         prims.push(Primitive::Text {
             x: cx,
-            y: y + h / 2.0,
-            content,
-            role,
+            y: y + TITLE_H / 2.0,
+            content: title.clone(),
+            role: TextRole::Title,
             span: None,
         });
-        y += h;
-    };
-
-    if let Some(title) = &score.meta.title {
-        row(&mut prims, title.clone(), TextRole::Title, TITLE_H);
+        y += TITLE_H;
     }
     if let Some(composer) = &score.meta.composer {
-        row(&mut prims, composer.clone(), TextRole::Composer, COMPOSER_H);
+        prims.push(Primitive::Text {
+            x: cx,
+            y: y + COMPOSER_H / 2.0,
+            content: composer.clone(),
+            role: TextRole::Composer,
+            span: None,
+        });
+        y += COMPOSER_H;
     }
+    y += HEADER_GAP;
 
-    // Collapse the performance details into one compact middot-joined row:
-    // tempo (if set) · instrument · tuning · capo (if any).
-    let mut details = Vec::new();
-    if let Some(tempo) = score.meta.tempo {
-        details.push(format!("♩ = {tempo}"));
-    }
-    details.push(score.instrument.name.clone());
-    details.push(tuning_label(score));
-    if !score.capo.is_empty() {
-        details.push(format!("Capo {}", score.capo.join(", ")));
-    }
-    row(
+    // Left-aligned tuning block: the tuning name over a circled-number grid that
+    // pairs strings into columns — odds on the top row, evens below.
+    line(
         &mut prims,
-        details.join(" · "),
-        TextRole::Details,
-        META_LINE_H,
+        LEFT_MARGIN,
+        y + META_LINE_H / 2.0,
+        score.instrument.tuning.clone(),
+        TextRole::TuningName,
     );
+    y += META_LINE_H;
+
+    let n = score.instrument.string_count();
+    let cols = n.div_ceil(2);
+    let grid_top = y;
+    for col in 0..cols {
+        let col_x = LEFT_MARGIN + col as f32 * TUNING_COL_W;
+        let top = 2 * col + 1;
+        let bottom = 2 * col + 2;
+        prims.push(tuning_cell(
+            &score.instrument,
+            top,
+            col_x,
+            grid_top + META_LINE_H / 2.0,
+        ));
+        if bottom <= n {
+            prims.push(tuning_cell(
+                &score.instrument,
+                bottom,
+                col_x,
+                grid_top + META_LINE_H + META_LINE_H / 2.0,
+            ));
+        }
+    }
+    y = grid_top + 2.0 * META_LINE_H;
+
+    // Tempo, centred under the grid.
+    if let Some(tempo) = score.meta.tempo {
+        let grid_cx = LEFT_MARGIN + cols as f32 * TUNING_COL_W / 2.0;
+        line(
+            &mut prims,
+            grid_cx,
+            y + META_LINE_H / 2.0,
+            format!("♩ = {tempo}"),
+            TextRole::Tempo,
+        );
+        y += META_LINE_H;
+    }
+    // Capo, left-aligned below.
+    if !score.capo.is_empty() {
+        line(
+            &mut prims,
+            LEFT_MARGIN,
+            y + META_LINE_H / 2.0,
+            format!("Capo {}", score.capo.join(", ")),
+            TextRole::Capo,
+        );
+        y += META_LINE_H;
+    }
 
     (prims, y)
 }
 
-/// The open-string letters as conventional tuning notation: highest-numbered
-/// string first (banjo `gDGBD`, guitar `EADGBE`).
-fn tuning_label(score: &Score) -> String {
-    score
-        .instrument
-        .strings
-        .iter()
-        .rev()
-        .map(|s| s.label.as_str())
-        .collect()
+/// One cell of the header tuning grid: a circled string number and its open-note
+/// label (e.g. `①=D`), left-anchored at `(x, y)`.
+fn tuning_cell(
+    instrument: &crate::instrument::Instrument,
+    string: usize,
+    x: f32,
+    y: f32,
+) -> Primitive {
+    let label = instrument.strings[string - 1].label.clone();
+    Primitive::Text {
+        x,
+        y,
+        content: format!("{}={}", circled_digit(string), label),
+        role: TextRole::TuningString,
+        span: None,
+    }
+}
+
+/// A string number as a circled digit (①..⑳); falls back to `(n)` beyond 20.
+fn circled_digit(n: usize) -> String {
+    if (1..=20).contains(&n) {
+        char::from_u32(0x2460 + (n as u32 - 1))
+            .expect("0x2460..0x2473 are circled digits")
+            .to_string()
+    } else {
+        format!("({n})")
+    }
 }
 
 #[cfg(test)]
@@ -1218,50 +1295,62 @@ mod tests {
         })
     }
 
+    /// Count the header text prims carrying `role`.
+    fn header_role_count(tree: &RenderTree, role: TextRole) -> usize {
+        tree.header
+            .iter()
+            .filter(|p| matches!(p, Primitive::Text { role: r, .. } if *r == role))
+            .count()
+    }
+
     #[test]
-    fn the_header_collapses_details_into_one_inline_row() {
+    fn the_header_lays_out_the_lead_sheet_blocks() {
         let score = Score {
             meta: ScoreMeta {
-                title: Some("Cripple Creek".into()),
-                composer: Some("Trad.".into()),
-                tempo: Some(130),
+                title: Some("Spotted Pony".into()),
+                composer: Some("Eli Gilbert".into()),
+                tempo: Some(100),
             },
-            instrument: Instrument::builtin("banjo").unwrap(),
+            instrument: Instrument::builtin("banjo")
+                .unwrap()
+                .with_tuning("doubleC", Span::new(0, 0))
+                .unwrap(),
             capo: vec!["2".into()],
             measures: vec![Measure::new(vec![note(3, 0, 0)])],
         };
         let tree = layout(&score, cfg());
         assert_eq!(
             header_text(&tree, TextRole::Title).as_deref(),
-            Some("Cripple Creek")
+            Some("Spotted Pony")
         );
         assert_eq!(
             header_text(&tree, TextRole::Composer).as_deref(),
-            Some("Trad.")
+            Some("Eli Gilbert")
         );
-        // Tempo, instrument, tuning, and capo joined into one middot row.
+        // The tuning name sits over a circled-number grid — one cell per string,
+        // the first being string 1 (Double C → ①=D).
         assert_eq!(
-            header_text(&tree, TextRole::Details).as_deref(),
-            Some("♩ = 130 · banjo · gDGBD · Capo 2")
+            header_text(&tree, TextRole::TuningName).as_deref(),
+            Some("Double C")
         );
-        let details = tree
-            .header
-            .iter()
-            .filter(|p| {
-                matches!(
-                    p,
-                    Primitive::Text {
-                        role: TextRole::Details,
-                        ..
-                    }
-                )
-            })
-            .count();
-        assert_eq!(details, 1);
+        assert_eq!(header_role_count(&tree, TextRole::TuningString), 5);
+        assert_eq!(
+            header_text(&tree, TextRole::TuningString).as_deref(),
+            Some("①=D")
+        );
+        // Tempo and capo each on their own line.
+        assert_eq!(
+            header_text(&tree, TextRole::Tempo).as_deref(),
+            Some("♩ = 100")
+        );
+        assert_eq!(
+            header_text(&tree, TextRole::Capo).as_deref(),
+            Some("Capo 2")
+        );
     }
 
     #[test]
-    fn the_details_row_omits_absent_tempo_and_capo() {
+    fn the_header_omits_absent_title_tempo_and_capo() {
         let score = Score {
             meta: ScoreMeta::default(),
             instrument: Instrument::builtin("banjo").unwrap(),
@@ -1269,12 +1358,15 @@ mod tests {
             measures: vec![Measure::new(vec![note(3, 0, 0)])],
         };
         let tree = layout(&score, cfg());
-        // Only instrument and tuning remain — no dangling separators, no title.
+        // The tuning block always renders; title/tempo/capo drop out cleanly.
         assert_eq!(
-            header_text(&tree, TextRole::Details).as_deref(),
-            Some("banjo · gDGBD")
+            header_text(&tree, TextRole::TuningName).as_deref(),
+            Some("Open G")
         );
+        assert_eq!(header_role_count(&tree, TextRole::TuningString), 5);
         assert!(header_text(&tree, TextRole::Title).is_none());
+        assert!(header_text(&tree, TextRole::Tempo).is_none());
+        assert!(header_text(&tree, TextRole::Capo).is_none());
     }
 
     #[test]
