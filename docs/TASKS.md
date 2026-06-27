@@ -254,10 +254,11 @@ Entirely headless and test-driven (D18, D19, D20).
         that opens an exhaustive list; clicking an entry jumps the editor selection to its span.
   - [ ] T4.7n — **Zed-inspired accent polish.** A coherent accent/detail pass across topbar,
         toolbar, gutter, and panels; fold in with T4.7g–i so the UI reads as one pass.
-  - [ ] T4.7o — **Secondary beams for 16ths/32nds.** A beamed group draws only one primary beam,
-        so beamed 16ths look like 8ths. Add per-level beams over runs of `flag_count ≥ level`
-        (above the primary, since stems point down) + partial-beam stubs for isolated values.
-        *(Lone notes already flag correctly.)*
+  - [x] T4.7o — **Secondary beams for 16ths/32nds.** A beamed group now draws a primary beam
+        plus a beam per higher level over each maximal run of `flag_count ≥ level` (stacked
+        above the primary, since stems point down), with partial-beam stubs for isolated values.
+        *(Known edge: a 32nd on a length-clamped 5th-string stem may not reach its 3rd beam —
+        rare; revisit if 32nds get real use.)*
   - [ ] T4.7p — **Dense-rhythm crowding.** Spacing is purely time-proportional (a 16th = 0.5
         units) while fret digits are ~1 unit wide, so 16th runs overlap. Add a minimum per-event
         spacing floor while keeping proportional spacing for longer values.

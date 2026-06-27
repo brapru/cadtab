@@ -299,9 +299,17 @@ fn build_system(
         let beam_overhang = STEM_WEIGHT / 2.0;
         for g in mbeams {
             if g.members.len() >= 2 {
-                let x0 = mx0 + plan.events[g.members[0]].rel_x - beam_overhang;
-                let x1 = mx0 + plan.events[*g.members.last().unwrap()].rel_x + beam_overhang;
-                prims.push(beam_bar(x0, x1, beam_render_y));
+                let xs: Vec<f32> = g
+                    .members
+                    .iter()
+                    .map(|&m| mx0 + plan.events[m].rel_x)
+                    .collect();
+                let flag_counts: Vec<u8> = g
+                    .members
+                    .iter()
+                    .map(|&m| beam::flag_count(measure.events[m].duration()))
+                    .collect();
+                prims.extend(group_beams(&xs, &flag_counts, beam_render_y, beam_overhang));
             } else if let Some(&idx) = g.members.first() {
                 let x = mx0 + plan.events[idx].rel_x;
                 let count = beam::flag_count(measure.events[idx].duration());
@@ -427,6 +435,57 @@ fn beam_bar(x1: f32, x2: f32, y: f32) -> Primitive {
         x2,
         y2: y,
         weight: BEAM_WEIGHT,
+    }
+}
+
+/// All beams for a beamed group of two or more members, given each member's x
+/// (`xs`) and beam count (`flag_counts`). One primary beam spans the whole group
+/// at `primary_y`; each higher level (2 = sixteenths, 3 = thirty-seconds…) adds a
+/// beam over every maximal run of members carrying that level, stacked toward the
+/// numbers (above the primary, since stems hang down). A run of one becomes a
+/// short partial-beam stub pointing into the group. Bars overhang their outer
+/// stems by `overhang` so they reach the stems' outer edges.
+fn group_beams(xs: &[f32], flag_counts: &[u8], primary_y: f32, overhang: f32) -> Vec<Primitive> {
+    let last = xs.len() - 1;
+    let mut out = vec![beam_bar(xs[0] - overhang, xs[last] + overhang, primary_y)];
+    let max_level = flag_counts.iter().copied().max().unwrap_or(1);
+    for level in 2..=max_level {
+        let y = primary_y - f32::from(level - 1) * FLAG_SPACING;
+        let mut i = 0;
+        while i < xs.len() {
+            if flag_counts[i] < level {
+                i += 1;
+                continue;
+            }
+            let start = i;
+            let mut end = i;
+            while end + 1 < xs.len() && flag_counts[end + 1] >= level {
+                end += 1;
+            }
+            if end > start {
+                out.push(beam_bar(xs[start] - overhang, xs[end] + overhang, y));
+            } else {
+                let (x1, x2) = partial_beam(xs, start, overhang);
+                out.push(beam_bar(x1, x2, y));
+            }
+            i = end + 1;
+        }
+    }
+    out
+}
+
+/// A partial (fractional) beam stub for a lone member at some level: it points
+/// right from the group's first member, otherwise left toward the previous one,
+/// its length capped at half the gap to that neighbour so it never collides with
+/// it. The far end overhangs the member's stem like a full beam.
+fn partial_beam(xs: &[f32], idx: usize, overhang: f32) -> (f32, f32) {
+    let x = xs[idx];
+    if idx == 0 {
+        let len = FLAG_LENGTH.min((xs[1] - x) * 0.5);
+        (x - overhang, x + len)
+    } else {
+        let len = FLAG_LENGTH.min((x - xs[idx - 1]) * 0.5);
+        (x - len, x + overhang)
     }
 }
 
@@ -1243,6 +1302,60 @@ mod tests {
         let tree = layout(&banjo_score(vec![m]), cfg());
         assert!(flag_stubs(&tree).is_empty());
         assert_eq!(beams(&tree).len(), 1);
+    }
+
+    #[test]
+    fn four_sixteenths_get_a_primary_and_a_secondary_beam() {
+        let d16 = Duration::from_denominator(16);
+        let m = Measure::new(vec![
+            note_dur(3, 0, 0, d16),
+            note_dur(2, 0, 4, d16),
+            note_dur(1, 0, 8, d16),
+            note_dur(5, 0, 12, d16),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let beams = beams(&tree);
+        // A primary beam plus one secondary beam, both spanning the group.
+        assert_eq!(beams.len(), 2);
+        let ys: Vec<f32> = beams
+            .iter()
+            .map(|b| match b {
+                Primitive::Line { y1, .. } => *y1,
+                _ => unreachable!(),
+            })
+            .collect();
+        let primary = ys.iter().copied().fold(f32::MIN, f32::max);
+        let secondary = ys.iter().copied().fold(f32::MAX, f32::min);
+        // The secondary sits one flag-spacing above the primary (toward numbers).
+        assert!((primary - secondary - FLAG_SPACING).abs() < 1e-5);
+    }
+
+    #[test]
+    fn an_isolated_sixteenth_in_a_group_gets_a_partial_beam() {
+        // 16th, 8th, 16th fill one beat and beam together; each 16th needs a
+        // second beam but has no 16th neighbour, so each gets a partial stub.
+        let d16 = Duration::from_denominator(16);
+        let d8 = Duration::from_denominator(8);
+        let m = Measure::new(vec![
+            note_dur(3, 0, 0, d16),
+            note_dur(2, 0, 4, d8),
+            note_dur(1, 0, 8, d16),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let beams = beams(&tree);
+        let primary = beams
+            .iter()
+            .map(|b| match b {
+                Primitive::Line { y1, .. } => *y1,
+                _ => unreachable!(),
+            })
+            .fold(f32::MIN, f32::max);
+        // One primary across all three, plus two partial stubs one level above.
+        let secondary = beams
+            .iter()
+            .filter(|b| matches!(b, Primitive::Line { y1, .. } if *y1 < primary - 1e-5))
+            .count();
+        assert_eq!(secondary, 2);
     }
 
     /// Augmentation dots are the path primitives inside measure boxes (repeat

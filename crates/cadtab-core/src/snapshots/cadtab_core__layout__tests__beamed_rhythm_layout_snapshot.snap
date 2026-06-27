@@ -468,6 +468,14 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
+              "x1": 4.76,
+              "y1": 7.7400002,
+              "x2": 6.34,
+              "y2": 7.7400002,
+              "weight": 0.18
+            },
+            {
+              "kind": "line",
               "x1": 8.76,
               "y1": 8.09,
               "x2": 9.84,
