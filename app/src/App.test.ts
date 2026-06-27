@@ -44,6 +44,14 @@ vi.mock("./lib/wasm", () => ({
   compile: vi.fn(async () => fake),
 }));
 
+const openDocumentMock = vi.fn();
+const saveDocumentMock = vi.fn();
+vi.mock("./lib/io", () => ({
+  openDocument: (...args: unknown[]) => openDocumentMock(...args),
+  saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
+  defaultDocName: () => "untitled.ctab",
+}));
+
 import App from "./App.svelte";
 
 describe("App", () => {
@@ -192,6 +200,143 @@ describe("App", () => {
     const level = () => container.querySelector(".zoom-level")?.textContent;
     await fireEvent.keyDown(window, { key: "=" });
     expect(level()).toBe("100%");
+  });
+
+  it("opens a document, shows its name, and stays clean", async () => {
+    openDocumentMock.mockReset();
+    openDocumentMock.mockResolvedValue({
+      path: "/scores/loaded.ctab",
+      name: "loaded.ctab",
+      content: "score { 1:0 }",
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+
+    await vi.waitFor(() => {
+      const name = container.querySelector(".doc-name");
+      expect(name?.textContent?.trim()).toBe("loaded.ctab");
+      // The freshly loaded doc is not a user edit, so it is not marked dirty.
+      expect(container.querySelector(".doc-name.dirty")).toBeNull();
+    });
+  });
+
+  it("saves an opened file in place, reusing its path (no re-prompt)", async () => {
+    openDocumentMock.mockReset();
+    saveDocumentMock.mockReset();
+    openDocumentMock.mockResolvedValue({
+      path: "/scores/loaded.ctab",
+      name: "loaded.ctab",
+      content: "score { 1:0 }",
+    });
+    saveDocumentMock.mockResolvedValue({
+      path: "/scores/loaded.ctab",
+      name: "loaded.ctab",
+    });
+    const { getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() => expect(openDocumentMock).toHaveBeenCalled());
+
+    await fireEvent.click(getByText("Save"));
+    await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
+    // Save targets the opened path, so the backend overwrites in place.
+    const [, target] = saveDocumentMock.mock.calls[0] as [
+      string,
+      { path: string | null; suggestedName: string },
+    ];
+    expect(target.path).toBe("/scores/loaded.ctab");
+  });
+
+  it("saves the current source and adopts the saved name", async () => {
+    saveDocumentMock.mockReset();
+    saveDocumentMock.mockResolvedValue({
+      path: "/x/tune.ctab",
+      name: "tune.ctab",
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Save"));
+
+    await vi.waitFor(() => {
+      expect(saveDocumentMock).toHaveBeenCalled();
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "tune.ctab",
+      );
+    });
+    // The default doc has no path yet, so save targets a dialog seeded by the
+    // title-derived name, and sends the current editor source.
+    const [content, target] = saveDocumentMock.mock.calls[0] as [
+      string,
+      { path: string | null; suggestedName: string },
+    ];
+    expect(content).toContain("Cripple Creek");
+    expect(target).toEqual({ path: null, suggestedName: "untitled.ctab" });
+  });
+
+  it("saves from the Cmd/Ctrl+S shortcut", async () => {
+    saveDocumentMock.mockReset();
+    saveDocumentMock.mockResolvedValue({
+      path: "/x/tune.ctab",
+      name: "tune.ctab",
+    });
+    render(App);
+
+    await fireEvent.keyDown(window, { key: "s", metaKey: true });
+    await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
+  });
+
+  it("marks the document dirty on edit and guards an unsaved open", async () => {
+    openDocumentMock.mockReset();
+    const { container } = render(App);
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    // Editing (Tab indents) marks the doc dirty after the debounced compile.
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+    });
+
+    // Declining the discard prompt aborts the open; accepting proceeds.
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(openDocumentMock).not.toHaveBeenCalled();
+
+    confirmSpy.mockReturnValue(true);
+    openDocumentMock.mockResolvedValue({
+      path: "/x.ctab",
+      name: "x.ctab",
+      content: "score {}",
+    });
+    await fireEvent.keyDown(window, { key: "o", metaKey: true });
+    await vi.waitFor(() => expect(openDocumentMock).toHaveBeenCalled());
+    confirmSpy.mockRestore();
+  });
+
+  it("clears dirty when edits are undone back to the saved baseline", async () => {
+    const { container } = render(App);
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+    });
+
+    // Undoing the edit returns the buffer to the baseline, so it is clean again.
+    await fireEvent.keyDown(content, { key: "z", ctrlKey: true });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name.dirty")).toBeNull();
+    });
   });
 
   it("cycles the colour theme onto the document root", async () => {

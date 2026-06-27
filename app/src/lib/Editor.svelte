@@ -29,6 +29,7 @@
     tokens = [],
     diagnostics = [],
     selection = null,
+    loadRequest = null,
   }: {
     doc?: string;
     onChange?: (value: string) => void;
@@ -36,14 +37,20 @@
     tokens?: Token[];
     diagnostics?: Diagnostic[];
     selection?: { from: number; to: number } | null;
+    loadRequest?: { content: string; token: number } | null;
   } = $props();
 
   let container: HTMLDivElement;
   let view = $state<EditorView | undefined>();
+  // Highest load token applied, so a re-render doesn't re-replace the document.
+  let lastLoadToken = -1;
 
-  onMount(() => {
-    const state = EditorState.create({
-      doc,
+  // Build a fresh editor state for `text`. Loading a document rebuilds the state
+  // (rather than editing the current one) so the loaded file becomes the undo
+  // baseline — there is no "undo back to the previous document".
+  function buildState(text: string): EditorState {
+    return EditorState.create({
+      doc: text,
       extensions: [
         history(),
         // CM's own caret + selection layer (the native one only shows on focus
@@ -84,7 +91,10 @@
         }),
       ],
     });
-    view = new EditorView({ state, parent: container });
+  }
+
+  onMount(() => {
+    view = new EditorView({ state: buildState(doc), parent: container });
     view.focus();
   });
 
@@ -97,6 +107,17 @@
   // Likewise for diagnostics: underline squiggles + hover tooltips.
   $effect(() => {
     view?.dispatch({ effects: setDiagnostics.of(diagnostics) });
+  });
+
+  // Swap in a freshly-built state when a new load is requested (opening a file).
+  // Keyed on the token so it fires once per load, not on every re-render. A new
+  // state resets the undo history to the loaded document and clears decorations;
+  // the following recompile re-pushes tokens/diagnostics for the new content.
+  $effect(() => {
+    if (!view || !loadRequest || loadRequest.token === lastLoadToken) return;
+    lastLoadToken = loadRequest.token;
+    view.setState(buildState(loadRequest.content));
+    view.focus();
   });
 
   // Apply a selection requested from outside (a clicked render primitive),

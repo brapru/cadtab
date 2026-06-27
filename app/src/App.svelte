@@ -9,6 +9,7 @@
   import { clampSplit, splitFromPointer } from "./lib/split";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
+  import { openDocument, saveDocument, defaultDocName } from "./lib/io";
   import type { CompileResult, Span } from "./lib/types";
 
   // A feature-rich starter so the app opens showing the header details row,
@@ -59,7 +60,29 @@ score {
     void live.run(src, { width: layoutWidth });
   }
 
-  const onChange = debounce((value: string) => recompile(value), 150);
+  // Document session: the name we last opened/saved as, and whether there are
+  // unsaved edits. Tabs/dirty-per-doc arrive with the M7 dock; for now it is a
+  // single in-place document.
+  let currentName = $state<string | null>(null);
+  // The opened/saved file's path (desktop); null for the default doc or on web.
+  // A known path lets Save overwrite in place instead of re-prompting.
+  let currentPath = $state<string | null>(null);
+  let dirty = $state(false);
+  // The text as of the last open/save: the baseline the dirty flag compares
+  // against, so editing then undoing back to it clears dirty (and a programmatic
+  // load, which echoes the baseline, never reads as an edit).
+  let savedContent = initialDoc;
+  // A versioned signal that pushes opened content into the editor.
+  let loadRequest = $state<{ content: string; token: number } | null>(null);
+  let loadToken = 0;
+
+  // Dirty iff the document now differs from the last saved/opened text.
+  function handleEdit(value: string) {
+    dirty = value !== savedContent;
+    recompile(value);
+  }
+
+  const onChange = debounce((value: string) => handleEdit(value), 150);
 
   // Reflow: when the render pane settles at a new width, re-lay-out the current
   // source at the matching logical width (debounced per resize tick).
@@ -147,18 +170,74 @@ score {
     else root.setAttribute("data-theme", theme);
   });
 
+  // Open a `.ctab`, guarding unsaved edits first (single-document MVP). Pushes
+  // the loaded text into the editor and renders it immediately.
+  async function openFile() {
+    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    const doc = await openDocument();
+    if (!doc) return;
+    savedContent = doc.content;
+    currentPath = doc.path;
+    currentName = doc.name;
+    dirty = false;
+    loadRequest = { content: doc.content, token: ++loadToken };
+    recompile(doc.content);
+  }
+
+  // Save the current source. Overwrites the known path in place; for a never-
+  // saved doc, prompts a dialog seeded from the open file's name or the title.
+  async function saveFile() {
+    const saved = await saveDocument(source, {
+      path: currentPath,
+      suggestedName: currentName ?? defaultDocName(source),
+    });
+    if (!saved) return;
+    savedContent = source;
+    currentPath = saved.path;
+    currentName = saved.name;
+    dirty = false;
+  }
+
+  // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves; preventDefault overrides the browser's
+  // native page-save / open shortcuts.
+  function onIOKey(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    const key = e.key.toLowerCase();
+    if (key === "o") void openFile();
+    else if (key === "s") void saveFile();
+    else return;
+    e.preventDefault();
+  }
+  $effect(() => {
+    window.addEventListener("keydown", onIOKey);
+    return () => window.removeEventListener("keydown", onIOKey);
+  });
+
   recompile(initialDoc);
 </script>
 
 <main>
   <header class="topbar">
-    <h1>cadtab</h1>
-    <button
-      class="theme-toggle"
-      onclick={cycleTheme}
-      aria-label="Theme: {theme}"
-      title="Theme: {theme}">{themeGlyph(theme)}</button
-    >
+    <div class="brand">
+      <h1>cadtab</h1>
+      <span
+        class="doc-name"
+        class:dirty
+        title={currentName ?? "unsaved document"}
+      >
+        {currentName ?? "untitled"}{dirty ? " •" : ""}
+      </span>
+    </div>
+    <div class="actions">
+      <button onclick={openFile} title="Open (Cmd/Ctrl+O)">Open</button>
+      <button onclick={saveFile} title="Save (Cmd/Ctrl+S)">Save</button>
+      <button
+        class="theme-toggle"
+        onclick={cycleTheme}
+        aria-label="Theme: {theme}"
+        title="Theme: {theme}">{themeGlyph(theme)}</button
+      >
+    </div>
   </header>
   <div class="panes" bind:this={panesEl}>
     <div class="editor-pane" style="flex: {splitRatio}">
@@ -167,6 +246,7 @@ score {
         {onChange}
         onCursor={handleCursor}
         {selection}
+        {loadRequest}
         tokens={result?.tokens ?? []}
         diagnostics={result?.diagnostics ?? []}
       />
@@ -233,9 +313,40 @@ score {
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--border);
   }
+  .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    min-width: 0;
+  }
   h1 {
     margin: 0;
     font-size: 1.1rem;
+  }
+  .doc-name {
+    font-size: 0.85rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .doc-name.dirty {
+    color: var(--fg);
+  }
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .actions button {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: inherit;
+    border-radius: 0.3rem;
+    padding: 0.25rem 0.6rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    line-height: 1;
   }
   .theme-toggle {
     border: 1px solid var(--border);
