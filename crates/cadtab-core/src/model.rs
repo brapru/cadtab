@@ -22,6 +22,42 @@ impl Pitch {
     pub fn transposed(self, semitones: i16) -> Pitch {
         Pitch(self.0 + semitones)
     }
+
+    /// Parse scientific-pitch notation: a letter `A`–`G` (case-insensitive),
+    /// optional accidentals (`#` raises, `b` lowers, repeatable), then a
+    /// non-negative octave number. `C4` is middle C (MIDI 60). Returns `None`
+    /// for anything malformed.
+    pub fn from_name(text: &str) -> Option<Pitch> {
+        let mut chars = text.chars();
+        let letter = chars.next()?;
+        let base = match letter.to_ascii_uppercase() {
+            'C' => 0,
+            'D' => 2,
+            'E' => 4,
+            'F' => 5,
+            'G' => 7,
+            'A' => 9,
+            'B' => 11,
+            _ => return None,
+        };
+        let mut chars = chars.peekable();
+        let mut accidental: i16 = 0;
+        loop {
+            match chars.peek() {
+                Some('#') => accidental += 1,
+                Some('b') => accidental -= 1,
+                _ => break,
+            }
+            chars.next();
+        }
+        let octave_str: String = chars.collect();
+        if octave_str.is_empty() || !octave_str.bytes().all(|b| b.is_ascii_digit()) {
+            return None;
+        }
+        let octave: i16 = octave_str.parse().ok()?;
+        // MIDI: octave -1 holds C=0; C4 = 60.
+        Some(Pitch((octave + 1) * 12 + base + accidental))
+    }
 }
 
 /// A duration as an exact fraction of a whole note (`1/8` = an eighth). Rational
@@ -428,6 +464,32 @@ mod tests {
         assert_eq!(Pitch(60).transposed(7), Pitch(67));
         assert_eq!(Pitch(60).transposed(-2), Pitch(58));
         assert_eq!(Pitch(55).transposed(0), Pitch(55));
+    }
+
+    #[test]
+    fn pitch_from_name_parses_scientific_notation() {
+        // Middle C and the A above it anchor the octave/letter math.
+        assert_eq!(Pitch::from_name("C4"), Some(Pitch(60)));
+        assert_eq!(Pitch::from_name("A4"), Some(Pitch(69)));
+        // The open banjo strings, written out (D4 B3 G3 D3 g4).
+        assert_eq!(Pitch::from_name("D4"), Some(Pitch(62)));
+        assert_eq!(Pitch::from_name("B3"), Some(Pitch(59)));
+        assert_eq!(Pitch::from_name("G3"), Some(Pitch(55)));
+        assert_eq!(Pitch::from_name("D3"), Some(Pitch(50)));
+        // Letter case is ignored (the high drone is conventionally lowercase).
+        assert_eq!(Pitch::from_name("g4"), Some(Pitch(67)));
+        // Accidentals raise/lower and stack.
+        assert_eq!(Pitch::from_name("F#4"), Some(Pitch(66)));
+        assert_eq!(Pitch::from_name("Bb3"), Some(Pitch(58)));
+        assert_eq!(Pitch::from_name("C#4"), Pitch::from_name("Db4"));
+        assert_eq!(Pitch::from_name("Fbb4"), Some(Pitch(63)));
+    }
+
+    #[test]
+    fn pitch_from_name_rejects_malformed() {
+        for bad in ["", "H4", "4", "C", "C#", "Cx4", "C4.5", "C-1"] {
+            assert_eq!(Pitch::from_name(bad), None, "{bad} should not parse");
+        }
     }
 
     #[test]

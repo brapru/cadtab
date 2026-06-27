@@ -823,16 +823,19 @@ fn build_header(score: &Score, width: f32) -> (Vec<Primitive>, f32) {
     }
     y += HEADER_GAP;
 
-    // Left-aligned tuning block: the tuning name over a circled-number grid that
-    // pairs strings into columns — odds on the top row, evens below.
-    line(
-        &mut prims,
-        LEFT_MARGIN,
-        y + META_LINE_H / 2.0,
-        score.instrument.tuning.clone(),
-        TextRole::TuningName,
-    );
-    y += META_LINE_H;
+    // Left-aligned tuning block: the tuning name (omitted for an unnamed custom
+    // tuning) over a circled-number grid that pairs strings into columns — odds
+    // on the top row, evens below.
+    if let Some(name) = &score.instrument.tuning {
+        line(
+            &mut prims,
+            LEFT_MARGIN,
+            y + META_LINE_H / 2.0,
+            name.clone(),
+            TextRole::TuningName,
+        );
+        y += META_LINE_H;
+    }
 
     let n = score.instrument.string_count();
     let cols = n.div_ceil(2);
@@ -1367,6 +1370,31 @@ mod tests {
         assert!(header_text(&tree, TextRole::Title).is_none());
         assert!(header_text(&tree, TextRole::Tempo).is_none());
         assert!(header_text(&tree, TextRole::Capo).is_none());
+    }
+
+    #[test]
+    fn an_unnamed_custom_tuning_drops_the_name_caption() {
+        // A custom tuning with no display name renders the string grid but no
+        // tuning-name line.
+        let strings = ["D4", "B3", "G3", "D3", "g4"]
+            .map(|p| crate::instrument::StringDef {
+                open_pitch: crate::model::Pitch::from_name(p).unwrap(),
+                label: p.trim_end_matches(|c: char| c.is_ascii_digit()).into(),
+            })
+            .to_vec();
+        let score = Score {
+            meta: ScoreMeta::default(),
+            instrument: Instrument::builtin("banjo")
+                .unwrap()
+                .with_custom_strings(None, strings, Span::new(0, 0))
+                .unwrap(),
+            capo: vec![],
+            measures: vec![Measure::new(vec![note(3, 0, 0)])],
+        };
+        let tree = layout(&score, cfg());
+        assert!(header_text(&tree, TextRole::TuningName).is_none());
+        // The circled-number grid still renders one cell per string.
+        assert_eq!(header_role_count(&tree, TextRole::TuningString), 5);
     }
 
     #[test]

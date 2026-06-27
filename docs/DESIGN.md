@@ -425,6 +425,24 @@ on a stable abstraction rather than ad-hoc panes.
     minimal latest-wins state): each view owns its small state; one store still holds the active
     document's `CompileResult`.
 
+## 11e. Notation features — above-staff text & custom tunings (D42–)
+
+M6 adds richer notation: section labels, chord symbols, bar numbers (all above-staff text), and
+user-defined tunings. Decisions are captured here as each task lands.
+
+- **D42 — Custom tunings extend D35's `tuning` directive, additively.** `tuning openG` (a named
+  builtin) is unchanged; the directive now *also* accepts an inline per-string spec:
+  `tuning { D4 B3 G3 D3 g4 }`, with an optional leading display-name string
+  (`tuning "Open D" { … }`). Pitches use scientific notation — letter `A`–`G` (case-insensitive),
+  optional `#`/`b` accidentals (repeatable), then a non-negative octave; `C4` = middle C = MIDI 60
+  (`Pitch::from_name`). Strings are listed string 1 → n (matching D37 numbering and the header grid).
+  The header tuning caption is now `Option<String>`: a named custom tuning shows its name, an
+  **unnamed one shows no caption** (the circled-string grid still renders). The lexer treats `#` as
+  an identifier-continuation byte so `F#4` lexes as one token (flats already lex via `b`); a bare
+  `#` stays an error character. Validation mirrors the named path: a string-count mismatch or a
+  malformed pitch diagnoses and the prior tuning stands. No new render-tree shape, so export and the
+  live painter pick it up for free.
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -445,4 +463,5 @@ dependency-ordered build plan.
 - *2026-06-20* — Dependency stack resolved: D40 (see §11c). Hand-rolled lexer, Svelte 5 + Vite SPA, `just`, browser-canvas PNG.
 - *2026-06-27* — Workspace shell resolved: D41 (see §11d). View registry + editor-groups layout (splits / tab-stacks / maximize); document-bound vs global-singleton views; free-floating docking deferred. Reshapes M7.
 - *2026-06-27* — Revised D38: `import` resolution via a file-provider abstraction; **web supports multi-file projects** via a single project bundle (JSON `{ entry, files }`), superseding web = single-file/stdlib-only. Shapes T5.1/T5.2 + keeps the M7 project UI cross-platform.
+- *2026-06-27* — Custom tunings resolved: D42 (see §11e). Inline `tuning { … }` per-string spec (scientific-notation pitches, optional name) extends D35 additively; header caption now optional. Completes T6.4.
 - *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.

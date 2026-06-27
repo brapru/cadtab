@@ -6,9 +6,9 @@
 //! are added incrementally.
 
 use crate::ast::{
-    Block, Chord, ChordNote, Def, Duration, Ending, Event, EventKind, Expr, ExprKind, Fraction,
-    Ident, IntLit, Item, ItemKind, Let, LoopBlock, Mark, MarkKind, Note, Position, Program, Repeat,
-    Rest, Score, ScoreItem, ScoreItemKind, StringLit, Tie, TimeSig,
+    Block, Chord, ChordNote, CustomTuning, Def, Duration, Ending, Event, EventKind, Expr, ExprKind,
+    Fraction, Ident, IntLit, Item, ItemKind, Let, LoopBlock, Mark, MarkKind, Note, Position,
+    Program, Repeat, Rest, Score, ScoreItem, ScoreItemKind, StringLit, Tie, TimeSig, TuningRef,
 };
 use crate::diagnostics::Diagnostic;
 use crate::lexer::lex;
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
             }
             Keyword::Tuning => {
                 self.bump();
-                self.ident_decl(ItemKind::Tuning)
+                self.parse_tuning()
             }
             Keyword::Score => {
                 self.bump();
@@ -280,6 +280,61 @@ impl<'a> Parser<'a> {
             Some(id) => f(id),
             None => ItemKind::Error,
         }
+    }
+
+    /// `tuning IDENT` (a named builtin) or `tuning [STRING] { PITCH* }` (an
+    /// inline per-string spec). The `tuning` keyword is already consumed.
+    fn parse_tuning(&mut self) -> ItemKind {
+        // A custom spec begins with an optional name string then a `{` block;
+        // a bare identifier is a named builtin (`openG`, `dropD`, …).
+        if self.at(TokenKind::Str) || self.at(TokenKind::LBrace) {
+            let start = self.peek().span.start;
+            let name = if self.at(TokenKind::Str) {
+                self.parse_string_lit()
+            } else {
+                None
+            };
+            let strings = self.parse_tuning_strings();
+            return ItemKind::Tuning(TuningRef::Custom(CustomTuning {
+                name,
+                strings,
+                span: self.span_from(start),
+            }));
+        }
+        match self.parse_ident() {
+            Some(id) => ItemKind::Tuning(TuningRef::Named(id)),
+            None => ItemKind::Error,
+        }
+    }
+
+    /// `{ PITCH* }` for a custom tuning: a brace block of bare pitch tokens
+    /// (idents like `D4`, `F#4`). A missing `{` is reported; a non-pitch token
+    /// inside is reported and skipped so the parse recovers.
+    fn parse_tuning_strings(&mut self) -> Vec<Ident> {
+        let lb = self.peek().span.start;
+        if !self.eat(TokenKind::LBrace) {
+            self.error_at(
+                Span::point(lb),
+                format!("expected `{{`, found {}", token_label(self.peek_kind())),
+            );
+            return Vec::new();
+        }
+        let mut strings = Vec::new();
+        while !self.at_eof() && !self.at(TokenKind::RBrace) {
+            if self.at(TokenKind::Ident) {
+                let tok = self.bump();
+                strings.push(Ident::new(self.text(tok.span).to_string(), tok.span));
+            } else {
+                let tok = self.peek();
+                self.error_at(
+                    tok.span,
+                    format!("expected a tuning pitch, found {}", token_label(tok.kind)),
+                );
+                self.bump();
+            }
+        }
+        self.expect(TokenKind::RBrace);
+        strings
     }
 
     /// A string literal (quotes stripped; escapes not decoded). Reports without
@@ -1049,7 +1104,29 @@ mod tests {
             other => panic!("{other:?}"),
         }
         match only_item("tuning openG") {
-            ItemKind::Tuning(id) => assert_eq!(id.name, "openG"),
+            ItemKind::Tuning(TuningRef::Named(id)) => assert_eq!(id.name, "openG"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn custom_tuning_parses_named_and_unnamed() {
+        // Unnamed inline spec: a bare brace block of pitch tokens.
+        match only_item("tuning { D4 B3 G3 D3 g4 }") {
+            ItemKind::Tuning(TuningRef::Custom(c)) => {
+                assert!(c.name.is_none());
+                let pitches: Vec<&str> = c.strings.iter().map(|s| s.name.as_str()).collect();
+                assert_eq!(pitches, ["D4", "B3", "G3", "D3", "g4"]);
+            }
+            other => panic!("{other:?}"),
+        }
+        // Named inline spec, with an accidental pitch lexed as one token.
+        match only_item("tuning \"Open D\" { D4 A3 F#4 D3 }") {
+            ItemKind::Tuning(TuningRef::Custom(c)) => {
+                assert_eq!(c.name.unwrap().value, "Open D");
+                let pitches: Vec<&str> = c.strings.iter().map(|s| s.name.as_str()).collect();
+                assert_eq!(pitches, ["D4", "A3", "F#4", "D3"]);
+            }
             other => panic!("{other:?}"),
         }
     }

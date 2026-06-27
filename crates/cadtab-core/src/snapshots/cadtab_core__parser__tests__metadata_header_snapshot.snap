@@ -66,13 +66,15 @@ Program {
         },
         Item {
             kind: Tuning(
-                Ident {
-                    name: "openG",
-                    span: Span {
-                        start: 76,
-                        end: 81,
+                Named(
+                    Ident {
+                        name: "openG",
+                        span: Span {
+                            start: 76,
+                            end: 81,
+                        },
                     },
-                },
+                ),
             ),
             span: Span {
                 start: 69,

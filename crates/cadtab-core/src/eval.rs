@@ -8,9 +8,9 @@ use std::collections::HashMap;
 
 use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, MarkKind, Program};
 use crate::diagnostics::Diagnostic;
-use crate::instrument::Instrument;
+use crate::instrument::{Instrument, StringDef};
 use crate::model::{
-    Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Position,
+    Chord, ChordNote, Duration, Event, EventKind, Finger, Measure, Note, Phrase, Pitch, Position,
     RightHand, Score, ScoreMeta, Strum, Technique, TimeSig, split_measures,
 };
 use crate::span::Span;
@@ -710,14 +710,66 @@ fn resolve_instrument(program: &Program, diagnostics: &mut Vec<Diagnostic>) -> I
     let mut instrument =
         resolved.unwrap_or_else(|| Instrument::builtin("banjo").expect("banjo is a builtin"));
     for item in &program.items {
-        if let ItemKind::Tuning(ident) = &item.kind {
-            match instrument.with_tuning(&ident.name, ident.span) {
-                Ok(i) => instrument = i,
-                Err(d) => diagnostics.push(d),
+        if let ItemKind::Tuning(tuning) = &item.kind {
+            // On failure the error is reported and the prior tuning is kept.
+            if let Some(i) = apply_tuning(&instrument, tuning, diagnostics) {
+                instrument = i;
             }
         }
     }
     instrument
+}
+
+/// Apply one `tuning` directive — a named builtin or an inline custom spec —
+/// returning the retuned instrument, or `None` (after diagnosing) if it cannot
+/// be applied.
+fn apply_tuning(
+    instrument: &Instrument,
+    tuning: &ast::TuningRef,
+    diagnostics: &mut Vec<Diagnostic>,
+) -> Option<Instrument> {
+    match tuning {
+        ast::TuningRef::Named(ident) => match instrument.with_tuning(&ident.name, ident.span) {
+            Ok(i) => Some(i),
+            Err(d) => {
+                diagnostics.push(d);
+                None
+            }
+        },
+        ast::TuningRef::Custom(custom) => {
+            let mut strings = Vec::with_capacity(custom.strings.len());
+            for pitch in &custom.strings {
+                match Pitch::from_name(&pitch.name) {
+                    Some(open_pitch) => strings.push(StringDef {
+                        open_pitch,
+                        // Label drops the octave digits: `F#4` → `F#`.
+                        label: pitch
+                            .name
+                            .trim_end_matches(|c: char| c.is_ascii_digit())
+                            .to_string(),
+                    }),
+                    None => {
+                        diagnostics.push(
+                            Diagnostic::error(
+                                pitch.span,
+                                format!("`{}` is not a valid pitch", pitch.name),
+                            )
+                            .with_help("write a note like `D4`, `F#4`, or `Bb3` (C4 = middle C)"),
+                        );
+                        return None;
+                    }
+                }
+            }
+            let name = custom.name.as_ref().map(|s| s.value.clone());
+            match instrument.with_custom_strings(name, strings, custom.span) {
+                Ok(i) => Some(i),
+                Err(d) => {
+                    diagnostics.push(d);
+                    None
+                }
+            }
+        }
+    }
 }
 
 /// Gather `title`/`composer`/`tempo` into `ScoreMeta`; a later declaration wins.
@@ -1904,6 +1956,49 @@ score {
     fn an_unknown_tuning_diagnoses() {
         let (_, diags) = program_score("instrument banjo\ntuning nashville\nscore {}");
         assert!(diags.iter().any(|d| d.message.contains("unknown tuning")));
+    }
+
+    #[test]
+    fn a_named_custom_tuning_drives_pitch_and_header() {
+        // Open D guitar: D2 A2 D3 F#3 A3 D4, written string 1 → 6.
+        let (score, diags) =
+            program_score("instrument guitar\ntuning \"Open D\" { D4 A3 F#3 D3 A2 D2 }\nscore {}");
+        assert!(diags.is_empty(), "{diags:?}");
+        let span = crate::span::Span::new(0, 0);
+        // String 3 is now F#3 (54); string 6 is D2 (38).
+        assert_eq!(score.instrument.pitch_at(3, 0, span).unwrap().0, 54);
+        assert_eq!(score.instrument.pitch_at(6, 0, span).unwrap().0, 38);
+        assert_eq!(score.instrument.tuning.as_deref(), Some("Open D"));
+        // The accidental's octave digit is dropped from the grid label.
+        assert_eq!(score.instrument.strings[2].label, "F#");
+    }
+
+    #[test]
+    fn an_unnamed_custom_tuning_has_no_header_name() {
+        let (score, diags) = program_score("tuning { D4 A3 G3 D3 g4 }\nscore {}");
+        assert!(diags.is_empty(), "{diags:?}");
+        assert_eq!(score.instrument.tuning, None);
+        let span = crate::span::Span::new(0, 0);
+        // String 2 dropped from B3 (59) to A3 (57).
+        assert_eq!(score.instrument.pitch_at(2, 0, span).unwrap().0, 57);
+    }
+
+    #[test]
+    fn a_malformed_custom_pitch_diagnoses() {
+        let (score, diags) = program_score("tuning { D4 H3 G3 D3 g4 }\nscore {}");
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("not a valid pitch"))
+        );
+        // The override is skipped; the default Open G banjo stands.
+        assert_eq!(score.instrument.tuning.as_deref(), Some("Open G"));
+    }
+
+    #[test]
+    fn a_custom_tuning_with_wrong_string_count_diagnoses() {
+        let (_, diags) = program_score("tuning { D4 B3 G3 }\nscore {}");
+        assert!(diags.iter().any(|d| d.message.contains("3 strings")));
     }
 
     #[test]

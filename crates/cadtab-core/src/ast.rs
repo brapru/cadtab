@@ -145,11 +145,31 @@ pub enum ItemKind {
     Import(StringLit),
     Tempo(IntLit),
     Instrument(Ident),
-    Tuning(Ident),
+    Tuning(TuningRef),
     Def(Def),
     Let(Let),
     Score(Score),
     Error,
+}
+
+/// A `tuning` directive's argument: a named builtin (`tuning openG`) or an
+/// inline per-string spec (`tuning { D4 B3 G3 D3 g4 }`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum TuningRef {
+    Named(Ident),
+    Custom(CustomTuning),
+}
+
+/// An inline `tuning { ... }` block: an optional display name and one pitch
+/// token per string, string 1 first. Pitch text (e.g. `F#4`) is parsed and
+/// validated in eval, not here.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CustomTuning {
+    pub name: Option<StringLit>,
+    pub strings: Vec<Ident>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

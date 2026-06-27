@@ -164,13 +164,16 @@ impl<'a> Lexer<'a> {
 
     /// An identifier starting with an ASCII letter, then letters/digits, plus
     /// `_` only when followed by a letter (so `_<digit>` stays a duration suffix
-    /// and `r_8` lexes as `r` then `_8`). Recognized keywords lower to
+    /// and `r_8` lexes as `r` then `_8`). A `#` continues an identifier so a
+    /// pitch accidental like `F#4` lexes as one token (flats use the letter `b`,
+    /// which already continues). Recognized keywords lower to
     /// [`TokenKind::Keyword`].
     fn ident(&mut self, start: u32) -> TokenKind {
         self.pos += 1; // leading letter
         loop {
             match self.peek() {
                 Some(b) if b.is_ascii_alphanumeric() => self.pos += 1,
+                Some(b'#') => self.pos += 1,
                 Some(b'_') if matches!(self.peek_at(1), Some(c) if c.is_ascii_alphabetic()) => {
                     self.pos += 1;
                 }
@@ -485,6 +488,25 @@ mod tests {
             ]
         );
         assert_eq!(rest.tokens[0].span, Span::new(0, 1)); // just `r`
+    }
+
+    #[test]
+    fn sharp_continues_a_pitch_identifier() {
+        // A custom-tuning pitch with an accidental lexes as one ident token.
+        let lexed = lex("F#4 Bb3");
+        assert_eq!(
+            kinds(&lexed),
+            vec![TokenKind::Ident, TokenKind::Ident, TokenKind::Eof]
+        );
+        assert_eq!(lexed.tokens[0].span, Span::new(0, 3)); // `F#4`
+        assert!(lexed.diagnostics.is_empty());
+        // A bare `#` (no leading letter) is still an error character.
+        assert!(
+            lex("#4")
+                .diagnostics
+                .iter()
+                .any(|d| { d.message.contains("unexpected character") })
+        );
     }
 
     #[test]

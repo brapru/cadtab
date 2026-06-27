@@ -20,11 +20,13 @@ pub struct StringDef {
 
 /// An instrument: an ordered set of strings, string 1 first, plus the display
 /// name of its current tuning (e.g. "Open G", "Double C") for the sheet header.
+/// A custom tuning may be unnamed (`None`), in which case the header shows no
+/// tuning caption.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
     pub name: String,
-    pub tuning: String,
+    pub tuning: Option<String>,
     pub strings: Vec<StringDef>,
 }
 
@@ -119,7 +121,7 @@ impl Instrument {
     fn from_spec(name: &str, tuning: &Tuning) -> Instrument {
         Instrument {
             name: name.to_string(),
-            tuning: tuning.display.to_string(),
+            tuning: Some(tuning.display.to_string()),
             strings: tuning
                 .spec
                 .iter()
@@ -160,6 +162,38 @@ impl Instrument {
             ));
         }
         Ok(Instrument::from_spec(&self.name, tuning))
+    }
+
+    /// Apply a custom per-string tuning: replace the open-string definitions with
+    /// `strings` (string 1 first) and set the header display name (`None` ⇒ no
+    /// caption). Errors if the string count differs from this instrument's.
+    pub fn with_custom_strings(
+        &self,
+        display: Option<String>,
+        strings: Vec<StringDef>,
+        span: Span,
+    ) -> Result<Instrument, Diagnostic> {
+        if strings.len() != self.string_count() {
+            return Err(Diagnostic::error(
+                span,
+                format!(
+                    "custom tuning has {} strings but {} has {}",
+                    strings.len(),
+                    self.name,
+                    self.string_count()
+                ),
+            )
+            .with_help(format!(
+                "give one pitch per string ({} for {})",
+                self.string_count(),
+                self.name
+            )));
+        }
+        Ok(Instrument {
+            name: self.name.clone(),
+            tuning: display,
+            strings,
+        })
     }
 
     /// Derive the sounding pitch of a fretted position, validating bounds.
@@ -244,17 +278,31 @@ mod tests {
     #[test]
     fn tuning_display_name_is_carried() {
         // Builtins open in their default tuning, named for the header.
-        assert_eq!(Instrument::builtin("banjo").unwrap().tuning, "Open G");
-        assert_eq!(Instrument::builtin("guitar").unwrap().tuning, "Standard");
+        assert_eq!(
+            Instrument::builtin("banjo").unwrap().tuning.as_deref(),
+            Some("Open G")
+        );
+        assert_eq!(
+            Instrument::builtin("guitar").unwrap().tuning.as_deref(),
+            Some("Standard")
+        );
         // A retuning swaps in the override's display name.
         let banjo = Instrument::builtin("banjo").unwrap();
         assert_eq!(
-            banjo.with_tuning("doubleC", sp()).unwrap().tuning,
-            "Double C"
+            banjo
+                .with_tuning("doubleC", sp())
+                .unwrap()
+                .tuning
+                .as_deref(),
+            Some("Double C")
         );
         assert_eq!(
-            banjo.with_tuning("sawmill", sp()).unwrap().tuning,
-            "Sawmill"
+            banjo
+                .with_tuning("sawmill", sp())
+                .unwrap()
+                .tuning
+                .as_deref(),
+            Some("Sawmill")
         );
     }
 
@@ -279,6 +327,46 @@ mod tests {
         let banjo = Instrument::builtin("banjo").unwrap();
         let err = banjo.with_tuning("dropD", sp()).unwrap_err();
         assert!(err.message.contains("6 strings"));
+    }
+
+    fn string_def(label: &str) -> StringDef {
+        StringDef {
+            open_pitch: crate::model::Pitch::from_name(label).unwrap(),
+            label: label
+                .trim_end_matches(|c: char| c.is_ascii_digit())
+                .to_string(),
+        }
+    }
+
+    #[test]
+    fn custom_tuning_replaces_strings_and_carries_name() {
+        let banjo = Instrument::builtin("banjo").unwrap();
+        // DADGAD-on-a-banjo is nonsense, but exercises a full custom retune.
+        let strings = ["D4", "A3", "G3", "D3", "A4"].map(string_def).to_vec();
+        let custom = banjo
+            .with_custom_strings(Some("Modal".to_string()), strings, sp())
+            .unwrap();
+        assert_eq!(custom.tuning.as_deref(), Some("Modal"));
+        assert_eq!(custom.name, "banjo");
+        assert_eq!(open_pitches(&custom), vec![62, 57, 55, 50, 69]);
+        assert_eq!(custom.strings[1].label, "A");
+    }
+
+    #[test]
+    fn custom_tuning_may_be_unnamed() {
+        let banjo = Instrument::builtin("banjo").unwrap();
+        let strings = ["D4", "B3", "G3", "D3", "g4"].map(string_def).to_vec();
+        let custom = banjo.with_custom_strings(None, strings, sp()).unwrap();
+        assert_eq!(custom.tuning, None);
+    }
+
+    #[test]
+    fn custom_tuning_string_count_must_match() {
+        let banjo = Instrument::builtin("banjo").unwrap();
+        let strings = ["D4", "B3", "G3"].map(string_def).to_vec();
+        let err = banjo.with_custom_strings(None, strings, sp()).unwrap_err();
+        assert!(err.message.contains("3 strings"));
+        assert!(err.help.unwrap().contains("5"));
     }
 
     #[test]

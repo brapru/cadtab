@@ -338,10 +338,11 @@ re-ordering decision so M5 ships first and export later covers these.)*
       bar of each system line. Options: number every bar; turn all numbering off. Language: a
       directive to set the mode (e.g. `barnumbers lines|all|off`). Layout: a small number above
       the chosen measures.
-- [ ] **T6.4 — Custom (user-defined) tunings.** Beyond the builtin named tunings, let a user
+- [x] **T6.4 — Custom (user-defined) tunings.** Beyond the builtin named tunings, let a user
       define their own per-string tuning and have it drive pitch derivation and the header tuning
       grid. Extends T2.1/T2.7 tuning resolution; needs a display name (or "Custom") for the
-      header. Language: a `tuning` form taking an explicit per-string spec.
+      header. Language: a `tuning` form taking an explicit per-string spec. *(Done — D42: inline
+      `tuning [NAME] { pitch* }` with scientific-notation pitches; unnamed ⇒ no header caption.)*
 
 **DoD M6:** section labels, chord symbols, bar numbering, and a custom tuning all parse, render
 above/within the staff, and round-trip; golden snapshots + error corpora green.
