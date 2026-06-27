@@ -42,11 +42,17 @@ const VOLTA_GAP: f32 = 0.8;
 // Horizontal metrics.
 const LEFT_MARGIN: f32 = 2.0;
 const RIGHT_MARGIN: f32 = 1.0;
-const LABEL_X: f32 = 1.0;
 // Logical width of one whole note; an event's x is proportional to its onset.
 const UNITS_PER_WHOLE: f32 = 8.0;
 // Padding inside a measure, before the first event and after the last.
 const MEASURE_PAD: f32 = 0.8;
+// Horizontal space a leading time-signature glyph reserves at a measure's left.
+const TIMESIG_WIDTH: f32 = 1.6;
+// Half the vertical gap between a time signature's stacked digits: each digit's
+// centre sits this far from the staff midline, so the numerator's bottom and the
+// denominator's top meet there. Fixed (not staff-height-scaled) so the pair
+// stays tightly stacked on instruments with any number of strings.
+const TIMESIG_GAP: f32 = 0.5;
 // Minimum gap between consecutive events. Spacing is otherwise time-proportional,
 // but sub-eighth values (16ths, 32nds) at their natural width pack the fret
 // numbers on top of one another, so the gap never drops below this floor. Kept
@@ -106,6 +112,9 @@ struct MeasurePlan {
     width: f32,
     events: Vec<PlacedEvent>,
     span: Option<Span>,
+    /// The meter to draw as a leading time signature, set on the first measure
+    /// and wherever the meter changes; `None` leaves the measure's left open.
+    meter_mark: Option<TimeSig>,
 }
 
 /// Lay a `Score` out into a positioned render tree, wrapping measures into
@@ -114,9 +123,30 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     let n_strings = score.instrument.string_count();
     let staff_height = ((n_strings.max(1) - 1) as f32) * STRING_SPACING;
 
+    // Decide where a time signature is drawn: at the first measure and at every
+    // meter change (the running meter defaults to 4/4).
+    let mut running_meter = TimeSig::new(4, 4);
+    let meter_marks: Vec<Option<TimeSig>> = score
+        .measures
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            let prev = running_meter;
+            if let Some(t) = m.meter {
+                running_meter = t;
+            }
+            (i == 0 || running_meter != prev).then_some(running_meter)
+        })
+        .collect();
+
     // Resolve each measure's width and event placement, then greedily pack the
     // measures into systems.
-    let plans: Vec<MeasurePlan> = score.measures.iter().map(plan_measure).collect();
+    let plans: Vec<MeasurePlan> = score
+        .measures
+        .iter()
+        .zip(&meter_marks)
+        .map(|(m, &mark)| plan_measure(m, mark))
+        .collect();
     let groups = pack_systems(&plans, config.width);
     let width = overall_width(&groups, &plans);
 
@@ -135,7 +165,7 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
 
     let (header, header_bottom) = build_header(score, width);
 
-    // Stack the systems vertically, each restating the staff lines and labels.
+    // Stack the systems vertically, each restating the staff lines.
     let mut systems = Vec::with_capacity(groups.len());
     let mut cursor = header_bottom + HEADER_GAP;
     let mut last_bottom = cursor;
@@ -145,7 +175,6 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
         let staff_top = cursor + if has_volta { VOLTA_SPACE } else { 0.0 };
         let staff_bottom = staff_top + staff_height;
         systems.push(build_system(
-            score,
             measures,
             &plans[start..end],
             &beams[start..end],
@@ -166,9 +195,15 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     }
 }
 
-/// Resolve one measure to its width and measure-relative event placement.
-fn plan_measure(measure: &Measure) -> MeasurePlan {
-    let mut x = MEASURE_PAD;
+/// Resolve one measure to its width and measure-relative event placement. A
+/// `meter_mark` reserves leading space for a time signature drawn at the left.
+fn plan_measure(measure: &Measure, meter_mark: Option<TimeSig>) -> MeasurePlan {
+    let lead = if meter_mark.is_some() {
+        TIMESIG_WIDTH
+    } else {
+        0.0
+    };
+    let mut x = MEASURE_PAD + lead;
     let mut events = Vec::with_capacity(measure.events.len());
     for event in &measure.events {
         events.push(PlacedEvent {
@@ -190,6 +225,7 @@ fn plan_measure(measure: &Measure) -> MeasurePlan {
         width,
         events,
         span,
+        meter_mark,
     }
 }
 
@@ -225,10 +261,9 @@ fn overall_width(groups: &[(usize, usize)], plans: &[MeasurePlan]) -> f32 {
 }
 
 /// Build one system: its measure boxes (fret numbers) plus the system-spanning
-/// furniture (string lines, labels, barlines, volta brackets).
+/// furniture (string lines, barlines, volta brackets).
 #[allow(clippy::too_many_arguments)]
 fn build_system(
-    score: &Score,
     measures: &[Measure],
     plans: &[MeasurePlan],
     beams: &[Vec<beam::BeamGroup>],
@@ -248,6 +283,14 @@ fn build_system(
     for ((plan, measure), mbeams) in plans.iter().zip(measures).zip(beams) {
         let mx1 = mx0 + plan.width;
         let mut prims = Vec::new();
+        if let Some(meter) = plan.meter_mark {
+            // Centre the glyph in its reserved column so it clears the left
+            // barline and the first note each by the measure's leading pad: the
+            // column spans [MEASURE_PAD, TIMESIG_WIDTH], the first event sits at
+            // MEASURE_PAD + TIMESIG_WIDTH (see plan_measure).
+            let tsx = mx0 + (MEASURE_PAD + TIMESIG_WIDTH) / 2.0;
+            prims.extend(time_signature(meter, tsx, staff_top, staff_height));
+        }
         for (j, (placed, event)) in plan.events.iter().zip(&measure.events).enumerate() {
             let x = mx0 + placed.rel_x;
             let dots = beam::augmentation_dots(event.duration());
@@ -345,14 +388,9 @@ fn build_system(
     let mut sys_prims = Vec::new();
     for (i, xs) in number_xs.iter().enumerate() {
         let y = line_y((i + 1) as u8);
+        // Per-line string labels are intentionally omitted: the tuning is shown
+        // once in the header (build_header) rather than repeated at every system.
         sys_prims.extend(string_line(LEFT_MARGIN, staff_x1, y, xs));
-        sys_prims.push(Primitive::Text {
-            x: LABEL_X,
-            y,
-            content: score.instrument.strings[i].label.clone(),
-            role: TextRole::StringLabel,
-            span: None,
-        });
     }
     sys_prims.extend(barlines(measures, &ranges, staff_top, staff_bottom));
     sys_prims.extend(volta_brackets(measures, &ranges, staff_top));
@@ -677,13 +715,32 @@ fn barlines(measures: &[Measure], ranges: &[(f32, f32)], top: f32, bottom: f32) 
             prims.push(vline(x, top, bottom, THICK_WEIGHT));
             prims.push(vline(x + REPEAT_GAP, top, bottom, BARLINE_WEIGHT));
             prims.extend(repeat_dots(x + 2.0 * REPEAT_GAP, top, bottom));
-        } else if k == 0 || right.is_some_and(|m| m.is_pickup) {
-            // Open staff start, or the offset edge of a pickup: no barline.
+        } else if right.is_some_and(|m| m.is_pickup) {
+            // The offset edge of a pickup measure stays open.
         } else {
+            // Every other barline, including the left edge of each system
+            // (k == 0), which closes the staff on the left.
             prims.push(vline(x, top, bottom, BARLINE_WEIGHT));
         }
     }
     prims
+}
+
+/// A stacked time signature: the numerator over the denominator, tightly stacked
+/// on the staff midline (centred on `x`), independent of the staff's height.
+fn time_signature(meter: TimeSig, x: f32, staff_top: f32, staff_height: f32) -> Vec<Primitive> {
+    let mid = staff_top + staff_height / 2.0;
+    let glyph = |content: String, y: f32| Primitive::Text {
+        x,
+        y,
+        content,
+        role: TextRole::TimeSig,
+        span: None,
+    };
+    vec![
+        glyph(meter.num.to_string(), mid - TIMESIG_GAP),
+        glyph(meter.den.to_string(), mid + TIMESIG_GAP),
+    ]
 }
 
 /// Volta brackets over runs of consecutive measures sharing an `ending` number.
@@ -845,6 +902,24 @@ mod tests {
         }
     }
 
+    /// The numerator/denominator digits of every time signature drawn, as a
+    /// flat list of their `content` strings across all measure boxes.
+    fn time_sig_digits(tree: &RenderTree) -> Vec<String> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.measures.iter())
+            .flat_map(|m| m.prims.iter())
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::TimeSig,
+                    content,
+                    ..
+                } => Some(content.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
     fn y_of(p: &Primitive) -> f32 {
         match p {
             Primitive::Text { y, .. } => *y,
@@ -954,8 +1029,9 @@ mod tests {
         let one = Measure::new(vec![note(3, 0, 0)]);
         let two = Measure::new(vec![note(3, 0, 4)]);
         let tree = layout(&banjo_score(vec![one, two]), cfg());
-        // No repeats: an interior barline plus the final one, no leading barline.
-        assert_eq!(vertical_lines(&tree).len(), 2);
+        // No repeats: a leading barline closing the staff, an interior barline,
+        // and the final one.
+        assert_eq!(vertical_lines(&tree).len(), 3);
     }
 
     #[test]
@@ -1025,6 +1101,111 @@ mod tests {
         // than the fret number on the staff.
         let staff_y = y_of(fret_numbers(&tree)[0]);
         assert!(y_of(endings[0]) < staff_y);
+    }
+
+    #[test]
+    fn the_first_measure_shows_the_default_time_signature() {
+        // No explicit meter: the opening measure still states the 4/4 default,
+        // and a following measure does not repeat it.
+        let tree = layout(
+            &banjo_score(vec![
+                Measure::new(vec![note(3, 0, 0)]),
+                Measure::new(vec![note(3, 0, 4)]),
+            ]),
+            cfg(),
+        );
+        assert_eq!(time_sig_digits(&tree), vec!["4", "4"]);
+    }
+
+    #[test]
+    fn a_meter_change_redraws_the_time_signature() {
+        let first = Measure::new(vec![note(3, 0, 0)]);
+        let mut changed = Measure::new(vec![note(3, 0, 0)]);
+        changed.meter = Some(TimeSig::new(3, 4));
+        let unchanged = Measure::new(vec![note(3, 0, 0)]);
+        let tree = layout(&banjo_score(vec![first, changed, unchanged]), cfg());
+        // 4/4 at the start, 3/4 at the change, nothing on the third measure.
+        assert_eq!(time_sig_digits(&tree), vec!["4", "4", "3", "4"]);
+    }
+
+    /// The y-distance between a time signature's two digits, from its first
+    /// measure box. Panics if no time signature was drawn.
+    fn time_sig_digit_gap(tree: &RenderTree) -> f32 {
+        let ys: Vec<f32> = tree.systems[0].measures[0]
+            .prims
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::TimeSig,
+                    y,
+                    ..
+                } => Some(*y),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(ys.len(), 2, "expected a numerator and denominator");
+        (ys[1] - ys[0]).abs()
+    }
+
+    #[test]
+    fn the_time_signature_gap_is_independent_of_string_count() {
+        // The stacked digits stay tightly spaced regardless of how many strings
+        // the staff has, so wider instruments don't blow the pair apart.
+        let measure = || Measure::new(vec![note(3, 0, 0)]);
+        let banjo = layout(&banjo_score(vec![measure()]), cfg());
+        let guitar = layout(
+            &Score {
+                meta: ScoreMeta::default(),
+                instrument: Instrument::builtin("guitar").unwrap(),
+                capo: vec![],
+                measures: vec![measure()],
+            },
+            cfg(),
+        );
+        assert_eq!(time_sig_digit_gap(&banjo), time_sig_digit_gap(&guitar));
+        assert_eq!(time_sig_digit_gap(&banjo), 2.0 * TIMESIG_GAP);
+    }
+
+    #[test]
+    fn the_first_note_clears_the_time_signature() {
+        let tree = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        let box0 = &tree.systems[0].measures[0];
+        let mx0 = box0.bounds.x;
+        let glyph_x = box0
+            .prims
+            .iter()
+            .find_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::TimeSig,
+                    x,
+                    ..
+                } => Some(*x),
+                _ => None,
+            })
+            .unwrap();
+        let note_x = x_of(fret_numbers(&tree)[0]);
+        // The glyph is centred in its reserved column, and the first note sits a
+        // full leading pad past it — so neither the barline nor the note crowds
+        // the time signature.
+        assert!((glyph_x - mx0 - (MEASURE_PAD + TIMESIG_WIDTH) / 2.0).abs() < 1e-3);
+        assert!((note_x - mx0 - (MEASURE_PAD + TIMESIG_WIDTH)).abs() < 1e-3);
+        // The note clears the glyph's centre by more than the bare leading pad.
+        assert!(note_x - glyph_x > MEASURE_PAD);
+    }
+
+    #[test]
+    fn a_time_signature_reserves_leading_width() {
+        // First measure (shows the default), a plain middle measure (no time
+        // signature), then a meter change. The changed box is wider than the
+        // plain one by exactly the reserved time-signature column.
+        let first = Measure::new(vec![note(3, 0, 0)]);
+        let plain = Measure::new(vec![note(3, 0, 0)]);
+        let mut changed = Measure::new(vec![note(3, 0, 0)]);
+        changed.meter = Some(TimeSig::new(3, 4));
+        let tree = layout(&banjo_score(vec![first, plain, changed]), cfg());
+        let plain_w = tree.systems[0].measures[1].bounds.w;
+        let marked_w = tree.systems[0].measures[2].bounds.w;
+        assert!((marked_w - plain_w - TIMESIG_WIDTH).abs() < 1e-3);
     }
 
     #[test]

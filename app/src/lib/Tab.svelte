@@ -48,6 +48,7 @@
     capo: { size: 0.8 },
     fretNumber: { size: 1.3 },
     stringLabel: { size: 1.1 },
+    timeSig: { size: 1.4, weight: 600 },
     finger: { size: 0.95 },
     strum: { size: 1.5 },
     technique: { size: 0.95, italic: true },

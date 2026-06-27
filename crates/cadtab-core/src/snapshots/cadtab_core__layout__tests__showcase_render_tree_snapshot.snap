@@ -4,13 +4,13 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 ---
 {
   "meta": {
-    "width": 41.600002,
+    "width": 43.200005,
     "height": 15.7
   },
   "header": [
     {
       "kind": "text",
-      "x": 20.800001,
+      "x": 21.600002,
       "y": 1.5,
       "content": "Syntax Showcase",
       "role": "title",
@@ -18,7 +18,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 20.800001,
+      "x": 21.600002,
       "y": 3.1,
       "content": "cadtab",
       "role": "composer",
@@ -26,7 +26,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 20.800001,
+      "x": 21.600002,
       "y": 4.2,
       "content": "♩ = 130",
       "role": "tempo",
@@ -34,7 +34,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 20.800001,
+      "x": 21.600002,
       "y": 5.2,
       "content": "gDGBD",
       "role": "tuning",
@@ -42,7 +42,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 20.800001,
+      "x": 21.600002,
       "y": 6.2,
       "content": "Capo 5th string @ 2",
       "role": "capo",
@@ -54,7 +54,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "bounds": {
         "x": 0.0,
         "y": 8.9,
-        "w": 41.600002,
+        "w": 43.200005,
         "h": 4.0
       },
       "prims": [
@@ -62,329 +62,289 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "kind": "line",
           "x1": 2.0,
           "y1": 8.9,
-          "x2": 3.1999998,
+          "x2": 4.8,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 4.4,
+          "x1": 6.0,
           "y1": 8.9,
-          "x2": 7.7999997,
+          "x2": 9.4,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 9.0,
+          "x1": 10.6,
           "y1": 8.9,
-          "x2": 10.799999,
+          "x2": 12.4,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 13.0,
+          "x1": 14.6,
           "y1": 8.9,
-          "x2": 20.0,
+          "x2": 21.6,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 22.2,
+          "x1": 23.800001,
           "y1": 8.9,
-          "x2": 37.2,
+          "x2": 38.800003,
           "y2": 8.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 38.399998,
+          "x1": 40.0,
           "y1": 8.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 8.9,
           "weight": 0.06
-        },
-        {
-          "kind": "text",
-          "x": 1.0,
-          "y": 8.9,
-          "content": "D",
-          "role": "stringLabel",
-          "span": null
         },
         {
           "kind": "line",
           "x1": 2.0,
           "y1": 9.9,
-          "x2": 2.1999998,
+          "x2": 3.8000002,
           "y2": 9.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 3.4,
+          "x1": 5.0,
           "y1": 9.9,
-          "x2": 6.7999997,
+          "x2": 8.4,
           "y2": 9.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 7.9999995,
+          "x1": 9.6,
           "y1": 9.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 9.9,
           "weight": 0.06
-        },
-        {
-          "kind": "text",
-          "x": 1.0,
-          "y": 9.9,
-          "content": "B",
-          "role": "stringLabel",
-          "span": null
         },
         {
           "kind": "line",
           "x1": 2.0,
           "y1": 10.9,
-          "x2": 5.8,
+          "x2": 7.4,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 7.0,
+          "x1": 8.6,
           "y1": 10.9,
-          "x2": 9.799999,
+          "x2": 11.4,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 11.0,
+          "x1": 12.6,
           "y1": 10.9,
-          "x2": 16.4,
+          "x2": 18.0,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 18.6,
+          "x1": 20.2,
           "y1": 10.9,
-          "x2": 23.6,
+          "x2": 25.2,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 24.800001,
+          "x1": 26.400002,
           "y1": 10.9,
-          "x2": 25.6,
+          "x2": 27.2,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 26.800001,
+          "x1": 28.400002,
           "y1": 10.9,
-          "x2": 27.6,
+          "x2": 29.200003,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 28.800001,
+          "x1": 30.400003,
           "y1": 10.9,
-          "x2": 29.6,
+          "x2": 31.200003,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 30.800001,
+          "x1": 32.4,
           "y1": 10.9,
-          "x2": 33.2,
+          "x2": 34.800003,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 34.399998,
+          "x1": 36.0,
           "y1": 10.9,
-          "x2": 35.2,
+          "x2": 36.800003,
           "y2": 10.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 36.399998,
+          "x1": 38.0,
           "y1": 10.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 10.9,
           "weight": 0.06
-        },
-        {
-          "kind": "text",
-          "x": 1.0,
-          "y": 10.9,
-          "content": "G",
-          "role": "stringLabel",
-          "span": null
         },
         {
           "kind": "line",
           "x1": 2.0,
           "y1": 11.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 11.9,
           "weight": 0.06
-        },
-        {
-          "kind": "text",
-          "x": 1.0,
-          "y": 11.9,
-          "content": "D",
-          "role": "stringLabel",
-          "span": null
         },
         {
           "kind": "line",
           "x1": 2.0,
           "y1": 12.9,
-          "x2": 8.799999,
+          "x2": 10.4,
           "y2": 12.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 10.0,
+          "x1": 11.6,
           "y1": 12.9,
-          "x2": 11.799999,
+          "x2": 13.4,
           "y2": 12.9,
           "weight": 0.06
         },
         {
           "kind": "line",
-          "x1": 13.0,
+          "x1": 14.6,
           "y1": 12.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 12.9,
           "weight": 0.06
         },
         {
-          "kind": "text",
-          "x": 1.0,
-          "y": 12.9,
-          "content": "g",
-          "role": "stringLabel",
-          "span": null
-        },
-        {
           "kind": "line",
-          "x1": 5.6,
+          "x1": 7.2000003,
           "y1": 8.9,
-          "x2": 5.6,
+          "x2": 7.2000003,
           "y2": 12.9,
           "weight": 0.25
         },
         {
           "kind": "line",
-          "x1": 5.8199997,
+          "x1": 7.42,
           "y1": 8.9,
-          "x2": 5.8199997,
+          "x2": 7.42,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "path",
-          "cmds": "M 5.92 10.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "cmds": "M 7.5200005 10.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
           "span": null
         },
         {
           "kind": "path",
-          "cmds": "M 5.92 11.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "cmds": "M 7.5200005 11.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
           "span": null
         },
         {
           "kind": "line",
-          "x1": 15.200001,
+          "x1": 16.800001,
           "y1": 8.9,
-          "x2": 15.200001,
+          "x2": 16.800001,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 19.800001,
+          "x1": 21.400002,
           "y1": 8.9,
-          "x2": 19.800001,
+          "x2": 21.400002,
           "y2": 12.9,
           "weight": 0.25
         },
         {
           "kind": "line",
-          "x1": 19.580002,
+          "x1": 21.180002,
           "y1": 8.9,
-          "x2": 19.580002,
+          "x2": 21.180002,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "path",
-          "cmds": "M 19.24 10.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "cmds": "M 20.84 10.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
           "span": null
         },
         {
           "kind": "path",
-          "cmds": "M 19.24 11.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
+          "cmds": "M 20.84 11.4 a 0.12 0.12 0 1 0 0.24 0 a 0.12 0.12 0 1 0 -0.24 0 z",
           "span": null
         },
         {
           "kind": "line",
-          "x1": 23.400002,
+          "x1": 25.000002,
           "y1": 8.9,
-          "x2": 23.400002,
+          "x2": 25.000002,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 33.0,
+          "x1": 34.600002,
           "y1": 8.9,
-          "x2": 33.0,
+          "x2": 34.600002,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 40.6,
+          "x1": 42.200005,
           "y1": 8.9,
-          "x2": 40.6,
+          "x2": 42.200005,
           "y2": 12.9,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 15.200001,
+          "x1": 16.800001,
           "y1": 8.099999,
-          "x2": 19.800001,
+          "x2": 21.400002,
           "y2": 8.099999,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 15.200001,
+          "x1": 16.800001,
           "y1": 8.099999,
-          "x2": 15.200001,
+          "x2": 16.800001,
           "y2": 8.799999,
           "weight": 0.1
         },
         {
           "kind": "text",
-          "x": 15.700001,
+          "x": 17.300001,
           "y": 8.499999,
           "content": "1",
           "role": "ending",
@@ -392,23 +352,23 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "kind": "line",
-          "x1": 19.800001,
+          "x1": 21.400002,
           "y1": 8.099999,
-          "x2": 23.400002,
+          "x2": 25.000002,
           "y2": 8.099999,
           "weight": 0.1
         },
         {
           "kind": "line",
-          "x1": 19.800001,
+          "x1": 21.400002,
           "y1": 8.099999,
-          "x2": 19.800001,
+          "x2": 21.400002,
           "y2": 8.799999,
           "weight": 0.1
         },
         {
           "kind": "text",
-          "x": 20.300001,
+          "x": 21.900002,
           "y": 8.499999,
           "content": "2",
           "role": "ending",
@@ -420,13 +380,29 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "bounds": {
             "x": 2.0,
             "y": 8.9,
-            "w": 3.6,
+            "w": 5.2000003,
             "h": 4.0
           },
           "prims": [
             {
               "kind": "text",
-              "x": 2.8,
+              "x": 3.2,
+              "y": 10.4,
+              "content": "4",
+              "role": "timeSig",
+              "span": null
+            },
+            {
+              "kind": "text",
+              "x": 3.2,
+              "y": 11.4,
+              "content": "4",
+              "role": "timeSig",
+              "span": null
+            },
+            {
+              "kind": "text",
+              "x": 4.4,
               "y": 9.9,
               "content": "0",
               "role": "fretNumber",
@@ -437,15 +413,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 2.8,
+              "x1": 4.4,
               "y1": 10.7,
-              "x2": 2.8,
+              "x2": 4.4,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 2.8,
+              "x": 4.4,
               "y": 15.0,
               "content": "I",
               "role": "finger",
@@ -456,7 +432,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 3.8,
+              "x": 5.4,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -467,15 +443,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 3.8,
+              "x1": 5.4,
               "y1": 9.7,
-              "x2": 3.8,
+              "x2": 5.4,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 3.8,
+              "x": 5.4,
               "y": 15.0,
               "content": "T",
               "role": "finger",
@@ -486,9 +462,9 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 2.76,
+              "x1": 4.36,
               "y1": 14.49,
-              "x2": 3.84,
+              "x2": 5.44,
               "y2": 14.49,
               "weight": 0.18
             }
@@ -500,7 +476,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "bounds": {
-            "x": 5.6,
+            "x": 7.2000003,
             "y": 8.9,
             "w": 9.6,
             "h": 4.0
@@ -508,7 +484,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "prims": [
             {
               "kind": "text",
-              "x": 6.4,
+              "x": 8.0,
               "y": 10.9,
               "content": "0",
               "role": "fretNumber",
@@ -519,15 +495,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 6.4,
+              "x1": 8.0,
               "y1": 11.7,
-              "x2": 6.4,
+              "x2": 8.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 6.4,
+              "x": 8.0,
               "y": 15.0,
               "content": "T",
               "role": "finger",
@@ -538,7 +514,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 7.3999996,
+              "x": 9.0,
               "y": 9.9,
               "content": "0",
               "role": "fretNumber",
@@ -549,15 +525,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 7.3999996,
+              "x1": 9.0,
               "y1": 10.7,
-              "x2": 7.3999996,
+              "x2": 9.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 7.3999996,
+              "x": 9.0,
               "y": 15.0,
               "content": "I",
               "role": "finger",
@@ -568,7 +544,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 8.4,
+              "x": 10.0,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -579,15 +555,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 8.4,
+              "x1": 10.0,
               "y1": 9.7,
-              "x2": 8.4,
+              "x2": 10.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 8.4,
+              "x": 10.0,
               "y": 15.0,
               "content": "M",
               "role": "finger",
@@ -598,7 +574,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 9.4,
+              "x": 11.0,
               "y": 12.9,
               "content": "0",
               "role": "fretNumber",
@@ -609,15 +585,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 9.4,
+              "x1": 11.0,
               "y1": 13.7,
-              "x2": 9.4,
+              "x2": 11.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 9.4,
+              "x": 11.0,
               "y": 15.0,
               "content": "T",
               "role": "finger",
@@ -628,7 +604,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 10.4,
+              "x": 12.0,
               "y": 10.9,
               "content": "0",
               "role": "fretNumber",
@@ -639,15 +615,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 10.4,
+              "x1": 12.0,
               "y1": 11.7,
-              "x2": 10.4,
+              "x2": 12.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 10.4,
+              "x": 12.0,
               "y": 15.0,
               "content": "I",
               "role": "finger",
@@ -658,7 +634,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 11.4,
+              "x": 13.0,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -669,15 +645,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 11.4,
+              "x1": 13.0,
               "y1": 9.7,
-              "x2": 11.4,
+              "x2": 13.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 11.4,
+              "x": 13.0,
               "y": 15.0,
               "content": "M",
               "role": "finger",
@@ -688,7 +664,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 12.4,
+              "x": 14.0,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -699,7 +675,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 12.4,
+              "x": 14.0,
               "y": 12.9,
               "content": "0",
               "role": "fretNumber",
@@ -710,15 +686,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 12.4,
+              "x1": 14.0,
               "y1": 13.7,
-              "x2": 12.4,
+              "x2": 14.0,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 12.4,
+              "x": 14.0,
               "y": 15.0,
               "content": "M",
               "role": "finger",
@@ -729,7 +705,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 12.9,
+              "x": 14.5,
               "y": 15.0,
               "content": "T",
               "role": "finger",
@@ -740,25 +716,25 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 6.36,
+              "x1": 7.96,
               "y1": 14.49,
-              "x2": 7.4399996,
+              "x2": 9.04,
               "y2": 14.49,
               "weight": 0.18
             },
             {
               "kind": "line",
-              "x1": 8.36,
+              "x1": 9.96,
               "y1": 14.49,
-              "x2": 9.44,
+              "x2": 11.04,
               "y2": 14.49,
               "weight": 0.18
             },
             {
               "kind": "line",
-              "x1": 10.36,
+              "x1": 11.96,
               "y1": 14.49,
-              "x2": 11.44,
+              "x2": 13.04,
               "y2": 14.49,
               "weight": 0.18
             }
@@ -770,7 +746,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "bounds": {
-            "x": 15.200001,
+            "x": 16.800001,
             "y": 8.9,
             "w": 4.6,
             "h": 4.0
@@ -778,7 +754,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "prims": [
             {
               "kind": "text",
-              "x": 16.0,
+              "x": 17.6,
               "y": 10.9,
               "content": "𝄾",
               "role": "rest",
@@ -789,7 +765,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 17.0,
+              "x": 18.6,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
@@ -800,15 +776,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 17.0,
+              "x1": 18.6,
               "y1": 11.7,
-              "x2": 17.0,
+              "x2": 18.6,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "path",
-              "cmds": "M 17 10.9 Q 17.5 10.099999 18 10.9",
+              "cmds": "M 18.6 10.9 Q 19.1 10.099999 19.6 10.9",
               "span": {
                 "start": 501,
                 "end": 504
@@ -816,7 +792,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 18.0,
+              "x": 19.6,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
@@ -827,25 +803,25 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 18.0,
+              "x1": 19.6,
               "y1": 11.7,
-              "x2": 18.0,
+              "x2": 19.6,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "line",
-              "x1": 17.0,
+              "x1": 18.6,
               "y1": 14.49,
-              "x2": 17.6,
+              "x2": 19.2,
               "y2": 14.49,
               "weight": 0.18
             },
             {
               "kind": "line",
-              "x1": 18.0,
+              "x1": 19.6,
               "y1": 14.49,
-              "x2": 18.6,
+              "x2": 20.2,
               "y2": 14.49,
               "weight": 0.18
             }
@@ -857,7 +833,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "bounds": {
-            "x": 19.800001,
+            "x": 21.400002,
             "y": 8.9,
             "w": 3.6,
             "h": 4.0
@@ -865,7 +841,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "prims": [
             {
               "kind": "text",
-              "x": 20.6,
+              "x": 22.2,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -876,15 +852,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 20.6,
+              "x1": 22.2,
               "y1": 9.7,
-              "x2": 20.6,
+              "x2": 22.2,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 20.6,
+              "x": 22.2,
               "y": 15.0,
               "content": "M",
               "role": "finger",
@@ -895,7 +871,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 21.6,
+              "x": 23.2,
               "y": 8.9,
               "content": "0",
               "role": "fretNumber",
@@ -906,15 +882,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 21.6,
+              "x1": 23.2,
               "y1": 9.7,
-              "x2": 21.6,
+              "x2": 23.2,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 21.6,
+              "x": 23.2,
               "y": 15.0,
               "content": "M",
               "role": "finger",
@@ -925,9 +901,9 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 20.56,
+              "x1": 22.16,
               "y1": 14.49,
-              "x2": 21.640001,
+              "x2": 23.240002,
               "y2": 14.49,
               "weight": 0.18
             }
@@ -939,7 +915,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "bounds": {
-            "x": 23.400002,
+            "x": 25.000002,
             "y": 8.9,
             "w": 9.6,
             "h": 4.0
@@ -947,7 +923,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "prims": [
             {
               "kind": "text",
-              "x": 24.2,
+              "x": 25.800001,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
@@ -958,15 +934,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 24.2,
+              "x1": 25.800001,
               "y1": 11.7,
-              "x2": 24.2,
+              "x2": 25.800001,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 26.2,
+              "x": 27.800001,
               "y": 10.9,
               "content": "4",
               "role": "fretNumber",
@@ -977,15 +953,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 26.2,
+              "x1": 27.800001,
               "y1": 11.7,
-              "x2": 26.2,
+              "x2": 27.800001,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 28.2,
+              "x": 29.800003,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
@@ -996,15 +972,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 28.2,
+              "x1": 29.800003,
               "y1": 11.7,
-              "x2": 28.2,
+              "x2": 29.800003,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 30.2,
+              "x": 31.800003,
               "y": 10.9,
               "content": "4",
               "role": "fretNumber",
@@ -1015,9 +991,9 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 30.2,
+              "x1": 31.800003,
               "y1": 11.7,
-              "x2": 30.2,
+              "x2": 31.800003,
               "y2": 14.4,
               "weight": 0.08
             }
@@ -1029,7 +1005,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
         },
         {
           "bounds": {
-            "x": 33.0,
+            "x": 34.600002,
             "y": 8.9,
             "w": 7.6000004,
             "h": 4.0
@@ -1037,7 +1013,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
           "prims": [
             {
               "kind": "text",
-              "x": 33.8,
+              "x": 35.4,
               "y": 10.9,
               "content": "0",
               "role": "fretNumber",
@@ -1048,15 +1024,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 33.8,
+              "x1": 35.4,
               "y1": 11.7,
-              "x2": 33.8,
+              "x2": 35.4,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 35.8,
+              "x": 37.4,
               "y": 10.9,
               "content": "2",
               "role": "fretNumber",
@@ -1067,15 +1043,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 35.8,
+              "x1": 37.4,
               "y1": 11.7,
-              "x2": 35.8,
+              "x2": 37.4,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "text",
-              "x": 36.2,
+              "x": 37.800003,
               "y": 10.45,
               "content": "h",
               "role": "technique",
@@ -1086,7 +1062,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 37.8,
+              "x": 39.4,
               "y": 8.9,
               "content": "7",
               "role": "fretNumber",
@@ -1097,15 +1073,15 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "line",
-              "x1": 37.8,
+              "x1": 39.4,
               "y1": 9.7,
-              "x2": 37.8,
+              "x2": 39.4,
               "y2": 14.4,
               "weight": 0.08
             },
             {
               "kind": "path",
-              "cmds": "M 37.8 8.9 Q 38.1 7.8999996 38.399998 7.8999996",
+              "cmds": "M 39.4 8.9 Q 39.7 7.8999996 40 7.8999996",
               "span": {
                 "start": 875,
                 "end": 884

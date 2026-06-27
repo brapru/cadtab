@@ -28,6 +28,9 @@ pub enum TextRole {
     FretNumber,
     /// An open-string tuning letter at the left of a system.
     StringLabel,
+    /// A stacked time-signature digit (numerator or denominator) at a measure's
+    /// left.
+    TimeSig,
     /// The song title in the header.
     Title,
     /// The composer credit in the header.
@@ -128,6 +131,7 @@ mod tests {
     const ALL_ROLES: &[TextRole] = &[
         TextRole::FretNumber,
         TextRole::StringLabel,
+        TextRole::TimeSig,
         TextRole::Title,
         TextRole::Composer,
         TextRole::Tempo,

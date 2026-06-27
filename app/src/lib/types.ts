@@ -38,6 +38,7 @@ export interface Rect {
 export type TextRole =
   | "fretNumber"
   | "stringLabel"
+  | "timeSig"
   | "title"
   | "composer"
   | "tempo"
