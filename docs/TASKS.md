@@ -7,7 +7,7 @@
 
 ## How to use this doc
 
-- Work milestones **M0 → M6** in order. The spine **M0 → M1 → M2 → M3** is the critical path.
+- Work milestones **M0 → M8** in order. The spine **M0 → M1 → M2 → M3** is the critical path.
 - Within a milestone, check off tasks top-to-bottom. The heavy "epic" tasks (lexer, parser,
   evaluator, auto-barring, beaming, painter, shell) are **pre-decomposed into lettered
   sub-tasks** (e.g. T1.4a–g); green-gate each sub-task. If any remaining task still feels too
@@ -236,24 +236,17 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T4.7e — **Durations: `default` baseline + one-shot `_N` (revised D11).** Dropped the
         Lilypond sticky-on-override model that competed with `default`; `_N` no longer threads
         forward. DESIGN/GRAMMAR + showcase updated.
-  - [ ] T4.7f — **Strip per-line tuning.** Tuning shows at the top *and* repeats at each system
-        line start; keep it only at the top.
-  - [ ] T4.7g — **Header layout.** Replace the single stacked column with title — composer on
-        top and a compact inline details row (`♩=tempo · instrument · tuning · capo`).
-  - [ ] T4.7h — **Syntax highlighting.** Muted two-tone palette (desaturated blue structure,
-        warm tan numbers, muted green strings, gray italic comments); replace the dramatic
-        full-width active-line bar with a faint left-edge tick so the cursor stays readable.
-  - [ ] T4.7i — **Diagnostic tooltip readability.** Currently white-on-white until selected;
-        give it themed background/foreground/border keyed to the semantic tokens.
-  - [ ] T4.7j — **Tab key indents.** Tab moves focus out of the editor instead of inserting
-        indentation; add `indentWithTab`.
-  - [ ] T4.7k — **Keyboard zoom.** Bind Cmd/Ctrl +/- (and Cmd/Ctrl 0 to fit) to the existing
-        zoom controls; preventDefault to override native zoom.
-  - [ ] T4.7l — **Launch desktop maximized** (currently a small 800×600 window).
-  - [ ] T4.7m — **Diagnostics panel.** A warning/error count button at the bottom of the editor
-        that opens an exhaustive list; clicking an entry jumps the editor selection to its span.
-  - [ ] T4.7n — **Zed-inspired accent polish.** A coherent accent/detail pass across topbar,
-        toolbar, gutter, and panels; fold in with T4.7g–i so the UI reads as one pass.
+  - [x] T4.7f — **Strip per-line tuning.** Removed the per-line `StringLabel` prims from
+        `build_system`; tuning now shows once in the header only.
+  - [x] T4.7g — **Header layout (inline details row).** Collapsed the stacked detail rows into a
+        single `♩=tempo · instrument · tuning · capo` row. *(Superseded by T4.7u's lead-sheet
+        redesign.)*
+  - [x] T4.7j — **Tab key indents.** Added `indentWithTab` to the editor keymap so Tab inserts
+        indentation instead of moving focus out.
+  - [x] T4.7k — **Keyboard zoom.** Cmd/Ctrl +/- zoom and Cmd/Ctrl 0 fits, wired to the existing
+        zoom controls with `preventDefault` to override native page zoom.
+  - [x] T4.7l — **Launch desktop maximized.** `maximized: true` + a 1200×800 restore size in
+        `tauri.conf.json`.
   - [x] T4.7o — **Secondary beams for 16ths/32nds.** A beamed group now draws a primary beam
         plus a beam per higher level over each maximal run of `flag_count ≥ level` (stacked
         above the primary, since stems point down), with partial-beam stubs for isolated values.
@@ -262,30 +255,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T4.7p — **Dense-rhythm crowding.** Event spacing is time-proportional but now floored at
         `MIN_EVENT_GAP` (0.9, just under an eighth's 1.0), so 16th/32nd runs no longer pack their
         fret numbers together while eighths-and-longer keep proportional spacing.
-  - [ ] T4.7q — **Bidirectional mapping for structural elements.** Cursor↔render mapping (T4.5)
-        only covers span-bearing text/notes; repeat barlines, ending (volta) brackets, and
-        `measure {}` boxes don't light up. Thread spans onto those render primitives and add a
-        highlight treatment for non-text primitives (lines/paths/box outlines) so clicking or
-        cursoring a repeat / ending / measure highlights it. *(Extends T4.5.)*
-  - [ ] T4.7r — **Bidirectional highlight treatment.** The active cursor↔primitive highlight
-        reuses the orange `--accent` and reads wrong against the rest of the UI. Pick a calmer
-        highlight colour/treatment, decided alongside the look-and-feel pass (T4.7h/n); touches
-        the theme accent token + `.active` styles in `Tab.svelte`.
-  - [ ] T4.7s — **Even out intra-measure spacing.** A bar's last note gets trailing space equal
-        to its full duration, so it reads as having noticeably more room on its right than the
-        small leading pad — uneven on a fully-filled measure. Do a spacing pass (revisit
-        trailing-space vs leading-pad symmetry / even distribution). Pairs with T4.7t.
-  - [ ] T4.7t — **Justify systems to full width.** A line holding only one (or a few) measures
-        renders at its natural width, leaving the system short. Stretch measures/events to fill
-        the system line width (justified systems) so even a single bar fills the line, padding
-        with empty space as needed. Layout justification pass; relates to T3.3/T3.4 and T4.7s.
-        *Includes:* **pin the page width to the layout target** so the header (centered on the
-        page) and the zoom stop reflowing as measures are added. Root cause: `width` in `layout()`
-        is `overall_width(...)` (content-derived = `LEFT_MARGIN + widest system + RIGHT_MARGIN`),
-        so it grows with measure count and shifts the `width/2`-centered header. Fix is
-        `overall_width(...).max(config.width)` (then justify within that fixed page). User flagged
-        this during T4.7u and chose to fold it in here.
-  - [ ] T4.7u — **Header redesign (lead-sheet style) + whole-sheet serif.** Supersedes the
+  - [x] T4.7u — **Header redesign (lead-sheet style) + whole-sheet serif.** Supersedes the
         T4.7g inline details row with a traditional banjo lead-sheet header (ref:
         `docs/example-header.png`): centered title + bold composer, a left-aligned tuning block
         (tuning **name** over a circled-number grid `①=D ③=G ⑤=g / ②=B ④=D`), a tempo line with
@@ -296,41 +266,29 @@ Entirely headless and test-driven (D18, D19, D20).
         (TuningName/TuningString/Tempo/Capo, drop Details), left-anchored header roles +
         `font-family: serif` on `.tab text` (`Tab.svelte`). Decisions made with the user:
         plumb the tuning name now; serif across the whole sheet; instrument name stays lowercase.
+  - [x] T4.7v — **Cmd/Ctrl-L selects the line.** Added `selectLine` (`Mod-l`) to the editor
+        keymap (Cmd on macOS, Ctrl elsewhere).
+  - [x] T4.7w — **Close the staff on the left.** Each system's left edge now draws a barline
+        (pickups stay open), so wrapped lines read as finished measures.
+  - [x] T4.7x — **Time signature at the start.** Stacked numerator/denominator drawn at the first
+        measure and at every meter change; digit gap is fixed (string-count-independent) and a
+        full leading pad clears the first note.
+  - [x] T4.7y — **Feature-rich `just dev` default.** Replaced the bare starter doc with a
+        banjo/openG score (title/composer/tempo/capo, time signature, beamed bars) so the app
+        opens showing the current feature set.
   - *Parked:* the showcase still emits 3 under-full-bar warnings on inherently-partial demo
     blocks (two voltas + the explicit `measure {}` fragment). Whether voltas / explicit measures
     should trigger under-full diagnostics at all is a diagnostics-quality question → revisit in
-    T6.1 (and showcase metric cleanup in T6.3).
-  - **Resume guide — pending T4.7 (cold-start order & pointers).** Letters a–t are stable IDs
-    (assigned by discovery order), not priority; this is the suggested sequence so shared files
-    and decisions are touched once. Every pending item is resume-able from its text; one *open
-    decision* is flagged.
-    1. **Editor quick wins** — j, k, l. Independent, no decisions; good warm-up.
-       `app/src/lib/Editor.svelte` (j: `indentWithTab` in the keymap), `app/src/App.svelte`
-       (k: global keydown → existing `zoomIn`/`zoomOut`/`zoomFit`, `preventDefault`),
-       `src-tauri/tauri.conf.json` (l: window size / maximized).
-    2. **Header & top region (core + painter)** — f, g. `crates/cadtab-core/src/layout.rs`:
-       strip the per-line `StringLabel` prims in `build_system` (f — the top `build_header`
-       keeps its `Tuning` text, confirmed, so tuning isn't lost); rework `build_header` for the
-       title—composer line + inline details row (g). New text roles get styling in
-       `app/src/lib/Tab.svelte` `TEXT_STYLE`.
-    3. **Horizontal spacing (core)** — s, t. One `layout.rs` pass: `plan_measure` trailing space
-       (s) and `build_system`/`pack_systems`/`overall_width` justification (t). Snapshot-heavy.
-    4. **Diagnostics UI (frontend)** — i, m. `app/src/lib/diagnostics.ts` (i: themed tooltip
-       bg/fg — same WKWebView caveat as T4.7b); new component + `App.svelte` (m: count button +
-       panel wired to `result.diagnostics`, click-to-jump via existing span→selection path).
-    5. **Visual feel pass (frontend)** — h, r, n. The cohesive colour/accent pass.
-       `app/src/lib/highlight.ts` + `Editor.svelte` (h), `app/src/app.css` `--accent` +
-       `Tab.svelte` `.active` (r), broad CSS (n). **DECISION PENDING (T4.7r):** the
-       bidirectional-highlight treatment is unchosen — pick it (e.g. desaturated fill vs
-       underline vs halo, and which token) via a quick question when this cluster starts; T4.7q
-       reuses whatever is chosen. `n` is the umbrella — h, i, g, r feed it; treat it as "make the
-       rest cohere," not a separate chunk.
-    6. **Structural bidirectional mapping (core + frontend)** — q. Do after 5 so the non-text
-       highlight reuses T4.7r's treatment. Core: thread spans onto repeat-barline / volta-bracket
-       / `measure {}`-box prims in `layout.rs`. Frontend: extend `Tab.svelte` `.active` beyond
-       `text`/`path` to line/box prims.
+    T8.1 (and showcase metric cleanup in T8.3).
+  - **Deferred render/UI items → M7.** The unfinished T4.7 render-quality and UI-polish items —
+    **s** (intra-measure spacing), **t** (justify systems + pin page width), **h** (highlight
+    palette), **i** (tooltip readability), **m** (diagnostics panel), **n** (accent pass),
+    **r** (highlight treatment), **q** (structural bidirectional mapping) — were promoted to
+    **M7 — Workspace shell & UI polish**, scheduled after M5 and the notation features (M6) per the
+    re-sequencing decision. Their original IDs are retained there for continuity.
 
 **DoD M4:** the live editor works end to end on desktop + web; component/integration tests green.
+*(The deferred T4.7 render/UI items are tracked under M7, not gating M4.)*
 
 ---
 
@@ -338,10 +296,18 @@ Entirely headless and test-driven (D18, D19, D20).
 
 **Goal:** open/save and share (D29, D30, D38).
 
-- [ ] **T5.1 — Open/Save `.ctab`.** Desktop fs dialogs; web File System Access API /
-      download-upload (D38).
-  - *Tests:* save→open round-trip.
-- [ ] **T5.2 — `import` resolution.** Desktop multi-file; web stdlib-only (D38).
+- [ ] **T5.1 — Open/Save `.ctab` + project bundle.** Desktop fs dialogs (single `.ctab`; folder
+      projects). Web: File System Access API / download-upload for a single `.ctab` **and** a
+      **project bundle** — one file serializing `{ entry, files }` (JSON map for MVP) so a complete
+      multi-file project opens in the browser (D38).
+  - *Tests:* save→open round-trip for both a single file and a bundle.
+- [ ] **T5.2 — `import` resolution via a file-provider.** Resolve `import` in core through a
+      file-provider abstraction (path → contents), not fs-coupled: desktop = real fs (multi-file);
+      web = in-memory map from the loaded bundle; embedded stdlib available on both (D38). This
+      abstraction is what makes web multi-file possible and keeps the M7 project dock/tabs
+      cross-platform.
+  - *Tests:* headless resolution against an in-memory provider — stdlib, bundle, and
+    missing/unresolved-file cases.
 - [ ] **T5.3 — Export SVG + PNG (D30).** Render tree → SVG string → PNG raster.
   - *Tests:* export emits valid SVG; PNG non-empty.
 - [ ] **T5.4 — New-from-template / recent files** (nice-to-have; sub-task if time-boxed).
@@ -350,16 +316,134 @@ Entirely headless and test-driven (D18, D19, D20).
 
 ---
 
-## M6 — Hardening & MVP polish (ship)
+## M6 — Notation features
+
+**Goal:** richer notation above the staff — section labels, chord symbols, bar numbers — plus
+user-defined tunings. Each spans the language (parser/eval) and the layout engine and emits new
+above-staff render primitives. *(Newly identified mid-M4; sequenced after persistence per the
+re-ordering decision so M5 ships first and export later covers these.)*
+
+- [ ] **T6.1 — Section labels (rehearsal marks).** Mark the start of a section with a label drawn
+      above the staff — e.g. the A part, B part, Chorus. Language: a marker that attaches a label
+      to a measure boundary. Layout: text above the staff at that measure, span-tagged for
+      bidirectional mapping. (Banjo tunes are commonly split into A/B parts.)
+- [ ] **T6.2 — Chord symbols over bars.** Place a chord name (G, C, D7…) at the start or a beat
+      within a bar so the progression sits above the tab. Language: a chord-annotation construct
+      positioned at a beat. Layout: text above the staff aligned to that beat; span-tagged.
+- [ ] **T6.3 — Bar numbering.** Number measures above the staff. Default: number only the first
+      bar of each system line. Options: number every bar; turn all numbering off. Language: a
+      directive to set the mode (e.g. `barnumbers lines|all|off`). Layout: a small number above
+      the chosen measures.
+- [ ] **T6.4 — Custom (user-defined) tunings.** Beyond the builtin named tunings, let a user
+      define their own per-string tuning and have it drive pitch derivation and the header tuning
+      grid. Extends T2.1/T2.7 tuning resolution; needs a display name (or "Custom") for the
+      header. Language: a `tuning` form taking an explicit per-string spec.
+
+**DoD M6:** section labels, chord symbols, bar numbering, and a custom tuning all parse, render
+above/within the staff, and round-trip; golden snapshots + error corpora green.
+
+---
+
+## M7 — Workspace shell & UI polish
+
+**Goal:** the post-M5 UI work — a Zed-inspired workspace shell (view registry + editor groups:
+project dock, multi-file tabs, a slick bottom bar, render + print preview) **plus** the deferred
+T4.7 render-quality and cohesion work — batched once persistence/export (M5) and the notation
+features (M6) are in. The shell rests on the **D41** abstraction (see `DESIGN.md` §11d): a registry
+of views (global-singleton vs document-bound) placed into editor groups (panes of stacked tabs)
+that split, resize, and maximize — **no free-floating docking**. Build the foundation (T7.1) first;
+the dock/tabs/render/preview are views on top; then the cohesion pass styles the result. Shell
+chrome is universal (desktop + web), and multi-file projects work on every target (D38: live fs on
+desktop, project bundle on web) — the only nuance is how the dock's tree is sourced (live folder on
+desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 items keep their IDs.
+
+**Workspace shell (D41 — view registry + editor groups):**
+
+- [ ] **T7.1 — Shell foundation: view registry + editor-groups layout.** The abstraction the rest
+      of the shell stands on (D41): a registry of *views* (`id`, title, icon, mount/unmount,
+      serializable state), classed as **global singletons** (dock, bottom bar) or **document-bound**
+      (editor, render, preview, looper). Layout = **editor groups** — panes holding stacked tabs —
+      with split, move-tab-between-groups, resize, and **maximize ("zoom") a group**. Generalizes
+      today's editor|render split (its N=2, one-tab-each case). No free-floating docking (deferred).
+- [ ] **T7.2 — Left project dock + Cmd/Ctrl-B.** *(global-singleton view)* Collapsible left dock
+      showing project structure, toggled by Cmd/Ctrl-B and a bottom-bar button. The file tree comes
+      from the project/import model (M5, D38) — a live folder on desktop / Chromium-web, or the
+      loaded project bundle on Firefox.
+- [ ] **T7.3 — Bottom status bar (slick, minimal, non-invasive).** *(global-singleton view)* A
+      small bottom bar hosting the dock toggle and the diagnostics button (T4.7m); sets the
+      bottom-control styling — small, unobtrusive, out of the way. Pairs with T4.7m and T4.7n.
+- [ ] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
+      view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
+      tab/group mechanics come from T7.1.
+- [ ] **T7.5 — Render as a document-bound view.** Make the render a document-bound view placeable
+      in any group, so "file + its render" sits side by side and file A's / file B's renders can
+      coexist. Resize/reposition come from the group layout (T7.1) — no bespoke docking.
+- [ ] **T7.6 — Print-preview view.** *(document-bound)* The final printed (light) output regardless
+      of editor theme. *Recommendation:* implement as a mode reusing the export styling (T5.3),
+      **not** a separate pipeline, so it isn't duplicative of the live render.
+
+**Editor & theme:**
+
+- [ ] **T7.7 — Editor line numbers + gutter divider.** CodeMirror `lineNumbers()` gutter with a
+      divider rule between the gutter and the code text.
+- [ ] **T7.8 — Dark theme by default.** Default the app to the dark theme (keep the light / system
+      toggle).
+
+**Layout (migrated from T4.7):**
+
+- [ ] **T4.7t — Justify systems + pin page width.** A line holding only one (or a few) measures
+      renders at its natural width, leaving the system short. Stretch measures/events to fill the
+      system width (justified systems). *Includes* **pinning the page width to the layout target**
+      so the header (centred on the page) and the zoom stop reflowing as measures are added — root
+      cause is `width = overall_width(...)` in `layout()` (content-derived), fix is
+      `overall_width(...).max(config.width)`, then justify within that fixed page. Relates to
+      T3.3/T3.4 and T4.7s.
+- [ ] **T4.7s — Even out intra-measure spacing.** A bar's last note gets trailing space equal to
+      its full duration, reading as more room on its right than the small leading pad. Spacing
+      pass: revisit trailing-space vs leading-pad symmetry / even distribution. Pairs with T4.7t.
+
+**Diagnostics (migrated from T4.7):**
+
+- [ ] **T4.7i — Diagnostic tooltip readability.** Currently white-on-white until selected; give it
+      themed background/foreground/border keyed to the semantic tokens (WKWebView caveat per
+      T4.7b).
+- [ ] **T4.7m — Diagnostics panel + bottom button.** A warning/error count button (lives in the
+      T7.3 bottom bar) that opens an exhaustive list; clicking an entry jumps the editor selection
+      to its span. *(This is the "error diagnostic button down below" from the notes.)*
+
+**Cohesion (migrated from T4.7):**
+
+- [ ] **T4.7h — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure,
+      warm tan numbers, muted green strings, gray italic comments); replace the dramatic
+      full-width active-line bar with a faint left-edge tick so the cursor stays readable.
+- [ ] **T4.7r — Bidirectional highlight treatment.** *(open decision)* The active cursor↔primitive
+      highlight reuses the orange `--accent` and reads wrong. Pick a calmer treatment (e.g.
+      desaturated fill vs underline vs halo, and which token); touches the theme accent token +
+      `.active` styles in `Tab.svelte`. T4.7q reuses whatever is chosen.
+- [ ] **T4.7n — Accent/detail cohesion pass.** A coherent accent/detail pass across topbar,
+      toolbar, gutter, panels, **the new dock / tabs / bottom bar**, and M5's open/save/export
+      buttons so the whole UI reads as one design. Umbrella for h, i, r and the shell chrome.
+- [ ] **T4.7q — Structural bidirectional mapping.** Cursor↔render mapping (T4.5) only covers
+      span-bearing text/notes; thread spans onto repeat barlines, ending (volta) brackets, and
+      `measure {}` boxes, and extend the highlight (reusing T4.7r's treatment) to line/box prims so
+      clicking or cursoring a repeat / ending / measure lights it up. *(Extends T4.5.)*
+
+**DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
++ web; justified systems with a fixed page; readable diagnostics + panel; dark-by-default cohesive
+themed UI; structural elements participate in bidirectional mapping. Green.
+
+---
+
+## M8 — Hardening & MVP polish (ship)
 
 **Goal:** a polished, packaged MVP on desktop + web.
 
-- [ ] **T6.1 — Diagnostic quality pass.** Player-facing wording + `help` text for common errors.
-- [ ] **T6.2 — Performance.** Debounce tuning; profile large docs; fix hotspots (revisit D21 only
+- [ ] **T8.1 — Diagnostic quality pass.** Player-facing wording + `help` text for common errors.
+- [ ] **T8.2 — Performance.** Debounce tuning; profile large docs; fix hotspots (revisit D21 only
       if needed).
-- [ ] **T6.3 — Content.** Sample songs, broaden the stdlib, a short tutorial/getting-started doc.
-- [ ] **T6.4 — Packaging.** Tauri desktop bundles (mac/win/linux) + deployed web build; release CI.
-- [ ] **T6.5 — E2E smoke test** (Playwright/WebDriver) of the core flow.
+- [ ] **T8.3 — Content.** Sample songs, broaden the stdlib, a short tutorial/getting-started doc.
+- [ ] **T8.4 — Packaging.** Tauri desktop bundles (mac/win/linux) + deployed web build; release CI.
+- [ ] **T8.5 — E2E smoke test** (Playwright/WebDriver) of the core flow.
 
 **DoD / MVP ship:** author `.ctab` banjo tab live (highlighting, diagnostics, rhythm via
 stems+beams, licks, repeats, pickups, metadata), bidirectional mapping, open/save, export
@@ -370,9 +454,14 @@ SVG+PNG — on desktop and web. CI green; packaged.
 ## Critical path & parallelism
 
 - **Spine (sequential):** M0 → M1 → M2 → M3. Each strictly needs the prior.
-- **M4** needs M3 (render tree) + M0 (shell). **M5/M6** follow M4.
+- **M4** needs M3 (render tree) + M0 (shell). **M5 → M6 → M7 → M8** follow M4 in that order:
+  persistence/export first, then the notation features, then the batched layout & UI polish, then
+  ship. *(Re-sequenced mid-M4: the unfinished T4.7 render/UI work was deferred to M7 so a saveable
+  product and the new notation features land first.)*
 - **Parallelizable within milestones:** lexer (T1.2) vs AST types (T1.3); instrument table (T2.1)
-  vs stdlib (T2.7); painter primitive kinds (T4.2) across types.
+  vs stdlib (T2.7); painter primitive kinds (T4.2) across types; the M6 notation features are
+  largely independent of one another (custom tunings is the smallest; section labels / chords /
+  bar numbers share the above-staff text machinery).
 
 ## Risk register
 
@@ -382,4 +471,4 @@ SVG+PNG — on desktop and web. CI green; packaged.
 | Resilient parser recovery quality | T1.4 | Error-recovery corpus from day one; AST boundary keeps parser swappable (D18) |
 | Bidirectional mapping correctness | T4.5 | Spans threaded from M1 (D20); dedicated lookup tests |
 | WASM/Tauri parity drift | T0.8 | Both backends in CI from M0; one shared `core.compile` contract |
-| Layout reflow performance | T3.4/T6.2 | Profile; debounce; full-recompile is fine until proven otherwise (D21) |
+| Layout reflow performance | T3.4/T8.2 | Profile; debounce; full-recompile is fine until proven otherwise (D21) |

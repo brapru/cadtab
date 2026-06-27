@@ -328,9 +328,16 @@ two model tightenings. All folded into §5/§6 above.
 - **D36 — Ties via `~` operator** (`3:2 ~ 3:2`) + a `tie` flag on the note for the renderer.
 - **D37 — String numbering: 1-based, `1` = highest-pitched string** (banjo `5` = short drone).
   DSL literal `n` maps to `Vec<StringDef>` index `n-1`. Matches standard tab convention.
-- **D38 — Web I/O = desktop-full, web-limited.** Desktop (Tauri): full open/save + multi-file
-  `import` via fs. Web (WASM): File System Access API / download-upload for the doc; `import`
-  resolves only the embedded stdlib (no arbitrary user-file imports; no virtual FS for MVP).
+- **D38 — Web I/O = file-provider abstraction; multi-file on both targets.** `import` resolution
+  in core goes through a **file-provider** (path → contents), not fs-coupled. Desktop (Tauri) backs
+  it with the real filesystem (single `.ctab` + multi-file `import`); web (WASM) backs it with an
+  in-memory map. **Web supports multi-file projects** via a single **project bundle** — a
+  serialized `{ entry, files }` map (JSON for MVP; a zip-based `.ctabz` is a later option) that
+  download/upload moves as one file and that populates the in-memory provider. The embedded stdlib
+  stays available to the provider on both targets. *(Supersedes the earlier web =
+  single-file/stdlib-only stance, so the M7 project dock + multi-file tabs are cross-platform, not
+  desktop-only.)* The bundle is the browser-agnostic baseline (works on Firefox); File System
+  Access API directory access stays an optional Chromium-only enhancement, not the dependency.
 - **D39 — Model tightenings:** (1) chord/pinch = ONE shared `Duration` + `Vec<ChordNote>`
   (`{ pos, right_hand }`), not per-note durations (consistent with single-voice, D9);
   (2) rest literal `r` / `r_N` authoring `Event::Rest`.
@@ -377,6 +384,40 @@ Per-area crate/library choices. Resolved forks: hand-rolled lexer · Svelte 5 + 
   Svelte 5 + Vite SPA (least ceremony); `just` (language-agnostic runner); browser-canvas PNG
   (universal, zero-dep). Rejected: `logos`, SvelteKit, npm-scripts/cargo-make, Rust `resvg`.
 
+## 11d. Workspace shell — view registry + editor groups (D41)
+
+Post-freeze refinement: the UI shell grows tools beyond editor + render (print preview, a project
+dock, a diagnostics/bottom bar, and later the Pillar-B mp3/mp4 looper). Captured so the shell rests
+on a stable abstraction rather than ad-hoc panes.
+
+- **D41 — Workspace = a view registry + an editor-groups layout (no free-floating docking).**
+  - **Views are the unit of UI.** Every tool — editor, render, print preview, project dock,
+    diagnostics, future looper/fretboard — is a registered *view* with a stable interface: `id`,
+    `title`, `icon`, mount/unmount, and serializable state. The layout never hard-codes a tool; it
+    places views. New tool = new registered view, no shell rewrite.
+  - **Two view kinds.** **Global singletons** — one instance, not tied to a document (the left
+    **project dock**, the **diagnostics / bottom bar**). **Document-bound** — bound to a specific
+    `.ctab` (the **editor**, **render**, **print preview**, and later the **looper**). This lets
+    "file A + its render" and "file B + its render" coexist in different groups; a render tab knows
+    which file it renders.
+  - **Layout = editor groups, not floating windows.** The area splits into **groups** (panes,
+    side-by-side or stacked); each group holds a **stack of tabs** with one active. Supported: split
+    (add a group), move a tab between groups, resize the splits, and **maximize ("zoom") a group**
+    so it fills the area while the others stay open. The existing editor|render split is the N=2 /
+    one-tab-each case of this.
+  - **Explicitly deferred:** free-form drag-anywhere docking and floating windows — high cost, poor
+    small-screen behavior, marginal payoff for a focused tool. Escape hatch if ever wanted:
+    `dockview-core` / `golden-layout` (framework-agnostic, run under Svelte in WKWebView and the
+    browser). Not adopted for MVP.
+  - **Parity & dependencies.** Shell chrome (groups, tabs, dock, bottom bar) is pure JS → identical
+    desktop and web. Multi-file projects work on every target (D38: live fs on desktop, project
+    bundle on web); the only platform nuance is *how* the dock's tree is sourced — a live folder on
+    desktop / Chromium-web (FSA API), or an uploaded/exported bundle on Firefox (no live folder).
+    Document-bound multi-file views (tabs, project tree) presuppose M5 (open/save + `import`);
+    the looper is Pillar B, landing later as a document-bound view. Builds on D26/D27 (Svelte,
+    minimal latest-wins state): each view owns its small state; one store still holds the active
+    document's `CompileResult`.
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -395,3 +436,5 @@ dependency-ordered build plan.
 - *2026-06-20* — Design review pass: refinements D32–D39 (see §11b) + doc hygiene. **Design frozen for MVP.**
 - *2026-06-20* — Revised D16/D32: musical `repeat { … ending(n){} }` with voltas **in MVP**; unroll loop renamed `repeat N`→`loop N`; dropped `|: :|` markers.
 - *2026-06-20* — Dependency stack resolved: D40 (see §11c). Hand-rolled lexer, Svelte 5 + Vite SPA, `just`, browser-canvas PNG.
+- *2026-06-27* — Workspace shell resolved: D41 (see §11d). View registry + editor-groups layout (splits / tab-stacks / maximize); document-bound vs global-singleton views; free-floating docking deferred. Reshapes M7.
+- *2026-06-27* — Revised D38: `import` resolution via a file-provider abstraction; **web supports multi-file projects** via a single project bundle (JSON `{ entry, files }`), superseding web = single-file/stdlib-only. Shapes T5.1/T5.2 + keeps the M7 project UI cross-platform.
