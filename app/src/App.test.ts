@@ -424,6 +424,40 @@ describe("App", () => {
     expect(blob.type).toBe("image/png");
   });
 
+  it("starts a new document from a template, guarding unsaved edits", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")).toBeTruthy();
+    });
+
+    const select = getByLabelText("New from template") as HTMLSelectElement;
+
+    // A clean document → New loads the chosen template as an untitled doc.
+    await fireEvent.change(select, { target: { value: "guitar" } });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")?.textContent).toContain(
+        "instrument guitar",
+      );
+    });
+    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+      "untitled",
+    );
+
+    // Edit, then a declined New keeps the current document.
+    await fireEvent.keyDown(container.querySelector(".cm-content")!, {
+      key: "Tab",
+    });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+    });
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await fireEvent.change(select, { target: { value: "blank" } });
+    expect(container.querySelector(".cm-content")?.textContent).toContain(
+      "instrument guitar",
+    );
+    confirmSpy.mockRestore();
+  });
+
   it("clears dirty when edits are undone back to the saved baseline", async () => {
     const { container } = render(App);
 

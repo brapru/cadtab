@@ -7,6 +7,9 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    // Allow `?raw`-importing starter templates from the repo's examples/ dir,
+    // which sits one level above this app root.
+    fs: { allow: [".."] },
     watch: {
       ignored: ["**/src-tauri/**"],
     },

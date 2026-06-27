@@ -1,0 +1,9 @@
+instrument banjo
+tuning     openG
+
+score {
+  time 4/4
+  default 1/8
+
+  // your notes here
+}

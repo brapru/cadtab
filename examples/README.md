@@ -46,6 +46,12 @@ The same project packed into one bundle file (`{ version, entry, files }` JSON).
   `.ctabz`. Round-trips on desktop too (the bundle's files are checked before the
   filesystem).
 
+### `templates/`
+The starter scaffolds behind the toolbar's **New…** dropdown (banjo, guitar,
+blank) — minimal clean-compiling documents seeded with the right instrument /
+tuning / time / default lines. The app `?raw`-imports these, and `cadtab-core`
+compile-checks them (`starter_templates_compile_cleanly`).
+
 ## Exporting
 
 With any of these open, **Export SVG** / **Export PNG** in the toolbar save the

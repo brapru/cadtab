@@ -19,6 +19,7 @@
   } from "./lib/io";
   import { renderTreeToSvg } from "./lib/svg";
   import { svgToPngBlob } from "./lib/png";
+  import { TEMPLATES, templateById } from "./lib/templates";
   import type { CompileResult, Span } from "./lib/types";
 
   // A feature-rich starter so the app opens showing the header details row,
@@ -198,7 +199,7 @@ score {
   function loadDocument(opts: {
     path: string | null;
     bundlePath: string | null;
-    name: string;
+    name: string | null;
     content: string;
     libs: Record<string, string>;
   }) {
@@ -210,6 +211,24 @@ score {
     dirty = false;
     loadRequest = { content: opts.content, token: ++loadToken };
     recompile(opts.content);
+  }
+
+  // Start a new untitled document from a starter template, guarding unsaved
+  // edits first. The `<select>` resets to its placeholder after each pick.
+  let newChoice = $state("");
+  function onNewSelect() {
+    const id = newChoice;
+    newChoice = "";
+    const template = id ? templateById(id) : undefined;
+    if (!template) return;
+    if (dirty && !window.confirm("Discard unsaved changes?")) return;
+    loadDocument({
+      path: null,
+      bundlePath: null,
+      name: null,
+      content: template.source,
+      libs: {},
+    });
   }
 
   // Open a score (`.ctab`) or a whole project bundle (`.ctabz`), guarding unsaved
@@ -323,6 +342,17 @@ score {
       </span>
     </div>
     <div class="actions">
+      <select
+        class="new-select"
+        aria-label="New from template"
+        bind:value={newChoice}
+        onchange={onNewSelect}
+      >
+        <option value="" disabled>New…</option>
+        {#each TEMPLATES as t (t.id)}
+          <option value={t.id}>{t.label}</option>
+        {/each}
+      </select>
       <button onclick={openFile} title="Open score or project (Cmd/Ctrl+O)"
         >Open</button
       >
@@ -452,7 +482,8 @@ score {
     margin: 0.15rem 0.15rem;
     background: var(--border);
   }
-  .actions button {
+  .actions button,
+  .new-select {
     border: 1px solid var(--border);
     background: transparent;
     color: inherit;
@@ -461,6 +492,9 @@ score {
     cursor: pointer;
     font-size: 0.85rem;
     line-height: 1;
+  }
+  .new-select {
+    font-family: inherit;
   }
   .theme-toggle {
     border: 1px solid var(--border);

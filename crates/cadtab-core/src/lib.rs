@@ -328,6 +328,32 @@ mod tests {
     }
 
     #[test]
+    fn starter_templates_compile_cleanly() {
+        // The "New from template" scaffolds must open without diagnostics.
+        for (name, src) in [
+            (
+                "banjo",
+                include_str!("../../../examples/templates/banjo.ctab"),
+            ),
+            (
+                "guitar",
+                include_str!("../../../examples/templates/guitar.ctab"),
+            ),
+            (
+                "blank",
+                include_str!("../../../examples/templates/blank.ctab"),
+            ),
+        ] {
+            let result = compile(src, LayoutConfig { width: 800.0 });
+            assert!(
+                result.diagnostics.is_empty(),
+                "template {name} should compile cleanly, got {:?}",
+                result.diagnostics
+            );
+        }
+    }
+
+    #[test]
     fn project_example_compiles_with_its_lib() {
         // The multi-file example: the entry resolves `licks.ctab` through the
         // provider, mirroring desktop fs / web bundle resolution.

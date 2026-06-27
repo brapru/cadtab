@@ -1,0 +1,12 @@
+title    "Untitled"
+tempo    120
+
+instrument banjo
+tuning     openG
+
+score {
+  time 4/4
+  default 1/8
+
+  3:0 2:0 1:0 5:0 3:0 2:0 1:0 5:0
+}
