@@ -9,7 +9,7 @@
 use std::collections::HashMap;
 
 use crate::ast::{
-    Block, Event, EventKind, Expr, ExprKind, ItemKind, Program, Repeat, Score, ScoreItemKind,
+    Block, Event, EventKind, Expr, ExprKind, Item, ItemKind, Program, Repeat, Score, ScoreItemKind,
 };
 use crate::diagnostics::Diagnostic;
 use crate::span::Span;
@@ -106,12 +106,20 @@ pub struct Typed {
 
 /// Type-check `program` for arity and value-kind errors.
 pub fn check(program: &Program) -> Typed {
+    check_with_imports(program, &[])
+}
+
+/// Type-check `program`, also knowing the signatures of imported `modules` so
+/// calls to imported functions are arity-checked. Entry signatures are collected
+/// first, so an entry `def` shadows an imported one of the same name.
+pub fn check_with_imports(program: &Program, modules: &[Item]) -> Typed {
     let mut c = Checker {
         values: HashMap::new(),
         funcs: HashMap::new(),
         diagnostics: Vec::new(),
     };
-    c.collect_signatures(program);
+    c.collect_signatures(&program.items);
+    c.collect_signatures(modules);
     c.check_program(program);
     Typed {
         diagnostics: c.diagnostics,
@@ -134,9 +142,9 @@ impl Checker {
 
     // --- build the global environment -------------------------------------
 
-    fn collect_signatures(&mut self, program: &Program) {
+    fn collect_signatures(&mut self, items: &[Item]) {
         // Pass A: def signatures (arity is structural, order-independent).
-        for item in &program.items {
+        for item in items {
             if let ItemKind::Def(def) = &item.kind {
                 self.funcs.entry(def.name.name.clone()).or_insert(FnSig {
                     params: vec![Expect::Any; def.params.len()],
@@ -145,7 +153,7 @@ impl Checker {
             }
         }
         // Pass B: let types, in source order (a forward reference stays Unknown).
-        for item in &program.items {
+        for item in items {
             if let ItemKind::Let(l) = &item.kind {
                 let ty = self.infer(&l.value);
                 self.values.entry(l.name.name.clone()).or_insert(ty);

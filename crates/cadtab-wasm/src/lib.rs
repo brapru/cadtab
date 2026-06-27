@@ -13,13 +13,27 @@ pub fn version() -> String {
 }
 
 /// Compiles source text into a `CompileResult`, marshalled to a JS object.
-/// `config` is a `LayoutConfig` JS object; the return value mirrors the Tauri
-/// `compile` command so the frontend can dispatch to either backend.
+/// `config` is a `LayoutConfig` JS object; `files` is the project bundle as a
+/// `{ path: contents }` map (or null/undefined for none) backing `import`
+/// resolution. The return value mirrors the Tauri `compile` command so the
+/// frontend can dispatch to either backend.
 #[wasm_bindgen]
-pub fn compile(source: &str, config: JsValue) -> Result<JsValue, JsValue> {
+pub fn compile(source: &str, config: JsValue, files: JsValue) -> Result<JsValue, JsValue> {
     let config: cadtab_core::layout::LayoutConfig =
         serde_wasm_bindgen::from_value(config).map_err(|e| JsValue::from_str(&e.to_string()))?;
-    let result = cadtab_core::compile(source, config);
+
+    let files: std::collections::HashMap<String, String> =
+        if files.is_undefined() || files.is_null() {
+            std::collections::HashMap::new()
+        } else {
+            serde_wasm_bindgen::from_value(files).map_err(|e| JsValue::from_str(&e.to_string()))?
+        };
+    let mut provider = cadtab_core::provider::MapProvider::new();
+    for (path, contents) in files {
+        provider.insert(path, contents);
+    }
+
+    let result = cadtab_core::compile_with_provider(source, config, &provider);
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
@@ -47,7 +61,7 @@ mod wasm_tests {
         let config =
             serde_wasm_bindgen::to_value(&cadtab_core::layout::LayoutConfig { width: 800.0 })
                 .unwrap();
-        let value = compile("score { 3:0 2:0 1:0 5:0 }", config).unwrap();
+        let value = compile("score { 3:0 2:0 1:0 5:0 }", config, JsValue::UNDEFINED).unwrap();
         let result: cadtab_core::CompileResult = serde_wasm_bindgen::from_value(value).unwrap();
         assert_eq!(result.render_tree.systems.len(), 1);
     }

@@ -20,67 +20,29 @@ use crate::span::Span;
 /// Builtin functions always in scope: techniques plus phrase utilities.
 const BUILTINS: &[&str] = &["hammer", "pull", "slide", "bend", "choke", "ghost", "len"];
 
-/// Names exported by importable modules, keyed by import path. Injected so the
-/// pure core stays IO-free: the desktop build populates it from the filesystem,
-/// the web build from the embedded stdlib. Empty by default.
-#[derive(Debug, Clone, Default)]
-pub struct ImportEnv {
-    modules: HashMap<String, Vec<String>>,
-}
-
-impl ImportEnv {
-    pub fn empty() -> Self {
-        Self::default()
-    }
-
-    /// Register a module path with the names it exports.
-    pub fn with_module(
-        mut self,
-        path: impl Into<String>,
-        names: impl IntoIterator<Item = impl Into<String>>,
-    ) -> Self {
-        self.modules
-            .insert(path.into(), names.into_iter().map(Into::into).collect());
-        self
-    }
-
-    fn module(&self, path: &str) -> Option<&[String]> {
-        self.modules.get(path).map(Vec::as_slice)
-    }
-}
-
-/// The outcome of resolution: diagnostics for unknown names, duplicate
-/// definitions, and unresolvable imports.
+/// The outcome of resolution: diagnostics for unknown names and duplicate
+/// definitions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolved {
     pub diagnostics: Vec<Diagnostic>,
 }
 
-/// Resolve `program` against the embedded builtins only (no importable modules).
+/// Resolve `program` against the embedded builtins only (no ambient names).
 pub fn resolve(program: &Program) -> Resolved {
-    resolve_with_imports(program, &ImportEnv::empty())
+    resolve_with_ambient(program, &[])
 }
 
-/// Resolve `program`, drawing imported names from `imports`.
-pub fn resolve_with_imports(program: &Program, imports: &ImportEnv) -> Resolved {
-    resolve_with_ambient(program, imports, &[])
-}
-
-/// Resolve `program`, treating `ambient` as names always in scope (the embedded
-/// stdlib licks, which every score gets by default). These resolve like
+/// Resolve `program`, treating `ambient` as names always in scope: the embedded
+/// stdlib licks plus any imported names (import resolution — and its
+/// diagnostics — lives in [`crate::imports`]). Ambient names resolve like
 /// builtins; a user `def`/`let` of the same name still shadows them.
-pub fn resolve_with_ambient(
-    program: &Program,
-    imports: &ImportEnv,
-    ambient: &[String],
-) -> Resolved {
+pub fn resolve_with_ambient(program: &Program, ambient: &[String]) -> Resolved {
     let mut r = Resolver {
         globals: HashMap::new(),
-        imported: HashMap::new(),
         ambient: ambient.iter().cloned().collect(),
         diagnostics: Vec::new(),
     };
-    r.collect_top_level(program, imports);
+    r.collect_top_level(program);
     r.resolve_uses(program);
     Resolved {
         diagnostics: r.diagnostics,
@@ -90,9 +52,7 @@ pub fn resolve_with_ambient(
 struct Resolver {
     /// User top-level `def`/`let` name → its defining span.
     globals: HashMap<String, Span>,
-    /// Name brought in by an `import` → the import's span.
-    imported: HashMap<String, Span>,
-    /// Names always in scope from the embedded stdlib (default licks).
+    /// Names always in scope: the embedded stdlib licks and imported names.
     ambient: HashSet<String>,
     diagnostics: Vec<Diagnostic>,
 }
@@ -104,14 +64,13 @@ type Scope<'a> = &'a HashMap<String, Span>;
 impl Resolver {
     // --- pass 1: hoist top-level names ------------------------------------
 
-    fn collect_top_level(&mut self, program: &Program, imports: &ImportEnv) {
+    fn collect_top_level(&mut self, program: &Program) {
         for item in &program.items {
             match &item.kind {
                 ItemKind::Def(def) => self.declare_global(&def.name.name, def.name.span),
                 ItemKind::Let(l) => self.declare_global(&l.name.name, l.name.span),
-                ItemKind::Import(path) => {
-                    self.resolve_import(path.value.as_str(), item.span, imports)
-                }
+                // Imports are resolved (and diagnosed) in `crate::imports`; the
+                // names they bind arrive here as ambient names.
                 _ => {}
             }
         }
@@ -130,20 +89,6 @@ impl Resolver {
             return;
         }
         self.globals.insert(name.to_string(), span);
-    }
-
-    fn resolve_import(&mut self, path: &str, span: Span, imports: &ImportEnv) {
-        match imports.module(path) {
-            Some(names) => {
-                for name in names {
-                    self.imported.entry(name.clone()).or_insert(span);
-                }
-            }
-            None => self.diagnostics.push(
-                Diagnostic::error(span, format!("cannot resolve import \"{path}\""))
-                    .with_help("imports resolve to local files (desktop) or the standard library"),
-            ),
-        }
     }
 
     // --- pass 2: resolve every use ----------------------------------------
@@ -246,8 +191,7 @@ impl Resolver {
         let known = scope.contains_key(name)
             || self.globals.contains_key(name)
             || BUILTINS.contains(&name)
-            || self.ambient.contains(name)
-            || self.imported.contains_key(name);
+            || self.ambient.contains(name);
         if !known {
             self.diagnostics.push(
                 Diagnostic::error(span, format!("unknown name `{name}`"))
@@ -354,30 +298,20 @@ score { f(chord) }";
     }
 
     #[test]
-    fn unresolved_import_is_reported() {
-        let msgs = messages("import \"rolls.ctab\"");
-        assert_eq!(msgs, vec!["cannot resolve import \"rolls.ctab\""]);
+    fn imports_are_ignored_here_resolution_owns_only_names() {
+        // Import resolution + diagnostics live in `crate::imports`; resolve does
+        // not flag the import itself, only the unresolved *use* of its name.
+        let msgs = messages("import \"rolls.ctab\"\nscore { my_roll(3:0) }");
+        assert_eq!(msgs, vec!["unknown name `my_roll`"]);
     }
 
     #[test]
-    fn imported_names_resolve_when_the_module_is_provided() {
+    fn ambient_names_resolve_like_builtins() {
+        // Imported (or stdlib) names arrive as ambient and resolve cleanly.
         let src = "import \"rolls.ctab\"\nscore { my_roll(3:0) }";
         let parsed = parse(src);
-        let imports = ImportEnv::empty().with_module("rolls.ctab", ["my_roll"]);
-        let resolved = resolve_with_imports(&parsed.program, &imports);
+        let resolved = resolve_with_ambient(&parsed.program, &["my_roll".to_string()]);
         assert_eq!(resolved.diagnostics, vec![]);
-    }
-
-    #[test]
-    fn missing_module_flags_both_import_and_use() {
-        let msgs = messages("import \"rolls.ctab\"\nscore { my_roll(3:0) }");
-        assert_eq!(
-            msgs,
-            vec![
-                "cannot resolve import \"rolls.ctab\"",
-                "unknown name `my_roll`"
-            ]
-        );
     }
 
     #[test]

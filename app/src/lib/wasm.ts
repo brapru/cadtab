@@ -13,7 +13,8 @@ function ensureReady(): Promise<unknown> {
 export async function compile(
   source: string,
   config: LayoutConfig,
+  files: Record<string, string> = {},
 ): Promise<CompileResult> {
   await ensureReady();
-  return wasmCompile(source, config) as CompileResult;
+  return wasmCompile(source, config, files) as CompileResult;
 }

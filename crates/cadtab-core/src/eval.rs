@@ -6,7 +6,7 @@
 
 use std::collections::HashMap;
 
-use crate::ast::{self, Def, Expr, ExprKind, ItemKind, LoopBlock, Mark, MarkKind, Program};
+use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, MarkKind, Program};
 use crate::diagnostics::Diagnostic;
 use crate::instrument::Instrument;
 use crate::model::{
@@ -160,14 +160,20 @@ impl Evaluator {
     }
 
     /// Register every `def` and evaluate top-level `let`s into the global scope.
-    /// Defs are collected first so a call may precede its definition.
     pub fn load(&mut self, program: &Program) {
-        for item in &program.items {
+        self.load_items(&program.items);
+    }
+
+    /// Register every `def` and evaluate top-level `let`s from `items`. Defs are
+    /// collected first so a call may precede its definition. Imported modules
+    /// load through here before the entry program, so the entry shadows them.
+    pub fn load_items(&mut self, items: &[Item]) {
+        for item in items {
             if let ItemKind::Def(def) = &item.kind {
                 self.defs.insert(def.name.name.clone(), def.clone());
             }
         }
-        for item in &program.items {
+        for item in items {
             if let ItemKind::Let(l) = &item.kind
                 && let Some(value) = self.eval_expr(&l.value)
             {
@@ -637,6 +643,15 @@ impl Evaluator {
 /// body into barred measures. Returns the score and every diagnostic produced
 /// (instrument, metadata, evaluation, and bar-fill).
 pub fn eval_program(program: &Program) -> (Score, Vec<Diagnostic>) {
+    eval_program_with_modules(program, &[])
+}
+
+/// Evaluate `program`, having first loaded the imported `modules` (flattened
+/// `def`/`let` items from [`crate::imports`]). Imports load before the entry, so
+/// an entry definition shadows an imported one of the same name. Metadata
+/// (instrument, title, capo…) is read from the entry only — imports are lick
+/// libraries, not score configuration.
+pub fn eval_program_with_modules(program: &Program, modules: &[Item]) -> (Score, Vec<Diagnostic>) {
     let mut diagnostics = Vec::new();
     let instrument = resolve_instrument(program, &mut diagnostics);
     let meta = eval_meta(program, &mut diagnostics);
@@ -651,6 +666,7 @@ pub fn eval_program(program: &Program) -> (Score, Vec<Diagnostic>) {
 
     let mut ev = Evaluator::new(instrument.clone());
     ev.load_stdlib();
+    ev.load_items(modules);
     ev.load(program);
     let measures = program
         .items

@@ -41,27 +41,54 @@ describe("core backend dispatch", () => {
     expect(isTauri()).toBe(true);
   });
 
-  it("dispatches to the Tauri command under Tauri", async () => {
+  it("dispatches to the Tauri command under Tauri, passing the base path", async () => {
     setTauri(true);
     invokeMock.mockResolvedValue(fake);
 
-    const result = await compile("3:0", { width: 800 });
+    const result = await compile(
+      "3:0",
+      { width: 800 },
+      { basePath: "/x/a.ctab" },
+    );
 
     expect(invokeMock).toHaveBeenCalledWith("compile", {
       source: "3:0",
       config: { width: 800 },
+      basePath: "/x/a.ctab",
     });
     expect(wasmCompileMock).not.toHaveBeenCalled();
     expect(result).toBe(fake);
   });
 
-  it("dispatches to the wasm backend in a plain browser", async () => {
+  it("defaults the base path to null when no context is given", async () => {
+    setTauri(true);
+    invokeMock.mockResolvedValue(fake);
+
+    await compile("3:0", { width: 800 });
+
+    expect(invokeMock).toHaveBeenCalledWith("compile", {
+      source: "3:0",
+      config: { width: 800 },
+      basePath: null,
+    });
+  });
+
+  it("dispatches to the wasm backend in a plain browser, passing the bundle", async () => {
     wasmCompileMock.mockResolvedValue(fake);
+    const files = { "rolls.ctab": "def r() { 3:0 }" };
 
-    const result = await compile("3:0", { width: 800 });
+    const result = await compile("3:0", { width: 800 }, { files });
 
-    expect(wasmCompileMock).toHaveBeenCalledWith("3:0", { width: 800 });
+    expect(wasmCompileMock).toHaveBeenCalledWith("3:0", { width: 800 }, files);
     expect(invokeMock).not.toHaveBeenCalled();
     expect(result).toBe(fake);
+  });
+
+  it("defaults the wasm bundle to an empty map when no context is given", async () => {
+    wasmCompileMock.mockResolvedValue(fake);
+
+    await compile("3:0", { width: 800 });
+
+    expect(wasmCompileMock).toHaveBeenCalledWith("3:0", { width: 800 }, {});
   });
 });

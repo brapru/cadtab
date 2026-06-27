@@ -57,7 +57,9 @@ score {
 
   function recompile(src: string) {
     source = src;
-    void live.run(src, { width: layoutWidth });
+    // Import context: desktop resolves beside the open file (basePath); web will
+    // resolve from the bundle map (empty until the project-bundle step).
+    void live.run(src, { width: layoutWidth }, { basePath: currentPath });
   }
 
   // Document session: the name we last opened/saved as, and whether there are

@@ -4,11 +4,13 @@ pub mod ast;
 pub mod beam;
 pub mod diagnostics;
 pub mod eval;
+pub mod imports;
 pub mod instrument;
 pub mod layout;
 pub mod lexer;
 pub mod model;
 pub mod parser;
+pub mod provider;
 pub mod render;
 pub mod resolve;
 pub mod source;
@@ -20,12 +22,13 @@ pub mod types;
 use serde::{Deserialize, Serialize};
 
 use crate::diagnostics::Diagnostic;
-use crate::eval::eval_program;
+use crate::eval::eval_program_with_modules;
+use crate::imports::load_imports;
 use crate::layout::{LayoutConfig, layout};
 use crate::lexer::lex;
 use crate::parser::parse;
+use crate::provider::{FileProvider, MapProvider};
 use crate::render::RenderTree;
-use crate::resolve::ImportEnv;
 use crate::token::Token;
 
 /// Everything a single compile produces for the frontend: the positioned render
@@ -38,18 +41,33 @@ pub struct CompileResult {
     pub tokens: Vec<Token>,
 }
 
+/// Compile source text with no import resolution (any `import` is reported as
+/// unresolvable). The embedded stdlib is still ambient. The app builds use
+/// [`compile_with_provider`] to back imports with the filesystem or a bundle.
+pub fn compile(source: &str, config: LayoutConfig) -> CompileResult {
+    compile_with_provider(source, config, &MapProvider::new())
+}
+
 /// Compile source text into a render tree plus diagnostics and tokens by running
-/// the full pipeline: lex (for highlight tokens) → parse → evaluate → layout.
+/// the full pipeline: lex (for highlight tokens) → parse → resolve imports →
+/// evaluate → layout. `import`s are resolved through `provider` (path →
+/// contents); the imported `def`/`let`s become available to resolution and
+/// evaluation, with the embedded stdlib ambient on top.
 ///
 /// Resilient by construction: every stage recovers and reports rather than
 /// bailing, so a malformed document still yields highlight tokens, the
 /// diagnostics it provoked, and a best-effort partial render tree. Diagnostics
-/// are ordered by pass: parse → name resolution → type check → evaluation.
+/// are ordered by pass: parse → imports → name resolution → type check →
+/// evaluation.
 ///
 /// Highlight tokens come from a dedicated lex of the source rather than the
 /// parser's stream, because the parser drops comment and error trivia that the
 /// editor still wants to colour.
-pub fn compile(source: &str, config: LayoutConfig) -> CompileResult {
+pub fn compile_with_provider(
+    source: &str,
+    config: LayoutConfig,
+    provider: &dyn FileProvider,
+) -> CompileResult {
     let tokens: Vec<Token> = lex(source)
         .tokens
         .iter()
@@ -58,18 +76,22 @@ pub fn compile(source: &str, config: LayoutConfig) -> CompileResult {
 
     let parsed = parse(source);
 
-    // Semantic passes on the (possibly partial) AST. Resolution owns unknown-name
-    // reporting; eval stays silent on those by design. Stdlib licks are ambient
-    // names so calls to them resolve rather than flagging as unknown.
-    let resolve_diagnostics =
-        resolve::resolve_with_ambient(&parsed.program, &ImportEnv::empty(), &stdlib::names())
-            .diagnostics;
-    let type_diagnostics = types::check(&parsed.program).diagnostics;
+    // Resolve imports first: their flattened defs/lets feed both name resolution
+    // and evaluation, alongside the always-ambient stdlib licks.
+    let loaded = load_imports(&parsed.program, provider);
+    let mut ambient = stdlib::names();
+    ambient.extend(loaded.names.iter().cloned());
 
-    let (score, eval_diagnostics) = eval_program(&parsed.program);
+    // Semantic passes on the (possibly partial) AST. Resolution owns unknown-name
+    // reporting; eval stays silent on those by design.
+    let resolve_diagnostics = resolve::resolve_with_ambient(&parsed.program, &ambient).diagnostics;
+    let type_diagnostics = types::check_with_imports(&parsed.program, &loaded.items).diagnostics;
+
+    let (score, eval_diagnostics) = eval_program_with_modules(&parsed.program, &loaded.items);
     let render_tree = layout(&score, config);
 
     let mut diagnostics = parsed.diagnostics;
+    diagnostics.extend(loaded.diagnostics);
     diagnostics.extend(resolve_diagnostics);
     diagnostics.extend(type_diagnostics);
     diagnostics.extend(eval_diagnostics);
@@ -237,5 +259,59 @@ mod tests {
     fn compile_wire_format() {
         let result = compile("score { 3:0 }", LayoutConfig { width: 800.0 });
         insta::assert_snapshot!(serde_json::to_string_pretty(&result).unwrap());
+    }
+
+    #[test]
+    fn an_unresolved_import_is_reported_without_a_provider() {
+        // Plain `compile` has no provider, so any import fails to resolve, and
+        // the call to its name is then unknown.
+        let result = compile(
+            "import \"rolls.ctab\"\nscore { my_roll([3:0 2:0 1:0]) }",
+            LayoutConfig { width: 800.0 },
+        );
+        let msgs: Vec<&str> = result
+            .diagnostics
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect();
+        assert!(
+            msgs.iter().any(|m| m.contains("cannot resolve import")),
+            "{msgs:?}"
+        );
+        assert!(
+            msgs.iter().any(|m| m.contains("unknown name `my_roll`")),
+            "{msgs:?}"
+        );
+    }
+
+    #[test]
+    fn a_provided_import_resolves_and_renders() {
+        // With a provider supplying the library, the import resolves: no unknown
+        // name, no unresolved import, and the lick renders fret numbers.
+        let provider = crate::provider::MapProvider::new()
+            .with_file("rolls.ctab", "def my_roll(c) { c.0 .t  c.1 .i  c.2 .m }");
+        let result = compile_with_provider(
+            "import \"rolls.ctab\"\nscore { default 1/8\n my_roll([3:0 2:0 1:0]) }",
+            LayoutConfig { width: 800.0 },
+            &provider,
+        );
+        // No errors — the import resolves and evaluates. (A bar-fill *warning* is
+        // expected: three eighth-notes do not fill a 4/4 bar.)
+        assert!(
+            !result
+                .diagnostics
+                .iter()
+                .any(|d| d.severity == Severity::Error),
+            "expected no errors, got {:?}",
+            result.diagnostics
+        );
+        let prims = &result.render_tree.systems[0].measures[0].prims;
+        assert!(prims.iter().any(|p| matches!(
+            p,
+            Primitive::Text {
+                role: TextRole::FretNumber,
+                ..
+            }
+        )));
     }
 }

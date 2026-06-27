@@ -1,8 +1,9 @@
-import type { CompileResult, LayoutConfig } from "./types";
+import type { CompileResult, LayoutConfig, ProjectContext } from "./types";
 
 export type Backend = (
   source: string,
   config: LayoutConfig,
+  ctx?: ProjectContext,
 ) => Promise<CompileResult>;
 
 // True when running inside the Tauri webview (desktop), false in a plain browser.
@@ -13,17 +14,25 @@ export function isTauri(): boolean {
 async function tauriBackend(
   source: string,
   config: LayoutConfig,
+  ctx?: ProjectContext,
 ): Promise<CompileResult> {
   const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<CompileResult>("compile", { source, config });
+  // Desktop resolves imports on the filesystem, relative to the open document.
+  return invoke<CompileResult>("compile", {
+    source,
+    config,
+    basePath: ctx?.basePath ?? null,
+  });
 }
 
 async function wasmBackend(
   source: string,
   config: LayoutConfig,
+  ctx?: ProjectContext,
 ): Promise<CompileResult> {
   const { compile } = await import("./wasm");
-  return compile(source, config);
+  // Web resolves imports from the in-memory bundle map.
+  return compile(source, config, ctx?.files ?? {});
 }
 
 export function selectBackend(): Backend {
@@ -35,6 +44,7 @@ export function selectBackend(): Backend {
 export function compile(
   source: string,
   config: LayoutConfig,
+  ctx?: ProjectContext,
 ): Promise<CompileResult> {
-  return selectBackend()(source, config);
+  return selectBackend()(source, config, ctx);
 }

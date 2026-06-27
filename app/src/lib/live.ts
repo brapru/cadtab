@@ -1,8 +1,9 @@
-import type { CompileResult, LayoutConfig } from "./types";
+import type { CompileResult, LayoutConfig, ProjectContext } from "./types";
 
 export type CompileFn = (
   source: string,
   config: LayoutConfig,
+  ctx?: ProjectContext,
 ) => Promise<CompileResult>;
 
 // Serializes compile requests with latest-wins semantics: each run is tagged
@@ -17,10 +18,14 @@ export function createLiveCompiler(
 ) {
   let seq = 0;
 
-  async function run(source: string, config: LayoutConfig): Promise<boolean> {
+  async function run(
+    source: string,
+    config: LayoutConfig,
+    ctx?: ProjectContext,
+  ): Promise<boolean> {
     const mine = ++seq;
     try {
-      const result = await compileFn(source, config);
+      const result = await compileFn(source, config, ctx);
       if (mine !== seq) {
         return false;
       }

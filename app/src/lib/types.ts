@@ -102,3 +102,11 @@ export interface CompileResult {
 export interface LayoutConfig {
   width: number;
 }
+
+// Per-compile project context: how `import`s resolve. Desktop uses `basePath`
+// (the open document's path; imports resolve beside it on the real filesystem);
+// web uses `files` (an in-memory path->contents map from the project bundle).
+export interface ProjectContext {
+  basePath?: string | null;
+  files?: Record<string, string>;
+}
