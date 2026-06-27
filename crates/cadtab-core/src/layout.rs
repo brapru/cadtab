@@ -47,6 +47,11 @@ const LABEL_X: f32 = 1.0;
 const UNITS_PER_WHOLE: f32 = 8.0;
 // Padding inside a measure, before the first event and after the last.
 const MEASURE_PAD: f32 = 0.8;
+// Minimum gap between consecutive events. Spacing is otherwise time-proportional,
+// but sub-eighth values (16ths, 32nds) at their natural width pack the fret
+// numbers on top of one another, so the gap never drops below this floor. Kept
+// just under an eighth's width (1.0) so 16ths still read a touch tighter.
+const MIN_EVENT_GAP: f32 = 0.9;
 
 // The half-width of the gap a fret number opens in the string line behind it.
 const NUMBER_GAP: f32 = 0.6;
@@ -163,17 +168,19 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
 
 /// Resolve one measure to its width and measure-relative event placement.
 fn plan_measure(measure: &Measure) -> MeasurePlan {
-    let mut onset = Duration::zero();
+    let mut x = MEASURE_PAD;
     let mut events = Vec::with_capacity(measure.events.len());
     for event in &measure.events {
         events.push(PlacedEvent {
             positions: fretted_positions(&event.kind),
-            rel_x: MEASURE_PAD + span_width(onset),
+            rel_x: x,
             span: event.span,
         });
-        onset = onset.plus(event.duration());
+        // Advance to the next event: time-proportional, but never less than the
+        // minimum gap so dense rhythms keep their numbers legible.
+        x += span_width(event.duration()).max(MIN_EVENT_GAP);
     }
-    let width = MEASURE_PAD + span_width(onset) + MEASURE_PAD;
+    let width = x + MEASURE_PAD;
     let span = measure
         .events
         .iter()
@@ -1356,6 +1363,31 @@ mod tests {
             .filter(|b| matches!(b, Primitive::Line { y1, .. } if *y1 < primary - 1e-5))
             .count();
         assert_eq!(secondary, 2);
+    }
+
+    #[test]
+    fn sub_eighth_events_keep_a_minimum_gap() {
+        let d16 = Duration::from_denominator(16);
+        let sixteenths = Measure::new(vec![
+            note_dur(3, 0, 0, d16),
+            note_dur(2, 0, 4, d16),
+            note_dur(1, 0, 8, d16),
+        ]);
+        let tree = layout(&banjo_score(vec![sixteenths]), cfg());
+        let nums = fret_numbers(&tree);
+        // Time-proportionally 16ths are 0.5 apart; the floor lifts each gap to
+        // MIN_EVENT_GAP so the fret numbers do not overlap.
+        assert!((x_of(nums[1]) - x_of(nums[0]) - MIN_EVENT_GAP).abs() < 1e-5);
+        assert!((x_of(nums[2]) - x_of(nums[1]) - MIN_EVENT_GAP).abs() < 1e-5);
+
+        // Eighths are wider than the floor, so they keep proportional spacing.
+        let eighths = Measure::new(vec![eighth(3, 0, 0), eighth(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![eighths]), cfg());
+        let nums = fret_numbers(&tree);
+        assert!(
+            (x_of(nums[1]) - x_of(nums[0]) - span_width(Duration::from_denominator(8))).abs()
+                < 1e-5
+        );
     }
 
     /// Augmentation dots are the path primitives inside measure boxes (repeat
