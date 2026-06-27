@@ -16,6 +16,7 @@ Score {
     },
     instrument: Instrument {
         name: "banjo",
+        tuning: "Open G",
         strings: [
             StringDef {
                 open_pitch: Pitch(

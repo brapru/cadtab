@@ -12,8 +12,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "kind": "text",
       "x": 5.5,
       "y": 1.0,
-      "content": "gDGBD",
-      "role": "tuning",
+      "content": "banjo · gDGBD",
+      "role": "details",
       "span": null
     }
   ],

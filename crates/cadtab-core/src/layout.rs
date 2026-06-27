@@ -803,24 +803,24 @@ fn build_header(score: &Score, width: f32) -> (Vec<Primitive>, f32) {
     if let Some(composer) = &score.meta.composer {
         row(&mut prims, composer.clone(), TextRole::Composer, COMPOSER_H);
     }
+
+    // Collapse the performance details into one compact middot-joined row:
+    // tempo (if set) · instrument · tuning · capo (if any).
+    let mut details = Vec::new();
     if let Some(tempo) = score.meta.tempo {
-        row(
-            &mut prims,
-            format!("♩ = {tempo}"),
-            TextRole::Tempo,
-            META_LINE_H,
-        );
+        details.push(format!("♩ = {tempo}"));
+    }
+    details.push(score.instrument.name.clone());
+    details.push(tuning_label(score));
+    if !score.capo.is_empty() {
+        details.push(format!("Capo {}", score.capo.join(", ")));
     }
     row(
         &mut prims,
-        tuning_label(score),
-        TextRole::Tuning,
+        details.join(" · "),
+        TextRole::Details,
         META_LINE_H,
     );
-    if !score.capo.is_empty() {
-        let label = format!("Capo {}", score.capo.join(", "));
-        row(&mut prims, label, TextRole::Capo, META_LINE_H);
-    }
 
     (prims, y)
 }
@@ -1206,6 +1206,75 @@ mod tests {
         let plain_w = tree.systems[0].measures[1].bounds.w;
         let marked_w = tree.systems[0].measures[2].bounds.w;
         assert!((marked_w - plain_w - TIMESIG_WIDTH).abs() < 1e-3);
+    }
+
+    /// The content of the first header text prim carrying `role`, if any.
+    fn header_text(tree: &RenderTree, role: TextRole) -> Option<String> {
+        tree.header.iter().find_map(|p| match p {
+            Primitive::Text {
+                role: r, content, ..
+            } if *r == role => Some(content.clone()),
+            _ => None,
+        })
+    }
+
+    #[test]
+    fn the_header_collapses_details_into_one_inline_row() {
+        let score = Score {
+            meta: ScoreMeta {
+                title: Some("Cripple Creek".into()),
+                composer: Some("Trad.".into()),
+                tempo: Some(130),
+            },
+            instrument: Instrument::builtin("banjo").unwrap(),
+            capo: vec!["2".into()],
+            measures: vec![Measure::new(vec![note(3, 0, 0)])],
+        };
+        let tree = layout(&score, cfg());
+        assert_eq!(
+            header_text(&tree, TextRole::Title).as_deref(),
+            Some("Cripple Creek")
+        );
+        assert_eq!(
+            header_text(&tree, TextRole::Composer).as_deref(),
+            Some("Trad.")
+        );
+        // Tempo, instrument, tuning, and capo joined into one middot row.
+        assert_eq!(
+            header_text(&tree, TextRole::Details).as_deref(),
+            Some("♩ = 130 · banjo · gDGBD · Capo 2")
+        );
+        let details = tree
+            .header
+            .iter()
+            .filter(|p| {
+                matches!(
+                    p,
+                    Primitive::Text {
+                        role: TextRole::Details,
+                        ..
+                    }
+                )
+            })
+            .count();
+        assert_eq!(details, 1);
+    }
+
+    #[test]
+    fn the_details_row_omits_absent_tempo_and_capo() {
+        let score = Score {
+            meta: ScoreMeta::default(),
+            instrument: Instrument::builtin("banjo").unwrap(),
+            capo: vec![],
+            measures: vec![Measure::new(vec![note(3, 0, 0)])],
+        };
+        let tree = layout(&score, cfg());
+        // Only instrument and tuning remain — no dangling separators, no title.
+        assert_eq!(
+            header_text(&tree, TextRole::Details).as_deref(),
+            Some("banjo · gDGBD")
+        );
+        assert!(header_text(&tree, TextRole::Title).is_none());
     }
 
     #[test]

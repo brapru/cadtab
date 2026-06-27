@@ -11,7 +11,25 @@
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
   import type { CompileResult, Span } from "./lib/types";
 
-  const initialDoc = "score {\n  3:0 2:0 1:0 5:0\n}\n";
+  // A feature-rich starter so the app opens showing the header details row,
+  // a time signature, beamed rhythms, and barlined measures end to end.
+  const initialDoc = `title    "Cripple Creek"
+composer "traditional"
+tempo    120
+
+instrument banjo
+tuning     openG
+capo "2"
+
+score {
+  time 4/4
+  default 1/8
+
+  3:0 2:0 1:0 5:0 3:0 2:0 1:0 5:0
+  3:2 3:4 2:0 1:0 5:0 1:0 2:0 3:0
+  3:0 2:0 1:0 5:0 3:0 2:0 1:0 5:0
+}
+`;
 
   let result = $state<CompileResult | null>(null);
   let error = $state("");

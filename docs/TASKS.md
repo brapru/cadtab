@@ -279,6 +279,17 @@ Entirely headless and test-driven (D18, D19, D20).
         renders at its natural width, leaving the system short. Stretch measures/events to fill
         the system line width (justified systems) so even a single bar fills the line, padding
         with empty space as needed. Layout justification pass; relates to T3.3/T3.4 and T4.7s.
+  - [ ] T4.7u — **Header redesign (lead-sheet style) + whole-sheet serif.** Supersedes the
+        T4.7g inline details row with a traditional banjo lead-sheet header (ref:
+        `docs/example-header.png`): centered title + bold composer, a left-aligned tuning block
+        (tuning **name** over a circled-number grid `①=D ③=G ⑤=g / ②=B ④=D`), a tempo line with
+        the ♩ glyph, and a capo line; all rendered sheet text set in serif. Built in two steps:
+        (1) **tuning-name plumbing** — carry a tuning display name through `Instrument`/eval
+        (`with_tuning("doubleC")` → "Double C", builtin defaults → "Open G"/"Standard"); (2)
+        **header + serif** — rework `build_header` (`layout.rs`), new `TextRole`s
+        (TuningName/TuningString/Tempo/Capo, drop Details), left-anchored header roles +
+        `font-family: serif` on `.tab text` (`Tab.svelte`). Decisions made with the user:
+        plumb the tuning name now; serif across the whole sheet; instrument name stays lowercase.
   - *Parked:* the showcase still emits 3 under-full-bar warnings on inherently-partial demo
     blocks (two voltas + the explicit `measure {}` fragment). Whether voltas / explicit measures
     should trigger under-full diagnostics at all is a diagnostics-quality question → revisit in

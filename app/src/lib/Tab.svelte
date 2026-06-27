@@ -43,9 +43,7 @@
   const TEXT_STYLE: Record<TextRole, TextStyle> = {
     title: { size: 1.5, weight: 600 },
     composer: { size: 0.9 },
-    tempo: { size: 0.85 },
-    tuning: { size: 0.85 },
-    capo: { size: 0.8 },
+    details: { size: 0.8 },
     fretNumber: { size: 1.3 },
     stringLabel: { size: 1.1 },
     timeSig: { size: 1.4, weight: 600 },
@@ -160,11 +158,13 @@
     text-anchor: middle;
     dominant-baseline: central;
   }
-  /* Hand/technique annotations read as secondary to the fret numbers. */
+  /* Hand/technique annotations read as secondary to the fret numbers; the
+     header details row reads as secondary to the title/composer. */
   .tab text[data-role="finger"],
   .tab text[data-role="technique"],
   .tab text[data-role="strum"],
-  .tab text[data-role="ending"] {
+  .tab text[data-role="ending"],
+  .tab text[data-role="details"] {
     fill: var(--tab-muted);
   }
   /* Span-bearing primitives are interactive: clickable, and accented while the

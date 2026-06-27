@@ -18,11 +18,13 @@ pub struct StringDef {
     pub label: String,
 }
 
-/// An instrument: an ordered set of strings, string 1 first.
+/// An instrument: an ordered set of strings, string 1 first, plus the display
+/// name of its current tuning (e.g. "Open G", "Double C") for the sheet header.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Instrument {
     pub name: String,
+    pub tuning: String,
     pub strings: Vec<StringDef>,
 }
 
@@ -31,6 +33,14 @@ pub const MAX_FRET: u32 = 24;
 
 /// An open-string layout: `(label, MIDI semitone)` from string 1 to string n.
 type TuningSpec = &'static [(&'static str, i16)];
+
+/// A tuning's lookup key (the `tuning` directive name), its header display name,
+/// and its open-string layout.
+struct Tuning {
+    key: &'static str,
+    display: &'static str,
+    spec: TuningSpec,
+}
 
 // MIDI semitone numbers (C4 = 60), listed string 1 → string n.
 //
@@ -57,41 +67,61 @@ const GUITAR_DROP_D: TuningSpec = &[
 ];
 
 /// The known tunings available to a `tuning` override.
-const TUNINGS: &[(&str, TuningSpec)] = &[
-    ("openG", BANJO_OPEN_G),
-    ("doubleC", BANJO_DOUBLE_C),
-    ("sawmill", BANJO_SAWMILL),
-    ("standard", GUITAR_STANDARD),
-    ("dropD", GUITAR_DROP_D),
+const TUNINGS: &[Tuning] = &[
+    Tuning {
+        key: "openG",
+        display: "Open G",
+        spec: BANJO_OPEN_G,
+    },
+    Tuning {
+        key: "doubleC",
+        display: "Double C",
+        spec: BANJO_DOUBLE_C,
+    },
+    Tuning {
+        key: "sawmill",
+        display: "Sawmill",
+        spec: BANJO_SAWMILL,
+    },
+    Tuning {
+        key: "standard",
+        display: "Standard",
+        spec: GUITAR_STANDARD,
+    },
+    Tuning {
+        key: "dropD",
+        display: "Drop D",
+        spec: GUITAR_DROP_D,
+    },
 ];
 
-fn named_tuning(name: &str) -> Option<TuningSpec> {
-    TUNINGS.iter().find(|(n, _)| *n == name).map(|(_, s)| *s)
+fn named_tuning(name: &str) -> Option<&'static Tuning> {
+    TUNINGS.iter().find(|t| t.key == name)
 }
 
 fn known_tuning_names() -> String {
-    TUNINGS
-        .iter()
-        .map(|(n, _)| *n)
-        .collect::<Vec<_>>()
-        .join(", ")
+    TUNINGS.iter().map(|t| t.key).collect::<Vec<_>>().join(", ")
 }
 
 impl Instrument {
     /// Resolve a builtin instrument (with its default tuning) by name.
     pub fn builtin(name: &str) -> Option<Instrument> {
-        let spec = match name {
-            "banjo" => BANJO_OPEN_G,
-            "guitar" => GUITAR_STANDARD,
+        // Each builtin opens in a default tuning, named for the header.
+        let default_tuning = match name {
+            "banjo" => "openG",
+            "guitar" => "standard",
             _ => return None,
         };
-        Some(Instrument::from_spec(name, spec))
+        let tuning = named_tuning(default_tuning).expect("builtin default tuning is known");
+        Some(Instrument::from_spec(name, tuning))
     }
 
-    fn from_spec(name: &str, spec: TuningSpec) -> Instrument {
+    fn from_spec(name: &str, tuning: &Tuning) -> Instrument {
         Instrument {
             name: name.to_string(),
-            strings: spec
+            tuning: tuning.display.to_string(),
+            strings: tuning
+                .spec
                 .iter()
                 .map(|&(label, midi)| StringDef {
                     open_pitch: Pitch(midi),
@@ -114,22 +144,22 @@ impl Instrument {
     /// Apply a named `tuning` override, replacing open-string pitches. Errors if
     /// the tuning is unknown or its string count differs from this instrument's.
     pub fn with_tuning(&self, name: &str, span: Span) -> Result<Instrument, Diagnostic> {
-        let spec = named_tuning(name).ok_or_else(|| {
+        let tuning = named_tuning(name).ok_or_else(|| {
             Diagnostic::error(span, format!("unknown tuning `{name}`"))
                 .with_help(format!("known tunings: {}", known_tuning_names()))
         })?;
-        if spec.len() != self.string_count() {
+        if tuning.spec.len() != self.string_count() {
             return Err(Diagnostic::error(
                 span,
                 format!(
                     "tuning `{name}` is for {} strings but {} has {}",
-                    spec.len(),
+                    tuning.spec.len(),
                     self.name,
                     self.string_count()
                 ),
             ));
         }
-        Ok(Instrument::from_spec(&self.name, spec))
+        Ok(Instrument::from_spec(&self.name, tuning))
     }
 
     /// Derive the sounding pitch of a fretted position, validating bounds.
@@ -209,6 +239,23 @@ mod tests {
         assert_eq!(open_pitches(&sawmill), vec![62, 60, 55, 50, 67]);
         // name is preserved across a retuning.
         assert_eq!(double_c.name, "banjo");
+    }
+
+    #[test]
+    fn tuning_display_name_is_carried() {
+        // Builtins open in their default tuning, named for the header.
+        assert_eq!(Instrument::builtin("banjo").unwrap().tuning, "Open G");
+        assert_eq!(Instrument::builtin("guitar").unwrap().tuning, "Standard");
+        // A retuning swaps in the override's display name.
+        let banjo = Instrument::builtin("banjo").unwrap();
+        assert_eq!(
+            banjo.with_tuning("doubleC", sp()).unwrap().tuning,
+            "Double C"
+        );
+        assert_eq!(
+            banjo.with_tuning("sawmill", sp()).unwrap().tuning,
+            "Sawmill"
+        );
     }
 
     #[test]
