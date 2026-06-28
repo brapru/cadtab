@@ -263,9 +263,9 @@
                 onclick={() => onTabClick(g.id, tab)}
                 ondblclick={() => (workspace = toggleMaximize(workspace, g.id))}
               >
-                <span class="tab-icon" aria-hidden="true"
-                  >{viewDef(tab.type)?.icon}</span
-                >
+                <span class="tab-icon">
+                  <Icon name={viewDef(tab.type)?.icon ?? ""} size={16} />
+                </span>
                 <span class="tab-title">{viewDef(tab.type)?.title}</span>
               </button>
               {#if tab.type === "editor"}
@@ -314,7 +314,7 @@
               title="Split the active tab into its own group"
               onclick={() => (workspace = splitTab(workspace, g.id))}
             >
-              ◫
+              <Icon name="vertical_split" size={16} />
             </button>
           {/if}
           <button
@@ -325,7 +325,10 @@
             title={workspace.maximizedId ? "Restore" : "Maximize"}
             onclick={() => (workspace = toggleMaximize(workspace, g.id))}
           >
-            {workspace.maximizedId ? "▢" : "▣"}
+            <Icon
+              name={workspace.maximizedId ? "close_fullscreen" : "open_in_full"}
+              size={16}
+            />
           </button>
         </div>
       </div>
@@ -425,7 +428,8 @@
     opacity: 0.5;
   }
   .tab-icon {
-    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
   }
   .tab-launch,
   .tab-close {

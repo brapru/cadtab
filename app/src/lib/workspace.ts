@@ -16,7 +16,7 @@ export type ViewKind = "global-singleton" | "document-bound";
 export interface ViewDef {
   type: string;
   title: string;
-  icon: string;
+  icon: string; // a Material Symbols ligature name (rendered via Icon.svelte)
   kind: ViewKind;
 }
 
@@ -28,25 +28,25 @@ export const VIEWS: Record<string, ViewDef> = {
   editor: {
     type: "editor",
     title: "Editor",
-    icon: "✎",
+    icon: "edit",
     kind: "document-bound",
   },
   render: {
     type: "render",
     title: "Render",
-    icon: "♪",
+    icon: "music_note",
     kind: "document-bound",
   },
   preview: {
     type: "preview",
     title: "Preview",
-    icon: "❏",
+    icon: "preview",
     kind: "document-bound",
   },
   bottomBar: {
     type: "bottomBar",
     title: "Status Bar",
-    icon: "▭",
+    icon: "info",
     kind: "global-singleton",
   },
 };
