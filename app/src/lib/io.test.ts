@@ -7,6 +7,8 @@ const writeTextFileMock = vi.fn();
 const writeFileMock = vi.fn();
 const readDirMock = vi.fn();
 const watchImmediateMock = vi.fn();
+const mkdirMock = vi.fn();
+const removeMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: (...args: unknown[]) => openMock(...args),
   save: (...args: unknown[]) => saveMock(...args),
@@ -17,18 +19,24 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   writeFile: (...args: unknown[]) => writeFileMock(...args),
   readDir: (...args: unknown[]) => readDirMock(...args),
   watchImmediate: (...args: unknown[]) => watchImmediateMock(...args),
+  mkdir: (...args: unknown[]) => mkdirMock(...args),
+  remove: (...args: unknown[]) => removeMock(...args),
 }));
 
 import {
   basename,
   joinPath,
   toRelative,
+  resolvePath,
   withCtabExtension,
   defaultDocName,
   collectCtabFiles,
   openFolder,
   rescanFolder,
   watchFolder,
+  createFile,
+  createDir,
+  removePath,
   openProject,
   saveDocument,
   saveBundle,
@@ -84,6 +92,25 @@ describe("io path/name helpers", () => {
     );
     // A path not under root still comes back normalized (leading sep dropped).
     expect(toRelative("/other", "/proj/tune.ctab")).toBe("proj/tune.ctab");
+  });
+
+  it("resolvePath rejoins a forward-slash key under root with its separator", () => {
+    expect(resolvePath("/proj", "licks/roll.ctab")).toBe(
+      "/proj/licks/roll.ctab",
+    );
+    expect(resolvePath("C:\\proj", "licks/roll.ctab")).toBe(
+      "C:\\proj\\licks\\roll.ctab",
+    );
+    expect(resolvePath("/proj", "tune.ctab")).toBe("/proj/tune.ctab");
+  });
+});
+
+describe("io fs ops off-desktop (web)", () => {
+  it("createFile / createDir / removePath are no-ops without Tauri", async () => {
+    // No __TAURI_INTERNALS__ → web; the ops resolve without touching the plugin.
+    await expect(createFile("/x.ctab")).resolves.toBeUndefined();
+    await expect(createDir("/x")).resolves.toBeUndefined();
+    await expect(removePath("/x", true)).resolves.toBeUndefined();
   });
 });
 
@@ -193,9 +220,29 @@ describe("io desktop (Tauri) backend", () => {
     readTextFileMock.mockReset();
     writeTextFileMock.mockReset();
     readDirMock.mockReset();
+    mkdirMock.mockReset();
+    removeMock.mockReset();
     setTauri(true);
   });
   afterEach(() => setTauri(false));
+
+  it("createFile writes the (empty) file; createDir mkdirs recursively", async () => {
+    await createFile("/proj/licks/new.ctab");
+    expect(writeTextFileMock).toHaveBeenCalledWith("/proj/licks/new.ctab", "");
+    await createDir("/proj/drafts");
+    expect(mkdirMock).toHaveBeenCalledWith("/proj/drafts", {
+      recursive: true,
+    });
+  });
+
+  it("removePath deletes a file (non-recursive) and a folder (recursive)", async () => {
+    await removePath("/proj/tune.ctab", false);
+    expect(removeMock).toHaveBeenCalledWith("/proj/tune.ctab", {
+      recursive: false,
+    });
+    await removePath("/proj/licks", true);
+    expect(removeMock).toHaveBeenCalledWith("/proj/licks", { recursive: true });
+  });
 
   it("opens a single score via the dialog and reads the picked path", async () => {
     openMock.mockResolvedValue("/Users/x/foo.ctab");

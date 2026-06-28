@@ -48,6 +48,9 @@ vi.mock("./lib/wasm", () => ({
 const openProjectMock = vi.fn();
 const openFolderMock = vi.fn();
 const rescanFolderMock = vi.fn();
+const createFileMock = vi.fn();
+const createDirMock = vi.fn();
+const removePathMock = vi.fn();
 const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
 const saveSvgMock = vi.fn();
@@ -63,12 +66,18 @@ vi.mock("./lib/io", () => ({
     watchCallback = cb;
     return unwatchMock;
   },
+  createFile: (...args: unknown[]) => createFileMock(...args),
+  createDir: (...args: unknown[]) => createDirMock(...args),
+  removePath: (...args: unknown[]) => removePathMock(...args),
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
   savePng: (...args: unknown[]) => savePngMock(...args),
   defaultDocName: () => "untitled.ctab",
   basename: (p: string) => p.split(/[\\/]/).pop() || p,
+  resolvePath: (root: string, key: string) => `${root}/${key}`,
+  withCtabExtension: (n: string) =>
+    n.toLowerCase().endsWith(".ctab") ? n : `${n}.ctab`,
 }));
 
 // The desktop backend invokes a Tauri command to compile; stub it so a
@@ -1088,6 +1097,151 @@ describe("App", () => {
       expect(container.querySelector(".dock .folder")?.textContent).toContain(
         "drafts",
       );
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: New File from the dock creates the file and opens it as a tab", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      createFileMock.mockReset();
+      createFileMock.mockResolvedValue(undefined);
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score {}" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock-title")?.textContent).toBe(
+          "proj",
+        );
+      });
+
+      // Right-click empty dock space → New File → type a name → Enter.
+      await fireEvent.contextMenu(screen.getByLabelText("Project files"));
+      await fireEvent.click(screen.getByText("New File"));
+      const input = screen.getByLabelText("Name") as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: "newtune" } });
+      await fireEvent.keyDown(input, { key: "Enter" });
+
+      // The .ctab file is created at the live folder, then opened as an editor tab
+      // and listed in the dock.
+      await vi.waitFor(() =>
+        expect(createFileMock).toHaveBeenCalledWith("/proj/newtune.ctab", ""),
+      );
+      await vi.waitFor(() => {
+        expect(
+          [...container.querySelectorAll(".dock .file-name")].map(
+            (n) => n.textContent,
+          ),
+        ).toContain("newtune.ctab");
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: New Folder creates the directory and renders it empty in the dock", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      createDirMock.mockReset();
+      createDirMock.mockResolvedValue(undefined);
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score {}" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock-title")?.textContent).toBe(
+          "proj",
+        );
+      });
+
+      await fireEvent.contextMenu(screen.getByLabelText("Project files"));
+      await fireEvent.click(screen.getByText("New Folder"));
+      const input = screen.getByLabelText("Name") as HTMLInputElement;
+      await fireEvent.input(input, { target: { value: "drafts" } });
+      await fireEvent.keyDown(input, { key: "Enter" });
+
+      await vi.waitFor(() =>
+        expect(createDirMock).toHaveBeenCalledWith("/proj/drafts"),
+      );
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .folder")?.textContent).toContain(
+          "drafts",
+        );
+      });
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: Delete removes the file, closes its tab and drops the dock row", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      removePathMock.mockReset();
+      removePathMock.mockResolvedValue(undefined);
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score { 3:0 }" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeTruthy();
+      });
+      // Open the file so it has a live tab.
+      await fireEvent.click(container.querySelector(".dock .file")!);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "3:0",
+        );
+      });
+
+      // Right-click the dock file row → Delete → confirm in the modal.
+      await fireEvent.contextMenu(container.querySelector(".dock .file")!);
+      await fireEvent.click(screen.getByText("Delete"));
+      await fireEvent.click(container.querySelector(".btn.confirm")!);
+
+      await vi.waitFor(() =>
+        expect(removePathMock).toHaveBeenCalledWith("/proj/tune.ctab", false),
+      );
+      // The tab closed (no editor) and the dock row is gone.
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeNull();
+        expect(container.querySelector(".cm-content")).toBeNull();
+      });
     } finally {
       setDesktop(false);
     }

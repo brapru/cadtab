@@ -681,6 +681,21 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       normalize), `Dock.test.ts` (empty folder via `dirs`), `App.test.ts` (desktop: an empty scan dir
       renders in the dock). Pure/frontend-only (Vite HMR). **Next: 2.3 — New File/Folder/Delete fs ops +
       `fs:allow-mkdir`/`remove` (open the new file, close a deleted tab).**
+      **2.3 done:** the New File / New Folder / Delete ops hit the real live folder. `io.ts` gained
+      `resolvePath(root, key)` (rejoin a `/`-key under root with the platform separator — inverse of
+      `toRelative`) and desktop ops `createFile(path, content="")` (writeTextFile), `createDir(path)`
+      (mkdir recursive — idempotent), `removePath(path, recursive)` (remove) — each a no-op off-desktop.
+      Capabilities `fs:allow-mkdir` + `fs:allow-remove` added to `default.json` (binary-baked → needs a
+      `just dev` restart; `mkdir`/`remove` aren't feature-gated like `watch`, so no Cargo change). App's
+      `commitDockEdit` (now async) creates the file/folder, updates `projectFiles`/`filePaths`/`projectDirs`
+      optimistically, and **opens the new file as a tab** (a name collision just focuses the existing file);
+      `deleteEntry` confirms, `removePath`s (recursive for folders), then **force-closes** the orphaned
+      tab(s) via a guard-free `forceCloseDoc` (the user's explicit delete, vs the watcher's missing-on-disk
+      striking) and drops the rows (`omitKeys`); the watcher re-scan converges on the same state (idempotent,
+      no clobber). Rename still stubbed → 2.4. Tests: `io.test.ts` (resolvePath, create/mkdir/remove call
+      shape, web no-ops), `App.test.ts` (desktop: New File creates + opens + lists; New Folder creates +
+      renders empty; Delete removes + closes tab + drops row). **Verify on real desktop** (capabilities).
+      **Next: 2.4 — Rename + `fs:allow-rename` (open file follows: id/key/path/per-doc maps/workspace).**
 
 *Render content & labels:*
 

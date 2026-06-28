@@ -58,6 +58,11 @@
     savePng,
     defaultDocName,
     basename,
+    resolvePath,
+    withCtabExtension,
+    createFile,
+    createDir,
+    removePath,
   } from "./lib/io";
   import { renderTreeToSvg } from "./lib/svg";
   import { svgToPngBlob } from "./lib/png";
@@ -737,28 +742,110 @@ score {
     }
   }
 
-  function commitDockEdit(name: string) {
+  // Commit an inline name edit. New File/Folder create against the live folder,
+  // then update the map/dirs optimistically and open the new file — the watcher
+  // re-scan converges on the same state. (Rename lands in T7.36 2.4.)
+  async function commitDockEdit(name: string) {
     const edit = pendingEdit;
     pendingEdit = null;
-    if (!edit) return;
-    // STUB (T7.36 2.1): the fs ops (create/rename) land in 2.3/2.4.
-    console.log("dock edit", edit, "->", name);
+    const root = projectRoot;
+    if (!edit || !root) return;
+    if (edit.kind === "rename") {
+      // STUB (T7.36 2.4): rename + open-file-follows.
+      console.log("dock rename ->", name);
+      return;
+    }
+    const leaf = edit.kind === "new-file" ? withCtabExtension(name) : name;
+    const key = edit.parentPath ? `${edit.parentPath}/${leaf}` : leaf;
+    const abs = resolvePath(root, key);
+    try {
+      if (edit.kind === "new-file") {
+        // A name collision just focuses the existing file rather than clobbering.
+        if (key in projectFiles) return addOrFocusFile(key);
+        await createFile(abs, "");
+        projectFiles = { ...projectFiles, [key]: "" };
+        filePaths = { ...filePaths, [key]: abs };
+        addOrFocusFile(key);
+      } else {
+        await createDir(abs);
+        if (!projectDirs.includes(key)) projectDirs = [...projectDirs, key];
+      }
+    } catch (e) {
+      console.error("dock create failed:", e);
+      window.alert(`Could not create “${leaf}”: ${(e as Error).message}`);
+    }
   }
 
   function cancelDockEdit() {
     pendingEdit = null;
   }
 
+  // Delete a dock file or folder from the live folder after confirming. Then
+  // close any open tabs the delete orphaned (the file is gone, not just missing)
+  // and drop its rows optimistically; the watcher re-scan reconciles the rest.
   async function deleteEntry(target: Exclude<DockTarget, { kind: "root" }>) {
-    const name = basename(target.kind === "folder" ? target.path : target.path);
+    const key = target.path;
+    const isFolder = target.kind === "folder";
     const ok = await askConfirm({
-      message: `Delete “${name}”?`,
+      message: isFolder
+        ? `Delete folder “${basename(key)}” and everything in it?`
+        : `Delete “${basename(key)}”?`,
       confirmLabel: "Delete",
       destructive: true,
     });
-    if (!ok) return;
-    // STUB (T7.36 2.1): the fs remove + tab cleanup land in 2.3.
-    console.log("dock delete", target);
+    const root = projectRoot;
+    if (!ok || !root) return;
+    const abs =
+      (target.kind === "file" ? filePaths[key] : null) ??
+      resolvePath(root, key);
+    try {
+      await removePath(abs, isFolder);
+    } catch (e) {
+      console.error("dock delete failed:", e);
+      window.alert(
+        `Could not delete “${basename(key)}”: ${(e as Error).message}`,
+      );
+      return;
+    }
+    // Files removed: the target file, or every file under the deleted folder.
+    const gone = isFolder
+      ? Object.keys(projectFiles).filter(
+          (k) => k === key || k.startsWith(key + "/"),
+        )
+      : [key];
+    for (const k of gone) forceCloseDoc(`file:${k}`);
+    projectFiles = omitKeys(projectFiles, gone);
+    filePaths = omitKeys(filePaths, gone);
+    projectDirs = projectDirs.filter(
+      (d) => !(d === key || d.startsWith(key + "/")),
+    );
+  }
+
+  // Close every open view of a doc and drop its session — no dirty guard (an
+  // explicit delete is the user's intent). A no-op if the doc isn't open.
+  function forceCloseDoc(docId: string) {
+    let ws = workspace;
+    const ids = ws.groups
+      .flatMap((g) => g.tabs)
+      .filter((t) => t.docId === docId)
+      .map((t) => t.id);
+    if (ids.length === 0) return;
+    for (const id of ids) ws = closeTab(ws, id);
+    workspace = ws;
+    cleanupDoc(docId);
+    docStore = removeDoc(docStore, docId);
+    reconcileActive();
+  }
+
+  // A shallow copy of `map` without the given keys.
+  function omitKeys<T>(
+    map: Record<string, T>,
+    keys: string[],
+  ): Record<string, T> {
+    const drop = new Set(keys);
+    return Object.fromEntries(
+      Object.entries(map).filter(([k]) => !drop.has(k)),
+    );
   }
 
   // Save the current score. Overwrites the known path in place; for a never-

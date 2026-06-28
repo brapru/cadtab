@@ -221,6 +221,41 @@ export async function watchFolder(
   return watchImmediate(root, () => onChange(), { recursive: true });
 }
 
+/// Resolve a root-relative forward-slash key to an absolute path under `root`,
+/// joining segment by segment with the platform separator (so a Windows root
+/// gets backslashes). The inverse of `toRelative`.
+export function resolvePath(root: string, key: string): string {
+  return key.split("/").reduce((dir, seg) => joinPath(dir, seg), root);
+}
+
+/// Create a text file (empty by default) at an absolute path — the dock's New
+/// File against the live folder. Desktop-only; a no-op off-desktop.
+export async function createFile(path: string, content = ""): Promise<void> {
+  if (!isTauri()) return;
+  const { writeTextFile } = await import("@tauri-apps/plugin-fs");
+  await writeTextFile(path, content);
+}
+
+/// Create a directory (and any missing parents) — the dock's New Folder.
+/// Desktop-only; a no-op off-desktop. Recursive, so re-creating an existing
+/// folder is harmless.
+export async function createDir(path: string): Promise<void> {
+  if (!isTauri()) return;
+  const { mkdir } = await import("@tauri-apps/plugin-fs");
+  await mkdir(path, { recursive: true });
+}
+
+/// Delete a file, or a directory and its contents when `recursive` — the dock's
+/// Delete. Desktop-only; a no-op off-desktop.
+export async function removePath(
+  path: string,
+  recursive = false,
+): Promise<void> {
+  if (!isTauri()) return;
+  const { remove } = await import("@tauri-apps/plugin-fs");
+  await remove(path, { recursive });
+}
+
 /// Save a single score to `target`. Overwrites a known path silently (desktop),
 /// else prompts a Save dialog (desktop) or downloads (web). Null if cancelled.
 export function saveDocument(
