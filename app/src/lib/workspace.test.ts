@@ -310,6 +310,46 @@ describe("Workspace chrome", () => {
     ).toEqual(["editor", "render"]);
   });
 
+  it("labels tabs by filename when a docName resolver is supplied (icon carries the view type)", () => {
+    // D49: every view of one file shares its filename; the registry title is
+    // only a fallback. Both the editor and render of "doc" read "tune.ctab".
+    const { container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      docName: () => "tune.ctab",
+    });
+    expect(
+      [...container.querySelectorAll(".tab-title")].map((t) => t.textContent),
+    ).toEqual(["tune.ctab", "tune.ctab"]);
+  });
+
+  it("falls back to the registry title when the resolver yields no name", () => {
+    // An unsaved draft (resolver returns null) keeps the view's registry title.
+    const { container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      docName: () => null,
+    });
+    expect(
+      [...container.querySelectorAll(".tab-title")].map((t) => t.textContent),
+    ).toEqual(["Editor", "Render"]);
+  });
+
+  it("strikes the missing-on-disk tab on its filename label", () => {
+    // The missing strike rides the filename now that labels are filenames.
+    const { container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      docName: () => "tune.ctab",
+      missingDocIds: ["doc"],
+    });
+    const struck = [...container.querySelectorAll(".tab-title.missing")];
+    expect(struck.map((t) => t.textContent)).toEqual([
+      "tune.ctab",
+      "tune.ctab",
+    ]);
+  });
+
   it("maximizes a group, hiding the other and its gutter, then restores", async () => {
     const { container, getByLabelText } = mountShell();
 
@@ -459,17 +499,22 @@ describe("Workspace chrome", () => {
 
   it("shows a close affordance on every tab that reports the instance closed", async () => {
     const onCloseTab = vi.fn();
-    const { getByLabelText } = render(Workspace, {
+    const { container } = render(Workspace, {
       workspace: defaultWorkspace("doc"),
       view: stubView,
       onCloseTab,
     });
-    // One labelled close button per tab (editor + render).
-    await fireEvent.click(getByLabelText("Close Editor"));
+    // Every tab shares the uniform "Close tab" affordance; the close button is
+    // found via its tab's icon ("code" editor, "music_note" render).
+    const closeFor = (icon: string) =>
+      [...container.querySelectorAll(".tab-wrap")]
+        .find((w) => w.querySelector(".tab-icon")?.textContent === icon)!
+        .querySelector(".tab-close")!;
+    await fireEvent.click(closeFor("code"));
     expect(onCloseTab).toHaveBeenCalledWith(
       expect.objectContaining({ id: "editor:doc", type: "editor" }),
     );
-    await fireEvent.click(getByLabelText("Close Render"));
+    await fireEvent.click(closeFor("music_note"));
     expect(onCloseTab).toHaveBeenCalledWith(
       expect.objectContaining({ id: "render:doc", type: "render" }),
     );

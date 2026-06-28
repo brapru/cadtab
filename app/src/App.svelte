@@ -187,6 +187,12 @@ score {
     return id ? docStore.docs.find((d) => d.id === id) : undefined;
   }
 
+  // A doc's display filename for its tab labels (D49); an unsaved draft with no
+  // name yet reads as "untitled".
+  function docName(id: string): string {
+    return docFor(id)?.name ?? "untitled";
+  }
+
   // One latest-wins compiler per document, so interleaved compiles never clobber
   // each other's render.
   const compilers: Record<string, ReturnType<typeof createLiveCompiler>> = {};
@@ -278,11 +284,14 @@ score {
   }
 
   // The kind of view the user is focused on, so Cmd/Ctrl +/- zooms the right
-  // thing — the editor's code font vs. the render's scale.
+  // thing — the editor's code font vs. the render's scale. The full instance is
+  // also kept so Cmd/Ctrl-W can close whichever tab has focus.
   let focusedKind = $state<string>("editor");
+  let focusedInstance = $state<ViewInstance | null>(null);
   function focusView(inst: ViewInstance) {
     if (inst.docId) focusDoc(inst.docId);
     focusedKind = inst.type;
+    focusedInstance = inst;
   }
 
   // The workspace layout: the active doc's editor|render split. Opening a
@@ -488,6 +497,35 @@ score {
   $effect(() => {
     window.addEventListener("keydown", onDockKey);
     return () => window.removeEventListener("keydown", onDockKey);
+  });
+
+  // Cmd/Ctrl-W closes the focused tab (and on desktop overrides the webview's
+  // default of closing the whole window). Targets the focused view if it's still
+  // open, else the active tab of the first group — so the shortcut always has a
+  // sensible target while the workspace holds tabs.
+  function closeFocusedTab() {
+    const first = workspace.groups[0];
+    const stillOpen =
+      focusedInstance !== null &&
+      workspace.groups.some((g) =>
+        g.tabs.some((t) => t.id === focusedInstance!.id),
+      );
+    const focused = stillOpen
+      ? focusedInstance
+      : first
+        ? activeTab(first)
+        : null;
+    if (focused) void closeView(focused);
+  }
+  function onCloseTabKey(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    if (e.key.toLowerCase() !== "w") return;
+    e.preventDefault();
+    closeFocusedTab();
+  }
+  $effect(() => {
+    window.addEventListener("keydown", onCloseTabKey);
+    return () => window.removeEventListener("keydown", onCloseTabKey);
   });
 
   // Zoom is per view type: the editor's code font and the render's scale
@@ -1143,6 +1181,7 @@ score {
     <Workspace
       bind:workspace
       {missingDocIds}
+      {docName}
       onActivateView={focusView}
       onCloseTab={closeView}
       onOpenRender={openRender}

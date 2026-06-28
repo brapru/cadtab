@@ -106,6 +106,20 @@ vi.mock("./lib/png", () => ({
 
 import App from "./App.svelte";
 
+// Every tab's close button shares the uniform "Close tab" label, so a test that
+// closes a specific view finds the button via its tab's icon ligature ("code"
+// editor, "music_note" render, "preview" preview). Throws if no such tab is
+// open, so a stale target fails loudly.
+function closeTabBtn(container: ParentNode, icon: string): HTMLElement {
+  const wrap = [...container.querySelectorAll(".tab-wrap")].find(
+    (w) => w.querySelector(".tab-icon")?.textContent === icon,
+  );
+  if (!wrap) throw new Error(`no open tab with icon "${icon}"`);
+  return wrap.querySelector<HTMLElement>(".tab-close")!;
+}
+const closeRender = (c: ParentNode) => closeTabBtn(c, "music_note");
+const closeEditor = (c: ParentNode) => closeTabBtn(c, "code");
+
 describe("App", () => {
   it("renders the title heading", () => {
     render(App);
@@ -414,9 +428,12 @@ describe("App", () => {
     );
 
     // Activating the entry's editor tab (the first one — the lib was appended
-    // after it) makes it the active document again.
-    const entryTab = [...container.querySelectorAll(".tab")].find((t) =>
-      t.textContent?.includes("Editor"),
+    // after it) makes it the active document again. Tabs label by filename now
+    // (D49); the icon ligature ("code") distinguishes the editor view type.
+    const entryTab = [...container.querySelectorAll(".tab")].find(
+      (t) =>
+        t.querySelector(".tab-icon")?.textContent === "code" &&
+        t.querySelector(".tab-title")?.textContent === "tune.ctab",
     )!;
     await fireEvent.click(entryTab);
     await vi.waitFor(() =>
@@ -441,9 +458,10 @@ describe("App", () => {
       },
     });
     const { container, getByText } = render(App);
+    // Tabs label by filename now (D49); count editor tabs by the "code" icon.
     const editorTabs = () =>
-      [...container.querySelectorAll(".tab")].filter((t) =>
-        t.textContent?.includes("Editor"),
+      [...container.querySelectorAll(".tab-icon")].filter(
+        (t) => t.textContent === "code",
       );
 
     // Open the bundle, then a dock lib — two editor tabs open in this project.
@@ -584,8 +602,8 @@ describe("App", () => {
       expect(container.querySelector(".dialog")).toBeNull();
     });
     // The prior dirty doc is closed: a single editor tab for the opened file.
-    const editorTabs = [...container.querySelectorAll(".tab-title")].filter(
-      (t) => t.textContent === "Editor",
+    const editorTabs = [...container.querySelectorAll(".tab-icon")].filter(
+      (t) => t.textContent === "code",
     );
     expect(editorTabs).toHaveLength(1);
   });
@@ -627,14 +645,14 @@ describe("App", () => {
   });
 
   it("closes one view at a time, the session outliving its views", async () => {
-    const { container, getByLabelText } = render(App);
+    const { container } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
     // Closing the render (a clean doc → no prompt) drops only that view; the
     // editor and the document's session remain.
-    await fireEvent.click(getByLabelText("Close Render"));
+    await fireEvent.click(closeRender(container));
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).toBeNull();
       expect(container.querySelector(".cm-content")).not.toBeNull();
@@ -645,11 +663,34 @@ describe("App", () => {
     );
 
     // Closing the editor too removes the last view, emptying the layout.
-    await fireEvent.click(getByLabelText("Close Editor"));
+    await fireEvent.click(closeEditor(container));
     await vi.waitFor(() =>
       expect(container.querySelector(".cm-content")).toBeNull(),
     );
     expect(container.querySelectorAll(".tab")).toHaveLength(0);
+  });
+
+  it("closes the focused tab on Cmd/Ctrl-W", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    // Focus the render, then Cmd/Ctrl-W closes it (clean doc → no prompt),
+    // leaving the editor open.
+    await fireEvent.pointerDown(container.querySelector(".render-side")!);
+    await fireEvent.keyDown(window, { key: "w", metaKey: true });
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).toBeNull();
+      expect(container.querySelector(".cm-content")).not.toBeNull();
+    });
+
+    // Focus the editor and close it too — the layout empties.
+    await fireEvent.pointerDown(container.querySelector(".editor-pane")!);
+    await fireEvent.keyDown(window, { key: "w", ctrlKey: true });
+    await vi.waitFor(() =>
+      expect(container.querySelectorAll(".tab")).toHaveLength(0),
+    );
   });
 
   it("reopens a closed render from the active group's render control", async () => {
@@ -660,7 +701,7 @@ describe("App", () => {
 
     // Close the render — it's gone, and the editor group's control set (now
     // active) invites reopening it.
-    await fireEvent.click(getByLabelText("Close Render"));
+    await fireEvent.click(closeRender(container));
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).toBeNull();
       expect(getByLabelText("Open render")).toBeTruthy();
@@ -676,13 +717,13 @@ describe("App", () => {
   });
 
   it("closing the editor leaves its render view open", async () => {
-    const { container, getByLabelText } = render(App);
+    const { container } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
     // Views are independent: closing the (clean) editor keeps the render showing.
-    await fireEvent.click(getByLabelText("Close Editor"));
+    await fireEvent.click(closeEditor(container));
     await vi.waitFor(() =>
       expect(container.querySelector(".cm-content")).toBeNull(),
     );
@@ -691,7 +732,7 @@ describe("App", () => {
   });
 
   it("guards the editor close of a dirty doc, then the final-view discard", async () => {
-    const { container, getByLabelText } = render(App);
+    const { container } = render(App);
     let content!: Element;
     await vi.waitFor(() => {
       content = container.querySelector(".cm-content")!;
@@ -703,7 +744,7 @@ describe("App", () => {
     );
 
     // Closing the editor of a dirty doc warns; cancelling keeps it editable.
-    await fireEvent.click(getByLabelText("Close Editor"));
+    await fireEvent.click(closeEditor(container));
     let cancelBtn!: HTMLElement;
     await vi.waitFor(() => {
       cancelBtn = container.querySelector(".dialog .cancel")!;
@@ -713,7 +754,7 @@ describe("App", () => {
     expect(container.querySelector(".cm-content")).not.toBeNull();
 
     // Confirming closes the editor; the render keeps the dirty doc on screen.
-    await fireEvent.click(getByLabelText("Close Editor"));
+    await fireEvent.click(closeEditor(container));
     await vi.waitFor(() => {
       const confirm = container.querySelector<HTMLElement>(".dialog .confirm")!;
       expect(confirm).toBeTruthy();
@@ -727,7 +768,7 @@ describe("App", () => {
 
     // Closing the render is now the last view of a still-dirty doc: a final
     // discard prompt, after which the document is gone for good.
-    await fireEvent.click(getByLabelText("Close Render"));
+    await fireEvent.click(closeRender(container));
     await vi.waitFor(() => {
       const confirm = container.querySelector<HTMLElement>(".dialog .confirm")!;
       expect(confirm).toBeTruthy();
@@ -746,8 +787,8 @@ describe("App", () => {
     );
 
     // Empty the layout: close the render, then the (clean) editor.
-    await fireEvent.click(getByLabelText("Close Render"));
-    await fireEvent.click(getByLabelText("Close Editor"));
+    await fireEvent.click(closeRender(container));
+    await fireEvent.click(closeEditor(container));
     await vi.waitFor(() =>
       expect(container.querySelectorAll(".tab")).toHaveLength(0),
     );
@@ -868,8 +909,8 @@ describe("App", () => {
     );
     // The default document is still open alongside it (two editor tabs), with no
     // discard prompt — New never replaces the current doc.
-    const editorTabs = [...container.querySelectorAll(".tab-title")].filter(
-      (t) => t.textContent === "Editor",
+    const editorTabs = [...container.querySelectorAll(".tab-icon")].filter(
+      (t) => t.textContent === "code",
     );
     expect(editorTabs).toHaveLength(2);
   });
@@ -903,12 +944,13 @@ describe("App", () => {
 
     await fireEvent.click(screen.getByLabelText("Preview"));
 
-    // A Preview tab appears and renders the export SVG on a white sheet.
+    // A Preview tab appears and renders the export SVG on a white sheet. Tabs
+    // label by filename now (D49); the "preview" icon marks the preview view.
     await vi.waitFor(() => {
-      const titles = [...container.querySelectorAll(".tab-title")].map(
+      const icons = [...container.querySelectorAll(".tab-icon")].map(
         (t) => t.textContent,
       );
-      expect(titles).toContain("Preview");
+      expect(icons).toContain("preview");
       expect(container.querySelector(".sheet svg")).not.toBeNull();
     });
     // The preview is the standalone export SVG, not the live themed render.

@@ -23,6 +23,7 @@
     workspace = $bindable(),
     view,
     missingDocIds = [],
+    docName,
     onActivateView,
     onCloseTab,
     onOpenRender,
@@ -35,6 +36,10 @@
     // Doc ids whose backing file was deleted/moved on disk; their tabs render
     // struck-through until the doc is saved back.
     missingDocIds?: readonly string[];
+    // Resolve a doc id to its display filename (D49: tabs label by filename, the
+    // icon carries the view-type distinction). Falls back to the view's registry
+    // title when unset (singletons, or a doc with no name yet).
+    docName?: (docId: string) => string | null | undefined;
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
     onOpenRender?: (docId: string) => void;
@@ -95,6 +100,15 @@
         g.tabs.some((t) => t.type === type && t.docId === docId),
       )
     );
+  }
+
+  // A tab's visible label: the document's filename when known, else the view's
+  // registry title (singletons, or before a doc has a name). The icon — not the
+  // text — distinguishes editor/render/preview, so every view of one file shares
+  // the filename and the missing-on-disk strike rides that filename.
+  function tabLabel(tab: ViewInstance): string {
+    const name = tab.docId !== null ? docName?.(tab.docId) : null;
+    return name ?? viewDef(tab.type)?.title ?? "";
   }
 
   function activate(groupId: string, tab: ViewInstance) {
@@ -290,13 +304,13 @@
                   class:missing={tab.docId !== null &&
                     missingDocIds.includes(tab.docId)}
                 >
-                  {viewDef(tab.type)?.title}
+                  {tabLabel(tab)}
                 </span>
               </button>
               <button
                 class="tab-close"
-                aria-label="Close {viewDef(tab.type)?.title}"
-                use:tooltip={`Close ${viewDef(tab.type)?.title}`}
+                aria-label="Close tab"
+                use:tooltip={"Close tab"}
                 onclick={() => onCloseTab?.(tab)}
               >
                 <Icon name="close" size={14} />
