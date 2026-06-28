@@ -84,6 +84,17 @@ describe("Dock", () => {
     expect(depths).toEqual(["0", "1"]);
   });
 
+  it("renders empty folders passed via dirs", () => {
+    const { container } = render(Dock, {
+      entries: [file("tune.ctab")],
+      dirs: ["drafts"],
+    });
+    const folders = [...container.querySelectorAll(".folder .file-name")].map(
+      (n) => n.textContent,
+    );
+    expect(folders).toEqual(["drafts"]);
+  });
+
   it("collapses a folder's files when its row is clicked", async () => {
     const { container, getByText, queryByText } = render(Dock, {
       entries: [file("tune.ctab"), file("licks/roll.ctab")],

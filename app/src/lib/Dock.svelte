@@ -20,6 +20,7 @@
   // names are typed inline via a `pendingEdit` row the host drives.
   let {
     entries = [],
+    dirs = [],
     projectName = "Project",
     activeKey = null,
     canManage = false,
@@ -31,6 +32,7 @@
     onCancelEdit,
   }: {
     entries?: DockEntry[];
+    dirs?: string[];
     projectName?: string;
     activeKey?: string | null;
     canManage?: boolean;
@@ -42,7 +44,7 @@
     onCancelEdit?: () => void;
   } = $props();
 
-  const tree = $derived(projectTree(entries));
+  const tree = $derived(projectTree(entries, dirs));
 
   // Folders are expanded by default; this holds the ones collapsed by the user,
   // keyed by folder path so the state survives tree rebuilds.

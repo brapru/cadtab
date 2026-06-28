@@ -126,6 +126,7 @@ score {
   // (desktop folders only; null for bundle/single/web), and the dock header name.
   let projectFiles = $state<Record<string, string>>({});
   let filePaths = $state<Record<string, string>>({});
+  let projectDirs = $state<string[]>([]);
   let projectRoot = $state<string | null>(null);
   let projectName = $state("Project");
 
@@ -338,12 +339,14 @@ score {
   function openProjectInto(opts: {
     files: Record<string, string>;
     filePaths?: Record<string, string>;
+    dirs?: string[];
     openKey: string | null;
     projectName: string;
     root?: string | null;
   }) {
     projectFiles = opts.files;
     filePaths = opts.filePaths ?? {};
+    projectDirs = opts.dirs ?? [];
     projectRoot = opts.root ?? null;
     projectName = opts.projectName;
     resetDocState();
@@ -630,6 +633,7 @@ score {
     openProjectInto({
       files: folder.files,
       filePaths: folder.filePaths,
+      dirs: folder.dirs,
       openKey: null,
       projectName: folder.name,
       root: folder.root,
@@ -682,6 +686,7 @@ score {
     const recon = reconcileScan(scan, (key) => docFor(`file:${key}`)?.content);
     projectFiles = recon.files;
     filePaths = recon.filePaths;
+    projectDirs = recon.dirs;
     for (const { key, content } of recon.reloads) {
       const id = `file:${key}`;
       docStore = reloadDoc(docStore, id, content);
@@ -937,6 +942,7 @@ score {
     {#if dockOpen}
       <Dock
         entries={dockEntries}
+        dirs={projectDirs}
         {projectName}
         {activeKey}
         canManage={projectRoot !== null}

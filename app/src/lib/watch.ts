@@ -5,11 +5,13 @@
 export interface FolderScan {
   files: Record<string, string>; // key -> contents
   filePaths: Record<string, string>; // key -> absolute path
+  dirs: string[]; // every directory key, including empty ones
 }
 
 export interface FolderReconcile {
   files: Record<string, string>;
   filePaths: Record<string, string>;
+  dirs: string[];
   // Open project files whose disk content diverged from their buffer; the caller
   // swaps each tab to the disk content.
   reloads: { key: string; content: string }[];
@@ -31,5 +33,10 @@ export function reconcileScan(
       reloads.push({ key, content });
     }
   }
-  return { files: scan.files, filePaths: scan.filePaths, reloads };
+  return {
+    files: scan.files,
+    filePaths: scan.filePaths,
+    dirs: scan.dirs,
+    reloads,
+  };
 }

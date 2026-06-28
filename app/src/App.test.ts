@@ -1022,6 +1022,7 @@ describe("App", () => {
           "tune.ctab": "/proj/tune.ctab",
           "licks/roll.ctab": "/proj/licks/roll.ctab",
         },
+        dirs: ["licks"],
       });
       const { container } = render(App);
       await vi.waitFor(() => {
@@ -1056,6 +1057,42 @@ describe("App", () => {
     }
   });
 
+  it("desktop: renders an empty folder from the scan's directory keys", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score {}" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: ["drafts"],
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+
+      // The empty `drafts` folder (no .ctab files) still renders, sorted before
+      // the root file.
+      await vi.waitFor(() => {
+        expect(
+          [...container.querySelectorAll(".dock .file-name")].map(
+            (n) => n.textContent,
+          ),
+        ).toEqual(["drafts", "tune.ctab"]);
+      });
+      expect(container.querySelector(".dock .folder")?.textContent).toContain(
+        "drafts",
+      );
+    } finally {
+      setDesktop(false);
+    }
+  });
+
   it("desktop: saves an opened folder file back to its real fs path", async () => {
     setDesktop(true);
     try {
@@ -1070,6 +1107,7 @@ describe("App", () => {
         name: "proj",
         files: { "tune.ctab": "score {}" },
         filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
       });
       const { container } = render(App);
       await vi.waitFor(() => {
@@ -1111,6 +1149,7 @@ describe("App", () => {
         name: "proj",
         files: { "tune.ctab": "score { 3:0 }" },
         filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
       });
       const { container } = render(App);
       await vi.waitFor(() => {
@@ -1136,6 +1175,7 @@ describe("App", () => {
       rescanFolderMock.mockResolvedValue({
         files: { "tune.ctab": "score { 5:7 }" },
         filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
       });
       watchCallback!();
 
@@ -1165,6 +1205,7 @@ describe("App", () => {
         name: "proj",
         files: { "tune.ctab": "score { 3:0 }" },
         filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
       });
       const { container } = render(App);
       await vi.waitFor(() => {

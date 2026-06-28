@@ -90,6 +90,30 @@ describe("projectTree", () => {
     ]);
   });
 
+  it("materializes empty folders from dirs (with their ancestors)", () => {
+    const tree = projectTree(
+      [file("licks/roll.ctab"), file("tune.ctab")],
+      ["empty", "a/b", "licks"],
+    );
+    // `empty` and the nested `a/b` exist though they hold no files; `licks` from
+    // dirs is the same node the file folds into (not duplicated).
+    expect(outline(tree)).toEqual([
+      "[a]",
+      "  [b]",
+      "[empty]",
+      "[licks]",
+      "  roll.ctab",
+      "tune.ctab",
+    ]);
+    const licks = tree.filter((n) => n.kind === "folder" && n.name === "licks");
+    expect(licks).toHaveLength(1);
+  });
+
+  it("normalizes and ignores blank dir keys", () => {
+    const tree = projectTree([], ["licks\\rolls", "/", ""]);
+    expect(outline(tree)).toEqual(["[licks]", "  [rolls]"]);
+  });
+
   it("carries the entry through to the file leaf (key + dirty)", () => {
     const tree = projectTree([file("top.ctab", true)]);
     const top = tree.find((n) => n.kind === "file");

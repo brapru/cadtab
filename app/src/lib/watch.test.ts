@@ -1,11 +1,15 @@
 import { describe, it, expect } from "vitest";
 import { reconcileScan, type FolderScan } from "./watch";
 
-const scan = (files: Record<string, string>): FolderScan => ({
+const scan = (
+  files: Record<string, string>,
+  dirs: string[] = [],
+): FolderScan => ({
   files,
   filePaths: Object.fromEntries(
     Object.keys(files).map((k) => [k, "/proj/" + k]),
   ),
+  dirs,
 });
 
 describe("reconcileScan", () => {
@@ -38,5 +42,13 @@ describe("reconcileScan", () => {
   it("does not reload an open file already matching disk", () => {
     const r = reconcileScan(scan({ "tune.ctab": "SAME" }), () => "SAME");
     expect(r.reloads).toEqual([]);
+  });
+
+  it("carries the scan's directory keys through (empty folders persist)", () => {
+    const r = reconcileScan(
+      scan({ "licks/roll.ctab": "x" }, ["licks", "empty"]),
+      () => undefined,
+    );
+    expect(r.dirs).toEqual(["licks", "empty"]);
   });
 });

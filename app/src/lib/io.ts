@@ -121,27 +121,40 @@ export type OpenedFolder = {
   name: string;
   files: Record<string, string>;
   filePaths: Record<string, string>;
+  dirs: string[];
 };
+
+/// The result of walking a live folder: the `.ctab` file map (key -> contents),
+/// key -> absolute path for write-back, and the root-relative key of every
+/// (non-dot) directory — including empty ones, so the dock can render folders
+/// that hold no files yet.
+export interface FolderContents {
+  files: Record<string, string>;
+  filePaths: Record<string, string>;
+  dirs: string[];
+}
 
 /// Walk a directory tree from `root`, collecting every `.ctab` file: its
 /// forward-slash key relative to root -> contents, plus key -> absolute path for
-/// write-back. Dot-directories are skipped. The fs access is injected (the real
-/// Tauri plugin in `openFolder`, fakes in tests), so the recursion stays pure.
+/// write-back, plus the key of every directory (so empty folders still render).
+/// Dot-directories are skipped. The fs access is injected (the real Tauri plugin
+/// in `openFolder`, fakes in tests), so the recursion stays pure.
 export async function collectCtabFiles(
   root: string,
   readDir: (dir: string) => Promise<DirEntry[]>,
   readFile: (path: string) => Promise<string>,
-): Promise<{
-  files: Record<string, string>;
-  filePaths: Record<string, string>;
-}> {
+): Promise<FolderContents> {
   const files: Record<string, string> = {};
   const filePaths: Record<string, string> = {};
+  const dirs: string[] = [];
   async function walk(dir: string): Promise<void> {
     for (const entry of await readDir(dir)) {
       const child = joinPath(dir, entry.name);
       if (entry.isDirectory) {
-        if (!entry.name.startsWith(".")) await walk(child);
+        if (!entry.name.startsWith(".")) {
+          dirs.push(toRelative(root, child));
+          await walk(child);
+        }
       } else if (entry.isFile && entry.name.toLowerCase().endsWith(CTAB_EXT)) {
         const key = toRelative(root, child);
         // Read tolerantly: a file listed by readDir can vanish before we read it
@@ -160,7 +173,7 @@ export async function collectCtabFiles(
     }
   }
   await walk(root);
-  return { files, filePaths };
+  return { files, filePaths, dirs };
 }
 
 /// Open a whole project directory (desktop only — web has no folder access until
@@ -172,21 +185,18 @@ export async function openFolder(): Promise<OpenedFolder | null> {
   const root = await open({ directory: true });
   if (typeof root !== "string") return null;
   const { readDir, readTextFile } = await import("@tauri-apps/plugin-fs");
-  const { files, filePaths } = await collectCtabFiles(
+  const { files, filePaths, dirs } = await collectCtabFiles(
     root,
     (dir) => readDir(dir) as Promise<DirEntry[]>,
     readTextFile,
   );
-  return { root, name: basename(root), files, filePaths };
+  return { root, name: basename(root), files, filePaths, dirs };
 }
 
 /// Re-read a folder's `.ctab` tree (desktop) — the fresh snapshot a watch event
-/// reconciles against. Returns the same `{ files, filePaths }` shape `openFolder`
+/// reconciles against. Returns the same `FolderContents` shape `openFolder`
 /// builds.
-export async function rescanFolder(root: string): Promise<{
-  files: Record<string, string>;
-  filePaths: Record<string, string>;
-}> {
+export async function rescanFolder(root: string): Promise<FolderContents> {
   const { readDir, readTextFile } = await import("@tauri-apps/plugin-fs");
   return collectCtabFiles(
     root,

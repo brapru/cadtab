@@ -48,27 +48,42 @@ export type PendingEdit =
 // Fold dock entries into a folder hierarchy by splitting each path on `/` (or
 // `\`): every segment but the last is a nested folder, the last is the file
 // leaf. Path-null entries (unsaved drafts) become root leaves named by `name`.
-// Folders sort before files, each alphabetical by name (case-insensitive).
-export function projectTree(entries: DockEntry[]): TreeNode[] {
+// `dirs` (root-relative folder keys from a live-folder scan) materializes empty
+// folders that hold no files yet, so they render and survive rescans. Folders
+// sort before files, each alphabetical by name (case-insensitive).
+export function projectTree(
+  entries: DockEntry[],
+  dirs: string[] = [],
+): TreeNode[] {
   const roots: TreeNode[] = [];
   const folders = new Map<string, TreeFolderNode>();
 
+  // Get (or create, with its ancestors) the folder node for a `/`-keyed path.
+  function ensureFolder(path: string): TreeFolderNode {
+    const existing = folders.get(path);
+    if (existing) return existing;
+    const segments = path.split("/");
+    const name = segments[segments.length - 1];
+    const parentPath = segments.slice(0, -1).join("/");
+    const node: TreeFolderNode = { kind: "folder", name, path, children: [] };
+    folders.set(path, node);
+    (parentPath ? ensureFolder(parentPath).children : roots).push(node);
+    return node;
+  }
+
+  for (const dir of dirs) {
+    const key = dir.replace(/\\/g, "/").replace(/^\/+|\/+$/g, "");
+    if (key) ensureFolder(key);
+  }
+
   for (const entry of entries) {
     const segments = (entry.path ?? "").split(/[\\/]/).filter((s) => s !== "");
-    let siblings = roots;
-    let prefix = "";
-    for (let i = 0; i < segments.length - 1; i++) {
-      const seg = segments[i];
-      prefix = prefix ? `${prefix}/${seg}` : seg;
-      let folder = folders.get(prefix);
-      if (!folder) {
-        folder = { kind: "folder", name: seg, path: prefix, children: [] };
-        folders.set(prefix, folder);
-        siblings.push(folder);
-      }
-      siblings = folder.children;
+    const file: TreeFileNode = { kind: "file", name: entry.name, entry };
+    if (segments.length <= 1) {
+      roots.push(file);
+    } else {
+      ensureFolder(segments.slice(0, -1).join("/")).children.push(file);
     }
-    siblings.push({ kind: "file", name: entry.name, entry });
   }
 
   sortNodes(roots);

@@ -121,7 +121,7 @@ describe("collectCtabFiles", () => {
         "/proj/licks/pinch.ctab": "def pinch() {}",
       },
     );
-    const { files, filePaths } = await collectCtabFiles(
+    const { files, filePaths, dirs } = await collectCtabFiles(
       "/proj",
       readDir,
       readFile,
@@ -133,6 +133,28 @@ describe("collectCtabFiles", () => {
     });
     // Non-.ctab files are skipped; abs paths map back for write-back.
     expect(filePaths["licks/roll.ctab"]).toBe("/proj/licks/roll.ctab");
+    // Every directory is reported (relative keys) so the dock can render them.
+    expect(dirs).toEqual(["licks"]);
+  });
+
+  it("reports empty directories so they still render (and excludes dot-dirs)", async () => {
+    const { readDir, readFile } = fakeFs(
+      {
+        "/proj": [dir("empty"), dir("licks"), dir(".git"), file("tune.ctab")],
+        "/proj/empty": [],
+        "/proj/licks": [file("roll.ctab")],
+        "/proj/.git": [file("config.ctab")],
+      },
+      {
+        "/proj/tune.ctab": "score {}",
+        "/proj/licks/roll.ctab": "def roll() {}",
+      },
+    );
+    const { files, dirs } = await collectCtabFiles("/proj", readDir, readFile);
+    // Walk order: `empty` (no files), then `licks/roll.ctab`, then the root file.
+    expect(Object.keys(files)).toEqual(["licks/roll.ctab", "tune.ctab"]);
+    // `empty` holds no .ctab files but is still reported; `.git` is skipped.
+    expect(dirs).toEqual(["empty", "licks"]);
   });
 
   it("skips a listed file that vanishes (errors) on read, keeping the rest", async () => {
@@ -342,6 +364,7 @@ describe("io desktop (Tauri) backend", () => {
         "tune.ctab": "/proj/tune.ctab",
         "licks/roll.ctab": "/proj/licks/roll.ctab",
       },
+      dirs: ["licks"],
     });
   });
 
@@ -363,6 +386,7 @@ describe("io desktop (Tauri) backend", () => {
     expect(scan).toEqual({
       files: { "tune.ctab": "score { 5:7 }" },
       filePaths: { "tune.ctab": "/proj/tune.ctab" },
+      dirs: [],
     });
   });
 
