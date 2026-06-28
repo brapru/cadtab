@@ -140,13 +140,13 @@ describe("App", () => {
     });
   });
 
-  it("resizes the panes from the gutter arrow keys", async () => {
+  it("resizes the groups from the gutter arrow keys", async () => {
     const { container } = render(App);
     const gutter = container.querySelector('[role="slider"]')!;
-    const editorPane = container.querySelector(".editor-pane") as HTMLElement;
+    const leftGroup = container.querySelector(".group") as HTMLElement;
 
     expect(gutter.getAttribute("aria-valuenow")).toBe("50");
-    expect(editorPane.style.flex).not.toBe("");
+    expect(leftGroup.style.flex).not.toBe("");
 
     await fireEvent.keyDown(gutter, { key: "ArrowRight" });
     expect(gutter.getAttribute("aria-valuenow")).toBe("52");

@@ -1,12 +1,16 @@
 <script lang="ts">
   import Editor from "./lib/Editor.svelte";
   import Tab from "./lib/Tab.svelte";
+  import Workspace from "./lib/Workspace.svelte";
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
   import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
   import { narrowestSpanAt } from "./lib/mapping";
-  import { clampSplit, splitFromPointer } from "./lib/split";
+  import {
+    defaultWorkspace,
+    type Workspace as WorkspaceModel,
+  } from "./lib/workspace";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
   import {
@@ -137,29 +141,11 @@ score {
     activeSpan = null;
   }
 
-  // Draggable split between the editor and render panes; editor takes
-  // `splitRatio` of the width, render the rest. Arrow keys nudge it for keyboard
-  // users.
-  let panesEl: HTMLDivElement;
-  let splitRatio = $state(0.5);
-  let dragging = $state(false);
-
-  function startDrag(e: PointerEvent) {
-    dragging = true;
-    (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
-  }
-  function onDrag(e: PointerEvent) {
-    if (!dragging) return;
-    splitRatio = splitFromPointer(e.clientX, panesEl.getBoundingClientRect());
-  }
-  function endDrag(e: PointerEvent) {
-    dragging = false;
-    (e.currentTarget as HTMLElement).releasePointerCapture?.(e.pointerId);
-  }
-  function onGutterKey(e: KeyboardEvent) {
-    if (e.key === "ArrowLeft") splitRatio = clampSplit(splitRatio - 0.02);
-    else if (e.key === "ArrowRight") splitRatio = clampSplit(splitRatio + 0.02);
-  }
+  // The workspace layout (D41): editor and render as two groups, today's split
+  // expressed through the editor-groups model. A single stable doc id for now;
+  // T7.4 gives each open `.ctab` its own id so tabs can span files.
+  const docId = "doc";
+  let workspace = $state<WorkspaceModel>(defaultWorkspace(docId));
 
   // Visual zoom of the render. Fit returns to 1, which fills the pane width since
   // layout already reflows to it.
@@ -376,61 +362,50 @@ score {
       >
     </div>
   </header>
-  <div class="panes" bind:this={panesEl}>
-    <div class="editor-pane" style="flex: {splitRatio}">
-      <Editor
-        doc={initialDoc}
-        {onChange}
-        onCursor={handleCursor}
-        {selection}
-        {loadRequest}
-        tokens={result?.tokens ?? []}
-        diagnostics={result?.diagnostics ?? []}
-      />
-    </div>
-    <!-- The splitter is a slider over the editor's share of the width: drag it,
-         or use the arrow keys when focused. -->
-    <div
-      class="gutter"
-      class:dragging
-      role="slider"
-      aria-label="Resize editor and render panes"
-      aria-valuemin={15}
-      aria-valuemax={85}
-      aria-valuenow={Math.round(splitRatio * 100)}
-      tabindex="0"
-      onpointerdown={startDrag}
-      onpointermove={onDrag}
-      onpointerup={endDrag}
-      onkeydown={onGutterKey}
-    ></div>
-    <div class="render-side" style="flex: {1 - splitRatio}">
-      <div class="render-toolbar">
-        <button onclick={zoomOut} aria-label="Zoom out">−</button>
-        <span class="zoom-level">{Math.round(zoom * 100)}%</span>
-        <button onclick={zoomIn} aria-label="Zoom in">+</button>
-        <button onclick={zoomFit} aria-label="Fit to width">Fit</button>
-      </div>
-      <!-- svelte-ignore a11y_no_static_element_interactions -->
-      <div
-        class="render-pane"
-        bind:clientWidth={paneWidth}
-        onclick={clearHighlight}
-        onkeydown={(e) => e.key === "Escape" && clearHighlight()}
-      >
-        {#if result}
-          <Tab
-            tree={result.renderTree}
-            {zoom}
-            {activeSpan}
-            onPrimitiveClick={handlePrimitiveClick}
+  <Workspace bind:workspace>
+    {#snippet view(instance)}
+      {#if instance.type === "editor"}
+        <div class="editor-pane">
+          <Editor
+            doc={initialDoc}
+            {onChange}
+            onCursor={handleCursor}
+            {selection}
+            {loadRequest}
+            tokens={result?.tokens ?? []}
+            diagnostics={result?.diagnostics ?? []}
           />
-        {:else if error}
-          <p class="error">{error}</p>
-        {/if}
-      </div>
-    </div>
-  </div>
+        </div>
+      {:else if instance.type === "render"}
+        <div class="render-side">
+          <div class="render-toolbar">
+            <button onclick={zoomOut} aria-label="Zoom out">−</button>
+            <span class="zoom-level">{Math.round(zoom * 100)}%</span>
+            <button onclick={zoomIn} aria-label="Zoom in">+</button>
+            <button onclick={zoomFit} aria-label="Fit to width">Fit</button>
+          </div>
+          <!-- svelte-ignore a11y_no_static_element_interactions -->
+          <div
+            class="render-pane"
+            bind:clientWidth={paneWidth}
+            onclick={clearHighlight}
+            onkeydown={(e) => e.key === "Escape" && clearHighlight()}
+          >
+            {#if result}
+              <Tab
+                tree={result.renderTree}
+                {zoom}
+                {activeSpan}
+                onPrimitiveClick={handlePrimitiveClick}
+              />
+            {:else if error}
+              <p class="error">{error}</p>
+            {/if}
+          </div>
+        </div>
+      {/if}
+    {/snippet}
+  </Workspace>
 </main>
 
 <style>
@@ -507,18 +482,19 @@ score {
     font-size: 1rem;
     line-height: 1;
   }
-  .panes {
-    display: flex;
+  .editor-pane {
     flex: 1;
     min-height: 0;
-  }
-  .editor-pane {
     min-width: 0;
-  }
-  .render-side {
     display: flex;
     flex-direction: column;
+  }
+  .render-side {
+    flex: 1;
+    min-height: 0;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
   }
   .render-toolbar {
     display: flex;
@@ -547,19 +523,6 @@ score {
     padding: 1rem;
     overflow: auto;
     min-width: 0;
-  }
-  /* Draggable divider between the two panes. */
-  .gutter {
-    flex: 0 0 6px;
-    cursor: col-resize;
-    background: var(--border);
-    touch-action: none;
-  }
-  .gutter:hover,
-  .gutter.dragging,
-  .gutter:focus-visible {
-    background: color-mix(in srgb, var(--fg) 35%, transparent);
-    outline: none;
   }
   .error {
     opacity: 0.7;

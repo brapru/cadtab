@@ -368,12 +368,17 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
 
 **Workspace shell (D41 — view registry + editor groups):**
 
-- [ ] **T7.1 — Shell foundation: view registry + editor-groups layout.** The abstraction the rest
+- [x] **T7.1 — Shell foundation: view registry + editor-groups layout.** The abstraction the rest
       of the shell stands on (D41): a registry of *views* (`id`, title, icon, mount/unmount,
       serializable state), classed as **global singletons** (dock, bottom bar) or **document-bound**
       (editor, render, preview, looper). Layout = **editor groups** — panes holding stacked tabs —
       with split, move-tab-between-groups, resize, and **maximize ("zoom") a group**. Generalizes
       today's editor|render split (its N=2, one-tab-each case). No free-floating docking (deferred).
+  - *Landed (incremental scope):* pure model `workspace.ts` (view registry; groups → tabs → active;
+    weights; `activateTab`/`resizePair`/`toggleMaximize`) + `Workspace.svelte` chrome (tab strips,
+    resize gutters, per-group maximize) mounting each active view via a Svelte snippet. `App.svelte`
+    now drives the editor|render split through this model. **Deferred to when a second tab exists
+    (T7.4/T7.5):** adding groups (split), moving a tab between groups, and layout serialization.
 - [ ] **T7.2 — Left project dock + Cmd/Ctrl-B.** *(global-singleton view)* Collapsible left dock
       showing project structure, toggled by Cmd/Ctrl-B and a bottom-bar button. The file tree comes
       from the project/import model (M5, D38) — a live folder on desktop / Chromium-web, or the
