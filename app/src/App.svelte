@@ -405,13 +405,10 @@ score {
   });
 
   // Start a new untitled document from a starter template as its own tab in the
-  // current project context. The `<select>` resets to its placeholder after each
-  // pick. No discard guard: opening never replaces the edited doc, it adds a tab.
-  let newChoice = $state("");
-  function onNewSelect() {
-    const id = newChoice;
-    newChoice = "";
-    const template = id ? templateById(id) : undefined;
+  // current project context — driven by the tab-strip New ("+") menu (T7.12). No
+  // discard guard: opening never replaces the edited doc, it adds a tab.
+  function newFromTemplate(id: string) {
+    const template = templateById(id);
     if (!template) return;
     openDoc({
       id: `untitled-${++untitledCount}`,
@@ -594,17 +591,6 @@ score {
       </span>
     </div>
     <div class="actions">
-      <select
-        class="new-select"
-        aria-label="New from template"
-        bind:value={newChoice}
-        onchange={onNewSelect}
-      >
-        <option value="" disabled>New…</option>
-        {#each TEMPLATES as t (t.id)}
-          <option value={t.id}>{t.label}</option>
-        {/each}
-      </select>
       <button onclick={openFile} title="Open score or project (Cmd/Ctrl+O)"
         >Open</button
       >
@@ -647,6 +633,8 @@ score {
       onActivateView={(inst) => inst.docId && focusDoc(inst.docId)}
       onCloseTab={closeView}
       onOpenRender={openRender}
+      onNew={newFromTemplate}
+      newTemplates={TEMPLATES}
     >
       {#snippet view(instance)}
         <!-- Key by instance so switching a group to a different document's tab
@@ -766,8 +754,7 @@ score {
     margin: 0.15rem 0.15rem;
     background: var(--border);
   }
-  .actions button,
-  .new-select {
+  .actions button {
     border: 1px solid var(--border);
     background: transparent;
     color: inherit;
@@ -776,9 +763,6 @@ score {
     cursor: pointer;
     font-size: 0.85rem;
     line-height: 1;
-  }
-  .new-select {
-    font-family: inherit;
   }
   .theme-toggle {
     border: 1px solid var(--border);

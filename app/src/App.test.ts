@@ -675,9 +675,10 @@ describe("App", () => {
       expect(container.querySelectorAll(".tab")).toHaveLength(0),
     );
 
-    // New from a template rebuilds the editor|render split from scratch.
-    const select = getByLabelText("New from template") as HTMLSelectElement;
-    await fireEvent.change(select, { target: { value: "guitar" } });
+    // The empty-tabs placeholder still offers New; picking a template rebuilds
+    // the editor|render split from scratch.
+    await fireEvent.click(getByLabelText("New tab"));
+    await fireEvent.click(screen.getByText("Guitar (standard)"));
     await vi.waitFor(() => {
       expect(container.querySelector(".cm-content")?.textContent).toContain(
         "instrument guitar",
@@ -743,16 +744,16 @@ describe("App", () => {
     expect(blob.type).toBe("image/png");
   });
 
-  it("opens a new document from a template as its own untitled tab", async () => {
-    const { container, getByLabelText } = render(App);
+  it("opens a new document from the New + menu as its own untitled tab", async () => {
+    const { container, getAllByLabelText } = render(App);
     await vi.waitFor(() => {
       expect(container.querySelector(".cm-content")).toBeTruthy();
     });
 
-    const select = getByLabelText("New from template") as HTMLSelectElement;
-
-    // New opens the chosen template as a fresh untitled tab and focuses it.
-    await fireEvent.change(select, { target: { value: "guitar" } });
+    // The tab-strip New "+" opens a template menu; picking one opens a fresh
+    // untitled tab and focuses it. (Each group carries a "+"; use the first.)
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    await fireEvent.click(screen.getByText("Guitar (standard)"));
     await vi.waitFor(() => {
       expect(container.querySelector(".cm-content")?.textContent).toContain(
         "instrument guitar",

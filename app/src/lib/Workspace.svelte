@@ -24,13 +24,46 @@
     onActivateView,
     onCloseTab,
     onOpenRender,
+    onNew,
+    newTemplates = [],
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
     onOpenRender?: (docId: string) => void;
+    onNew?: (templateId: string) => void;
+    newTemplates?: readonly { id: string; label: string }[];
   } = $props();
+
+  // The New ("+") control's open template menu, keyed by the control that owns it
+  // (a group id, or "empty" for the no-tabs placeholder) so only one is open.
+  let newMenuKey = $state<string | null>(null);
+  function toggleNewMenu(key: string) {
+    newMenuKey = newMenuKey === key ? null : key;
+  }
+  function chooseNew(id: string) {
+    newMenuKey = null;
+    onNew?.(id);
+  }
+  // Dismiss the menu on Escape or a pointer down outside it.
+  $effect(() => {
+    if (newMenuKey === null) return;
+    function onPointer(e: PointerEvent) {
+      const t = e.target;
+      if (t instanceof Element && t.closest(".new-wrap")) return;
+      newMenuKey = null;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") newMenuKey = null;
+    }
+    window.addEventListener("pointerdown", onPointer, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  });
 
   // Whether a document already has an open view of `type` anywhere in the layout
   // — drives the editor tab's render launcher (spawn vs. jump-to).
@@ -171,6 +204,37 @@
   }
 </script>
 
+<!-- The New ("+") control: a button that opens a template menu (T7.12), reused by
+     each group's controls and the empty-tabs placeholder. `key` scopes which
+     menu is open. -->
+{#snippet newControl(key: string)}
+  <div class="new-wrap">
+    <button
+      class="new"
+      aria-label="New tab"
+      aria-haspopup="menu"
+      aria-expanded={newMenuKey === key}
+      title="New tab"
+      onclick={() => toggleNewMenu(key)}
+    >
+      <Icon name="add" size={16} />
+    </button>
+    {#if newMenuKey === key}
+      <div class="new-menu" role="menu">
+        {#each newTemplates as t (t.id)}
+          <button
+            class="new-item"
+            role="menuitem"
+            onclick={() => chooseNew(t.id)}
+          >
+            {t.label}
+          </button>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
 <div class="workspace">
   {#each visible as g, i (g.id)}
     {@const active = activeTab(g)}
@@ -227,6 +291,7 @@
           {/each}
         </div>
         <div class="group-actions">
+          {@render newControl(g.id)}
           {#if g.tabs.length > 1}
             <button
               class="split"
@@ -272,6 +337,14 @@
       ></div>
     {/if}
   {/each}
+  {#if visible.length === 0}
+    <!-- No open tabs: keep a New control reachable (the topbar New moved here in
+         T7.12), so an emptied workspace can still spawn a document. -->
+    <div class="empty">
+      <p>No open tabs</p>
+      {@render newControl("empty")}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -365,8 +438,11 @@
     display: flex;
     align-items: stretch;
   }
+  .new,
   .split,
   .maximize {
+    display: flex;
+    align-items: center;
     border: none;
     background: transparent;
     color: var(--muted);
@@ -375,9 +451,67 @@
     font-size: 0.8rem;
     line-height: 1;
   }
+  .new:hover,
   .split:hover,
   .maximize:hover {
     color: var(--fg);
+  }
+  /* The New control anchors its template menu just below the "+". */
+  .new-wrap {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+  }
+  .new-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
+    padding: 0.25rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent);
+  }
+  .new-item {
+    border: none;
+    background: transparent;
+    color: var(--fg);
+    text-align: left;
+    padding: 0.35rem 0.55rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .new-item:hover {
+    background: color-mix(in srgb, var(--fg) 10%, transparent);
+  }
+  /* The no-tabs placeholder, centred in the empty workspace. */
+  .empty {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--muted);
+  }
+  .empty p {
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  .empty .new {
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    padding: 0.3rem 0.7rem;
+  }
+  .empty .new-menu {
+    right: auto;
   }
   .group-body {
     flex: 1;

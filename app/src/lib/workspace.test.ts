@@ -338,6 +338,71 @@ describe("Workspace chrome", () => {
     expect(container.querySelectorAll(".tab-launch")).toHaveLength(1);
   });
 
+  it("opens the New template menu and reports the chosen template", async () => {
+    const onNew = vi.fn();
+    const { getAllByLabelText, getByText, container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      onNew,
+      newTemplates: [
+        { id: "banjo", label: "Banjo" },
+        { id: "blank", label: "Blank" },
+      ],
+    });
+    // No menu until the "+" is clicked.
+    expect(container.querySelector(".new-menu")).toBeNull();
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    expect(container.querySelector(".new-menu")).not.toBeNull();
+
+    // Picking a template reports it and closes the menu.
+    await fireEvent.click(getByText("Blank"));
+    expect(onNew).toHaveBeenCalledWith("blank");
+    expect(container.querySelector(".new-menu")).toBeNull();
+  });
+
+  it("dismisses the New menu on Escape", async () => {
+    const { getAllByLabelText, container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      newTemplates: [{ id: "blank", label: "Blank" }],
+    });
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    expect(container.querySelector(".new-menu")).not.toBeNull();
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(container.querySelector(".new-menu")).toBeNull();
+  });
+
+  it("dismisses the New menu on a pointer down outside it", async () => {
+    const { getAllByLabelText, container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      newTemplates: [{ id: "blank", label: "Blank" }],
+    });
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    expect(container.querySelector(".new-menu")).not.toBeNull();
+    // A press outside the New control closes it...
+    await fireEvent.pointerDown(document.body);
+    expect(container.querySelector(".new-menu")).toBeNull();
+    // ...but a press inside it keeps it open.
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    await fireEvent.pointerDown(container.querySelector(".new-menu")!);
+    expect(container.querySelector(".new-menu")).not.toBeNull();
+  });
+
+  it("keeps a New control reachable in the empty-tabs placeholder", async () => {
+    const onNew = vi.fn();
+    const { container, getByLabelText, getByText } = render(Workspace, {
+      workspace: { groups: [], maximizedId: null },
+      view: stubView,
+      onNew,
+      newTemplates: [{ id: "blank", label: "Blank" }],
+    });
+    expect(container.querySelector(".empty")).not.toBeNull();
+    await fireEvent.click(getByLabelText("New tab"));
+    await fireEvent.click(getByText("Blank"));
+    expect(onNew).toHaveBeenCalledWith("blank");
+  });
+
   it("shows a close affordance on every tab that reports the instance closed", async () => {
     const onCloseTab = vi.fn();
     const { getByLabelText } = render(Workspace, {
