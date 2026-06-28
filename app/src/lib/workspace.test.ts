@@ -403,6 +403,19 @@ describe("Workspace chrome", () => {
     expect(onNew).toHaveBeenCalledWith("blank");
   });
 
+  it("offers Fit only on a group showing a render, and reports it", async () => {
+    const onFit = vi.fn();
+    const { container, getByLabelText } = render(Workspace, {
+      workspace: defaultWorkspace("doc"), // g1 editor | g2 render
+      view: stubView,
+      onFit,
+    });
+    // Only the render group carries Fit — the editor group does not.
+    expect(container.querySelectorAll(".fit")).toHaveLength(1);
+    await fireEvent.click(getByLabelText("Fit to width"));
+    expect(onFit).toHaveBeenCalledOnce();
+  });
+
   it("shows a close affordance on every tab that reports the instance closed", async () => {
     const onCloseTab = vi.fn();
     const { getByLabelText } = render(Workspace, {

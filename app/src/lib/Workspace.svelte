@@ -26,6 +26,7 @@
     onOpenRender,
     onNew,
     newTemplates = [],
+    onFit,
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
@@ -34,6 +35,7 @@
     onOpenRender?: (docId: string) => void;
     onNew?: (templateId: string) => void;
     newTemplates?: readonly { id: string; label: string }[];
+    onFit?: () => void;
   } = $props();
 
   // The New ("+") control's open template menu, keyed by the control that owns it
@@ -292,6 +294,18 @@
         </div>
         <div class="group-actions">
           {@render newControl(g.id)}
+          {#if active?.type === "render"}
+            <!-- Fit moved off the render toolbar (T7.12): resets zoom to fill the
+                 pane width. Shown when this group is showing a render. -->
+            <button
+              class="fit"
+              aria-label="Fit to width"
+              title="Fit to width"
+              onclick={() => onFit?.()}
+            >
+              <Icon name="fit_screen" size={16} />
+            </button>
+          {/if}
           {#if g.tabs.length > 1}
             <button
               class="split"
@@ -439,6 +453,7 @@
     align-items: stretch;
   }
   .new,
+  .fit,
   .split,
   .maximize {
     display: flex;
@@ -452,6 +467,7 @@
     line-height: 1;
   }
   .new:hover,
+  .fit:hover,
   .split:hover,
   .maximize:hover {
     color: var(--fg);

@@ -635,6 +635,7 @@ score {
       onOpenRender={openRender}
       onNew={newFromTemplate}
       newTemplates={TEMPLATES}
+      onFit={zoomFit}
     >
       {#snippet view(instance)}
         <!-- Key by instance so switching a group to a different document's tab
@@ -670,9 +671,6 @@ score {
               onClearHighlight={() => clearHighlight(instance.docId ?? "")}
               onReflow={(px) => reflowDoc(instance.docId ?? "", px)}
               onActivate={() => instance.docId && focusDoc(instance.docId)}
-              onZoomIn={zoomIn}
-              onZoomOut={zoomOut}
-              onZoomFit={zoomFit}
             />
           {:else if instance.type === "preview"}
             <PreviewView

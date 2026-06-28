@@ -15,9 +15,6 @@
     onPrimitiveClick,
     onClearHighlight,
     onReflow,
-    onZoomIn,
-    onZoomOut,
-    onZoomFit,
     onActivate,
   }: {
     result?: CompileResult | null;
@@ -27,9 +24,6 @@
     onPrimitiveClick?: (span: Span) => void;
     onClearHighlight?: () => void;
     onReflow?: (px: number) => void;
-    onZoomIn?: () => void;
-    onZoomOut?: () => void;
-    onZoomFit?: () => void;
     onActivate?: () => void;
   } = $props();
 
@@ -43,12 +37,8 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="render-side" onpointerdown={() => onActivate?.()}>
-  <div class="render-toolbar">
-    <button onclick={() => onZoomOut?.()} aria-label="Zoom out">−</button>
-    <span class="zoom-level">{Math.round(zoom * 100)}%</span>
-    <button onclick={() => onZoomIn?.()} aria-label="Zoom in">+</button>
-    <button onclick={() => onZoomFit?.()} aria-label="Fit to width">Fit</button>
-  </div>
+  <!-- Zoom lives on Cmd/Ctrl +/- and the tab-strip Fit control (T7.12); the old
+       in-pane zoom toolbar (− % + Fit) is gone. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="render-pane"
@@ -76,28 +66,6 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-  }
-  .render-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .render-toolbar button {
-    min-width: 1.8rem;
-    padding: 0.1rem 0.4rem;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: inherit;
-    border-radius: 0.25rem;
-  }
-  .zoom-level {
-    min-width: 3rem;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    font-size: 0.85rem;
   }
   .render-pane {
     flex: 1;

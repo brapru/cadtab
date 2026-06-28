@@ -536,6 +536,13 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       just a single score or `.ctabz` bundle: a live folder on desktop (Tauri fs) / Chromium-web (File
       System Access API); the dock then shows the real folder tree (hierarchical) and imports resolve
       against it. The live-folder source flagged unbuilt in T7.2. Pairs with T7.8. *(NOTES #16.)*
+- [ ] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
+      create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
+      in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two
+      halves: **(a)** the session/dirty model marks a **never-saved** doc dirty until its first save
+      (cleanly reusing the T7.11 close-guard / T7.8 open-guard), and **(b)** open-but-unsaved docs appear
+      in the dock tree. **Depends on T7.15** — the dock-presence half should land against the
+      dock-as-folder tree, not today's flat libs list. *(Raised during T7.12; deferred here.)*
 
 *Render content & labels:*
 

@@ -168,22 +168,29 @@ describe("App", () => {
     expect(gutter.classList.contains("dragging")).toBe(false);
   });
 
-  it("zooms the render in and back to fit", async () => {
+  // Zoom is read off the rendered svg's --tab-zoom var (the in-pane % display was
+  // removed in T7.12 — zoom lives on Cmd/Ctrl +/- and the tab-strip Fit control).
+  function zoomOf(container: HTMLElement): number | null {
+    const style =
+      container.querySelector("svg.tab")?.getAttribute("style") ?? "";
+    const m = style.match(/--tab-zoom:\s*([\d.]+)/);
+    return m ? Number(m[1]) : null;
+  }
+
+  it("fits the render back to width from the tab-strip Fit control", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
-    const level = () => container.querySelector(".zoom-level")?.textContent;
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
 
-    await fireEvent.click(getByLabelText("Zoom in"));
-    expect(level()).toBe("120%");
-    expect(container.querySelector("svg.tab")?.getAttribute("style")).toContain(
-      "--tab-zoom: 1.2",
-    );
+    // Zoom in via the keyboard (the in-pane zoom toolbar is gone).
+    await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    expect(zoomOf(container)).toBe(1.2);
 
+    // The Fit control now lives in the tab strip and resets to fit-width.
     await fireEvent.click(getByLabelText("Fit to width"));
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
   });
 
   it("zooms from Cmd/Ctrl +/- and fits with Cmd/Ctrl 0", async () => {
@@ -191,20 +198,19 @@ describe("App", () => {
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
-    const level = () => container.querySelector(".zoom-level")?.textContent;
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
 
     await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
-    expect(level()).toBe("120%");
+    expect(zoomOf(container)).toBe(1.2);
 
     await fireEvent.keyDown(window, { key: "-", ctrlKey: true });
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
 
     await fireEvent.keyDown(window, { key: "=", metaKey: true });
-    expect(level()).toBe("120%");
+    expect(zoomOf(container)).toBe(1.2);
 
     await fireEvent.keyDown(window, { key: "0", metaKey: true });
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
   });
 
   it("ignores +/- without a Cmd/Ctrl modifier", async () => {
@@ -212,9 +218,8 @@ describe("App", () => {
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
-    const level = () => container.querySelector(".zoom-level")?.textContent;
     await fireEvent.keyDown(window, { key: "=" });
-    expect(level()).toBe("100%");
+    expect(zoomOf(container)).toBe(1);
   });
 
   it("opens a single score, shows its name, and stays clean", async () => {
