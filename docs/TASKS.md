@@ -174,7 +174,7 @@ Entirely headless and test-driven (D18, D19, D20).
 - [x] **T3.4 — Line-breaking.** Greedy wrap of measures into systems given `LayoutConfig.width`
       (D23, D24).
   - *Tests:* same model at two widths → different system counts.
-- [ ] **T3.5 — Stems + beams (the fiddly one, D25).** Sub-tasked aggressively; heavy test coverage.
+- [x] **T3.5 — Stems + beams (the fiddly one, D25).** Sub-tasked aggressively; heavy test coverage.
   - [x] T3.5a — Beat grouping: partition a measure's notes into beam groups by beat.
   - [x] T3.5b — Stem geometry (direction/length, below the numbers per tab convention).
   - [x] T3.5c — Primary beams (slope, thickness) across a group.
@@ -218,7 +218,7 @@ Entirely headless and test-driven (D18, D19, D20).
   - [x] T4.6d — Theme (light/dark) + visual polish pass.
   - *Note:* editor cursor/selection basics (`drawSelection`, `dropCursor`,
     active-line, autofocus) were pulled forward during T4.3.
-- [ ] **T4.7 — Post-polish fixes & refinements (from first real-use review).** Exercising the
+- [x] **T4.7 — Post-polish fixes & refinements (from first real-use review).** Exercising the
       app end-to-end after T4.6 surfaced a batch of render, editor, and shell issues. Tracked
       here so the spine does not advance past M4 with known regressions. Green-gate each.
   - [x] T4.7a — **Surface semantic diagnostics.** `compile()` skipped name resolution *and* the
@@ -458,62 +458,24 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Bugs (broken now, no upstream deps):*
 
-- [x] **T7.7 — Fix: group sizing after move→split→move.** Repro: launch (editor|render split); move
-      the render tab onto the editor group (stack); Split; move render beside editor again — the
-      render (then the editor on tab switch) no longer fills its group and gets cut off. *Cause:* the
-      shell rendered each group with `flex: {rawWeight}`, and after move→split→move (or maximizing a
-      sub-1-weight group) the visible groups' weights summed to under 1 — and a `flex-grow` total
-      below 1 leaves the rest of the row empty. *Fix:* `Workspace.svelte` now normalizes `flex-grow`
-      over the visible groups (`weight / totalWeight`), so it always sums to 1 and the row fills while
-      ratios are preserved — independent of the raw-weight churn in `moveTab`/`splitTab`. *(NOTES #18.)*
+- [x] **T7.7 — Fix: group sizing after move→split→move.** The render (then the editor on tab switch)
+      no longer fills its group and gets cut off after move→split→move. *(NOTES #18.)*
 - [x] **T7.8 — Fix: opening a project clears the previous one.** Opening a new project left the old
-      project's documents, tabs, and renders open, so a stale render lingered. *Fix:* in `App.svelte`,
-      `openDoc` distinguishes opening a *project* (the `context` branch — a single score or bundle from
-      disk) from opening a file *within* one. A project open now replaces the prior one: it resets the
-      doc store to the new entry, rebuilds the workspace to a fresh `defaultWorkspace`, clears the
-      per-doc maps + live-compiler/edit-handler caches (`resetDocState`), and resets
-      `projectFiles`/`bundlePath`/`projectEntryName`. New-from-template and dock-opened libs omit
-      `context` and still add tabs. Because replacing can discard unsaved work, `openFile` guards with a
-      **dirty-only confirm** before the file picker (clean projects swap silently). The confirm is a
-      custom in-app modal (`ConfirmDialog.svelte` + an `askConfirm` promise controller in `App.svelte`),
-      themed with the app tokens — cohesive with the UI and unaffected by WKWebView's no-op of the native
-      `window.confirm` (which made the first attempt appear to do nothing on desktop). *(NOTES #17.)*
+      project's documents, tabs, and renders open, so a stale render lingered; a project open now
+      replaces the prior one (dirty-only confirm before discarding unsaved work). *(NOTES #17.)*
 - [x] **T7.9 — Fix: only panes scroll, not the page.** The app shell (`main`) must never scroll; only
-      the scrollable view bodies (editor, render, preview, dock) do. *Cause:* `RenderView`'s
-      `.render-pane` was a `flex: 1` item in a column flex container without `min-height: 0`, so its
-      min-height defaulted to content height — a tall render grew the pane (and the whole shell) instead
-      of engaging its own `overflow: auto`. *Fix:* added `min-height: 0` to `.render-pane`; also clamped
-      the chrome so any future leak can't scroll the page — `main` gets `overflow: hidden` and `html,
-      body` get `overflow: hidden` (app.css). Editor/preview/dock were already constrained. *(NOTES #4.)*
+      the scrollable view bodies (editor, render, preview, dock) do — a tall render grew the shell
+      instead of scrolling internally. *(NOTES #4.)*
 
 *Icon foundation → workspace UX:*
 
 - [x] **T7.10 — Self-host Material Symbols icons (D51).** Bundle the Material Symbols set locally (font
       or SVGs in the build) so icons work fully offline on desktop — no CDN. Establish the icon-usage
       convention (a small `Icon` wrapper/class) the rest of the UI draws from. *(NOTES #1.)*
-      **Done:** chose the variable woff2 + ligatures (over curated inline SVGs) — added the
-      `material-symbols` dep and committed `material-symbols-outlined.woff2` to `app/public/fonts/`,
-      `@font-face`'d locally in `app.css` (served at `/fonts/…`, never CDN). New `Icon.svelte` is the
-      one convention: `name` ligature + `size`/`fill`/`weight`/`label` props, decorative (aria-hidden)
-      by default. `-webkit-font-feature-settings: "liga"` so WKWebView renders the ligature glyphs.
-      T7.12/T7.14 swap the text-glyph/emoji chrome over to it. Tests in `Icon.test.ts`.
 - [x] **T7.11 — Close tab.** A close affordance on each tab that removes that view instance from its
       group (dropping an emptied group, like `moveTab`), with an **unsaved-changes guard** when closing
       the last editor of a dirty document, and session cleanup when a doc has no remaining views. The
       close-tab deferred in T7.4b. *(NOTES #8.)*
-      **Done:** each tab gained a sibling close button (the T7.10 `Icon` `close`, `aria-label="Close
-      {view}"`), kept out of the tab's drag/click button so the pointer-drag stays intact. Pure model
-      ops `closeTab` (drop one view + emptied group, preserve the active tab unless it was the one
-      closed, un-maximize a vanished group — may leave an empty layout) and `docIdsWithViews` in
-      `workspace.ts`; `removeDoc` in `documents.ts`. Semantics (user decision): **every view closes
-      independently** and a doc's session outlives its individual views — it's cleaned up only when its
-      *last* view closes (so a render can outlive its editor). Unsaved-changes guard fires on closing
-      the **editor of a dirty doc** ("changes stay in the other views") and on closing a dirty doc's
-      **last view** ("discarded for good"), via the in-app `ConfirmDialog`. `App.closeView` orchestrates
-      the guard + `closeTab`; on the last view `cleanupDoc` drops the doc's per-doc maps +
-      live-compiler/edit-handler caches and `removeDoc` drops the session; `reconcileActive` re-points
-      the active doc at a surviving view. Closing the last tab empties the layout; New/Open reseed a
-      fresh `defaultWorkspace`. Tests across `workspace.test.ts`, `documents.test.ts`, `App.test.ts`.
 - [x] **T7.12 — Group controls in the tab strip.** A tidy control set shown on the **active group**
       only: **New ("+")** (replaces the topbar New), **maximize**, **close** (T7.11), **Fit**
       (aspect-ratio icon, moved off the render toolbar), and **split** (left/right — up/down deferred,
@@ -523,47 +485,12 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       icon) when its active tab is an editor — spawns that doc's render if closed, or jumps to it if
       already open — closing the T7.11 gap where a closed render had no way back. (Preview reopening
       stays on the topbar Preview button.) *(NOTES #5, #6, #7, #10, #15.)*
-      **Done (built in chunks, each confirmed):** (1) **render launcher** — a contextual control on the
-      active group (shown when its active tab is an editor, mirroring how Fit shows for a render);
-      `openViewFor` shared by render + preview spawns-or-focuses via idempotent `addTab`; filled-accent
-      ♪ + "Go to render" when the render is already open. *(Initially placed on each editor tab next to
-      close; moved into the control group on review.)* (2) **New "+"** opens a template popover menu (dismiss on outside-pointer /
-      Escape); the topbar New `<select>` removed; an **empty-tabs placeholder** keeps New reachable when
-      every tab is closed (with `defaultWorkspace` reseed in `openDoc`). (3) **Fit** moved into the
-      group controls (`crop_free`), the in-pane zoom toolbar (`− % + Fit`) deleted — zoom stays on
-      Cmd/Ctrl +/−, and is now **per view type**: the keys target whatever the user is focused on —
-      the editor's **code font** or the render's scale (each its own level; Cmd/Ctrl 0 / the Fit
-      control reset). (4) **double-click a tab** toggles its group's maximize. (5) **iconified** the
-      tab type-icons (registry `icon` is now a Material Symbols name: code / music_note / preview) and
-      the split (`split_scene`) / maximize (`open_in_full` ↔ `close_fullscreen`) controls. (6) the
-      control set shows on the **active group only** — tracked by the last group a pointer went down in
-      (local `controlGroupId`, defaulting to the first; a maximized group owns the controls). Chose
-      last-interacted tracking over deriving from the active doc, since the default editor|render layout
-      puts one doc's views in two groups (doc id can't tell them apart — Fit would never show). Per-tab
-      close/launcher stay on every tab. Tests across `workspace.test.ts` + `App.test.ts`.
-      **Deferred to T7.15b** (raised here): New should create an *unsaved dirty draft listed in the
-      dock* — rides with the dock-as-folder rework.
 - [x] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
       dimming **only the drop region** (the group body) to a movable-cue colour, not outlining the
       whole field. Refines the T7.5 drop cue. *(NOTES #3.)*
-      **Done:** moved the `droptarget` cue off the `.group` section (which outlined the whole group)
-      onto a dedicated **`.dropzone`** — the open strip space after the tabs where a dropped tab lands
-      (a `flex: 1` filler that also pushes the controls right). Only that space is cued (a translucent
-      accent wash + an `inset` accent bottom edge), not the existing tabs, the view body, or the whole
-      group. Test in `workspace.test.ts` (mid-drag, only the hovered group's drop space is cued).
 - [x] **T7.14 — Iconify the topbar + styled tooltips.** Replace the remaining topbar text buttons with
       Material Symbols icons (T7.10), and give **every** control a neat CSS hover tooltip (replacing
       native `title=`), ensuring full coverage. Feeds the T7.34 cohesion pass. *(NOTES #2, #9.)*
-      **Done (two chunks):** **(1) Tooltips** — a reusable `use:tooltip={text}` action (`lib/tooltip.ts`)
-      shows a CSS-styled chip **portaled to `<body>`** (positioned by JS), so it's never clipped by an
-      `overflow:hidden/auto` ancestor (the tab strip, the dock list) — the reason for an action over a
-      pure `[data-tip]` pseudo-element. Dismisses on leave/blur/activation. Replaced **every** native
-      `title=` with it: topbar, Workspace controls, BottomBar, Dock. **(2) Iconified topbar** — Open
-      `folder_open`, Save `save`, Save Project `save_as`, Preview `preview`, Theme
-      `brightness_auto`/`light_mode`/`dark_mode` (`themeGlyph`→`themeIcon`), and **Export collapsed into
-      one `download` menu** (SVG/PNG popover, like the New "+"; replaces the two text export buttons).
-      Buttons are square `.icon-btn`s labelled by `aria-label` + tooltip. Tests in `tooltip.test.ts`,
-      `theme.test.ts`, and `App.test.ts` (label/menu-driven queries, Export menu open/dismiss).
 
 *Project open:*
 
@@ -571,152 +498,29 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       just a single score or `.ctabz` bundle: a live folder on desktop (Tauri fs) / Chromium-web (File
       System Access API); the dock then shows the real folder tree (hierarchical) and imports resolve
       against it. The live-folder source flagged unbuilt in T7.2. Pairs with T7.8. *(NOTES #16.)*
-      **Sub-chunk plan (confirmed 2026-06-28):** *(A)* pure folder-tree model + hierarchical dock
-      (cross-platform; drives bundles *and* folders); *(B)* desktop Tauri open-folder + write-back,
-      full IDE-tree dock (no privileged entry), folds in T7.15b; *(C)* desktop fs-watching (tree +
-      clean-file sync, dirty-buffer notice never a clobber); *(D, optional)* web FSA dir open + Refresh.
-      **Desktop/web line:** true fs-watching is desktop-only (Tauri notify); web FSA has no
-      change-notification API, so web folders are snapshot + manual Refresh — bundles stay the
-      browser-agnostic baseline (D38). **Chunk A done:** `projectTree(files)` folds `/`-split paths into
-      a folder hierarchy (folders before files, alphabetical, folders keyed by full prefix);
-      `Dock.svelte` renders it recursively with per-folder expand/collapse (folder/folder_open glyph
-      toggles, no chevron; `music_note` on files). Tests in `project.test.ts`, `Dock.test.ts`.
-      **Chunk B1 done (model + dock rework; folds in T7.15b):** dropped the privileged "entry" —
-      doc ids are now scheme-prefixed (`file:<key>` for a project file keyed by its dock/import path,
-      `draft:<n>` for a draft); `projectFiles` holds *every* file in the project (the shared import
-      map). The dock renders all project files (dirty iff their open buffer has unsaved edits) **plus
-      every open unsaved draft** as a root leaf (`music_note` + dirty dot — user pick). `project.ts`
-      moved to a `DockEntry`-based `projectTree`/`fileEntries`; `documents.ts` gained `everSaved` so a
-      never-saved draft is **dirty from birth** (T7.15b half-a); New (`newDraft`) makes a dirty draft,
-      the starter stays clean (special-case, user pick). App's `openProjectInto`/`addOrFocusFile`/
-      `newDraft`/`onOpenEntry` replace the old `openDoc`; a lone score opens as a one-file project.
-      Tests across `documents.test.ts`, `Dock.test.ts`, `project.test.ts`, `App.test.ts`.
-      **Chunk B2 done (desktop folder open + write-back + save reframe):** `io.ts` gained pure
-      `joinPath`/`toRelative` (handle `/` and `\`, normalize keys to `/`), an injectable
-      `collectCtabFiles(root, readDir, readFile)` (recurses, collects `.ctab`, skips dot-dirs; keys
-      relative-to-root, plus key→abs path), and thin Tauri `openFolder()` glue (directory picker →
-      `collectCtabFiles`). A folder opens via `openProjectInto({openKey: null})` → **dock shows the
-      tree, editor rests on the empty placeholder** (user pick); opened files carry their real fs
-      `path` (from `filePaths`), so **`saveFile` writes straight back to the live folder**. **Open
-      reframed (user-driven):** the topbar **Open button is web-only**; on desktop you open a
-      file/bundle via **Cmd/Ctrl+O** and a folder via **Cmd/Ctrl+Shift+O** + a **dock-header Open
-      Folder** control (native File menu deferred to **T7.30**). **Save reframed (user-driven):**
-      dropped **"Save Project"** — the `.ctabz` bundle is now an **Export ▸ Bundle (.ctabz)** item
-      (prompts each time, never rebaselines), so there's one **Save** (current file → its real path /
-      prompt for drafts) and the bundle reads honestly as a portable export. Tests in `io.test.ts`
-      (path helpers, `collectCtabFiles`, mocked `openFolder`), `Dock.test.ts` (Open Folder control),
-      `App.test.ts` (desktop mode via `__TAURI_INTERNALS__` + mocked `invoke`: Open hidden, dock
-      folder-open into the tree, write-back to real path, bundle-via-Export).
-      **Chunk C done (desktop fs-watching):** `io.ts` gained `rescanFolder(root)` (re-reads the tree,
-      reuses `collectCtabFiles`) and `watchFolder(root, onChange)` (wraps Tauri `watch`, recursive +
-      debounced; no-op off-desktop). Pure `watch.ts` `reconcileScan(scan, openContent)` adopts the
-      scan as the project map (added files appear, deleted drop) and queues reloads for open files
-      whose disk content diverged. App reintroduces `projectRoot`, watches it via an `$effect`
-      (tears down on project swap/unmount), and on any event re-scans → reconciles → updates
-      `projectFiles`/`filePaths`, reloads diverged tabs, recompiles. Reloads push into the **live
-      CodeMirror** via the Editor's existing `loadRequest={{content,token}}` prop (swaps state, resets
-      undo, no `onChange` echo). **Decision (user): always auto-reload, NO notice UI** — disk is the
-      source of truth; an external change reloads straight into the tab **even over unsaved edits**
-      (the earlier never-clobber/notice plan was overridden). `documents.ts` gained `reloadDoc`. Tests:
-      `watch.test.ts`, `documents.test.ts` (`reloadDoc`), `io.test.ts` (`rescanFolder`/`watchFolder`),
-      `App.test.ts` (desktop: an open file live-reloads to disk content on a synthetic watch event).
-      **Chunk D (web FSA directory open + manual Refresh) — SKIPPED by decision (2026-06-28).** Per D38
-      FSA is an optional Chromium-only enhancement, not the dependency; the desktop live folder (A–C) is
-      complete and the `.ctabz` **bundle is the browser-agnostic web baseline** (Firefox included). Rationale
-      (user): a desktop app should have desktop-like features (a live, watched folder) and a web app
-      web-like features (the portable bundle) — that division is an implied, fair UX expectation, and FSA
-      would be Chromium-only + degraded (no change-notification API → snapshot + manual Refresh, three sync
-      models to maintain) while reimplementing the T7.36 ops against FSA handles for parity. Revisit
-      post-MVP only if browser-side folder *authoring* (not just viewing/sharing) becomes a real target.
-      **T7.15 closed — desktop live folder (A–C) + T7.36 dock file management ship it.**
+      Desktop gets the live, watched folder; web keeps the `.ctabz` bundle (FSA Chunk D skipped — D38).
 - [x] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
       create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
       in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two
       halves: **(a)** the session/dirty model marks a **never-saved** doc dirty until its first save
       (cleanly reusing the T7.11 close-guard / T7.8 open-guard), and **(b)** open-but-unsaved docs appear
       in the dock tree. **Depends on T7.15** — the dock-presence half should land against the
-      dock-as-folder tree, not today's flat libs list. *(Raised during T7.12; deferred here.)*
-      **Done (T7.15 Chunk B1):** half-a via `documents.ts` `everSaved` (a never-saved draft is dirty
-      from birth, clears on first save); half-b via App's derived `dockEntries` listing every open
-      `draft:` doc as a root leaf in the dock-as-folder tree (`music_note` + dirty dot). New
-      (`newDraft`) creates a dirty `draft:` doc; the built-in starter stays clean (special-case).
+      dock-as-folder tree, not today's flat libs list. *(Raised during T7.12; landed with T7.15.)*
 
 *Dock UX (placed by topic next to T7.15; not strict dep-order):*
 
 - [x] **T7.35 — Dock folder indent guides.** Draw a vertical guide line down the left of each folder's
       children (Zed/VS Code style), terminating where that folder's contents end, so folder width and
       nesting read clearly. Pure `Dock.svelte` markup/CSS on the existing recursive `row` snippet; no
-      model change. **Done:** each folder's nested `<ul>` carries its `--depth` and draws the guide as
-      an absolutely-positioned `::before` spanning the block top→bottom (so it ends exactly at the last
-      child), offset to sit under the parent folder's icon (`calc(0.7rem + var(--depth)*0.85rem +
-      0.45rem)`) using the same `--depth` indent unit the rows use. Test in `Dock.test.ts` asserts each
-      nesting level carries its parent's depth (the guide's anchor); the line itself is visual-only
-      (jsdom can't measure pseudo-elements).
+      model change.
 - [x] **T7.36 — Dock file management (right-click context menu).** Right-click a dock item → a context
       menu with **New File / New Folder / Rename / Delete**. New File/Folder created in the right-clicked
       folder (or project root otherwise); Delete confirms via `ConfirmDialog` (native confirm no-ops on
       desktop). On desktop these hit the real live folder; the watcher re-scans and reconciles the dock,
       and the new file opens as a tab. Needs: empty-folder scan support (dirs in the tree), an in-app
       naming input (not `window.prompt`), new fs ops behind the io.ts seam + `fs:allow-remove/mkdir/rename`
-      capabilities, and a reusable context-menu component. **Decisions (user):** **desktop live-folder
-      only** (menu shown when `projectRoot` is set — absent on web / lone-file / draft projects; web joins
-      with Chunk D); **inline tree input** for naming (not a modal). **Sub-chunks (confirmed):** *2.1*
-      context menu + inline-edit plumbing (ops stubbed); *2.2* empty-folder scan support (dirs through
-      scan→reconcile→tree); *2.3* New File/Folder/Delete + `fs:allow-mkdir/remove`; *2.4* Rename +
-      `fs:allow-rename` (open-file-follows-rename).
-      **2.1 done:** reusable `ContextMenu.svelte` (fixed-positioned at the pointer so the dock's `overflow`
-      can't clip it; dismiss on outside-pointer/Escape; destructive item styling + separators — modeled on
-      the New "+" popover). `Dock.svelte` gained `canManage`/`pendingEdit`/`onContext`/`onCommitEdit`/
-      `onCancelEdit`: right-click a row or empty space opens the menu (New File/Folder always; Rename/Delete
-      only off a real file/folder — a draft acts on root), and a `pendingEdit` drives an **inline input
-      rendered in the tree** (a phantom row inside the target folder/root for New, swapping a row's label
-      for Rename; auto-expands a collapsed target; Enter commits with a non-empty/no-separator guard,
-      Escape/blur cancels). Shared `DockTarget`/`PendingEdit` types in `project.ts`. App owns `pendingEdit`
-      + `onDockContext`/`commitDockEdit`/`cancelDockEdit`/`deleteEntry` (Delete confirms via `ConfirmDialog`);
-      the actual fs create/rename/remove are **stubbed (console)** until 2.2–2.4. Tests in
-      `ContextMenu.test.ts` + `Dock.test.ts` (menu gating/items/target, inline commit/reject/cancel, rename
-      row-swap). *Frontend-only (Vite HMR).*
-      **2.2 done:** empty folders now exist and survive rescans. `collectCtabFiles` returns a third field
-      `dirs` (root-relative key of every non-dot directory, including empty ones); `FolderContents` is the
-      shared shape for `openFolder`/`rescanFolder`, both now carrying `dirs`. `watch.ts` `FolderScan`/
-      `FolderReconcile` carry `dirs` and `reconcileScan` passes it through. `projectTree(entries, dirs?)`
-      gained an `ensureFolder` helper that materializes a folder (and its ancestors) from a dir key, so an
-      empty `drafts/` renders and a `licks/` from `dirs` is the *same* node a file folds into (no dup);
-      blank/`\`-keys normalized. App threads `projectDirs` (set in `openProjectInto`, folder open, and
-      `applyScan`) to the Dock. Tests: `io.test.ts` (dirs incl. an empty dir, dot-dir excluded),
-      `watch.test.ts` (dirs carried), `project.test.ts` (empty-folder materialize + ancestors + no-dup +
-      normalize), `Dock.test.ts` (empty folder via `dirs`), `App.test.ts` (desktop: an empty scan dir
-      renders in the dock). Pure/frontend-only (Vite HMR). **Next: 2.3 — New File/Folder/Delete fs ops +
-      `fs:allow-mkdir`/`remove` (open the new file, close a deleted tab).**
-      **2.3 done:** the New File / New Folder / Delete ops hit the real live folder. `io.ts` gained
-      `resolvePath(root, key)` (rejoin a `/`-key under root with the platform separator — inverse of
-      `toRelative`) and desktop ops `createFile(path, content="")` (writeTextFile), `createDir(path)`
-      (mkdir recursive — idempotent), `removePath(path, recursive)` (remove) — each a no-op off-desktop.
-      Capabilities `fs:allow-mkdir` + `fs:allow-remove` added to `default.json` (binary-baked → needs a
-      `just dev` restart; `mkdir`/`remove` aren't feature-gated like `watch`, so no Cargo change). App's
-      `commitDockEdit` (now async) creates the file/folder, updates `projectFiles`/`filePaths`/`projectDirs`
-      optimistically, and **opens the new file as a tab** (a name collision just focuses the existing file);
-      `deleteEntry` confirms, `removePath`s (recursive for folders), then **force-closes** the orphaned
-      tab(s) via a guard-free `forceCloseDoc` (the user's explicit delete, vs the watcher's missing-on-disk
-      striking) and drops the rows (`omitKeys`); the watcher re-scan converges on the same state (idempotent,
-      no clobber). Rename still stubbed → 2.4. Tests: `io.test.ts` (resolvePath, create/mkdir/remove call
-      shape, web no-ops), `App.test.ts` (desktop: New File creates + opens + lists; New Folder creates +
-      renders empty; Delete removes + closes tab + drops row). **Verified on real desktop** (all three work).
-      **2.4 done (T7.36 complete):** Rename hits the live folder and an open file's tab **follows** the move.
-      `io.ts` `renamePath(from, to)` (rename) + `fs:allow-rename` capability (`just dev` restart). App's
-      `renameEntry` builds the new key (file → `withCtabExtension`, folder → bare; same parent dir),
-      collision-guards against an existing sibling, `renamePath`s, then re-keys `projectFiles`/`filePaths`
-      (values → new abs)/`projectDirs` — a **folder carries its whole subtree** (`isUnder`/`reprefix`
-      helpers). Each open file under the renamed key migrates via `renameOpenDoc`: the reactive per-doc maps
-      (`results`/`errors`/`selections`/`activeSpans`/`layoutWidths`/`loadRequests`) carry over (pure
-      `renameKey`), the live-compiler + edit-handler closures (which captured the old id) are **dropped** so
-      they recreate under the new id, and the doc recompiles — preserving the buffer + dirty state (an
-      unsaved rename keeps its edits and now saves to the new path). New pure model ops: `documents.ts`
-      `renameDoc(store, oldId, newId, {name, path})` (re-key the session, active follows) and `workspace.ts`
-      `renameDoc(ws, oldId, newId)` (re-point every view + group active id; maximize untouched). Tests:
-      `io.test.ts` (renamePath), `documents.test.ts` + `workspace.test.ts` (renameDoc pure ops),
-      `App.test.ts` (desktop: rename moves on disk + relabels the dock row + the open tab follows). **Verify
-      on real desktop** (the `fs:allow-rename` grant). **T7.36 complete — both dock tasks done.**
+      capabilities, and a reusable context-menu component. Desktop live-folder only (web joins with the
+      deferred FSA work); naming via an inline tree input, not a modal.
 
 *Render content & labels:*
 
@@ -726,44 +530,31 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       `def` (e.g. synthesize a minimal score per def). Tab labels become the **filename**, with the
       icon distinguishing view type (editor / render / preview). *Open sub-decision (resolve here):* how
       to render a parameterized `def` — representative/default args, nullary-only, or a placeholder.
-      *(NOTES #12, #13.)* **Done in three sub-chunks. (1) Filename tab labels:** `Workspace.svelte`
-      labels each tab by the doc's filename (via an App `docName` resolver; untitled drafts → "untitled"),
-      the icon carries the view type, and the missing-on-disk strike rides the filename. Tab close became
-      a uniform "Close tab" wired to **Cmd/Ctrl-W** (closes the focused tab; `preventDefault` so the
-      desktop webview keeps its window). **(2) Core def-gallery:** `compile` branches `!has_score &&
-      has_def` → `eval_def_gallery` (eval.rs) + `layout_gallery` (layout.rs). Each declared def previews
-      by binding every param to a **representative sample chord** (open melody strings 3-2-1, `c.0`
-      lowest — matching the roll convention / `g_chord` example) at default 1/8; an erroring/empty preview
-      falls back to a **signature card**; synthetic diagnostics are discarded (real ones still come from
-      the resolve/type passes). Each card is a `DefHeading` signature over its staff, page pinned to
-      `config.width`, no time-sigs/bar-numbers. `CompileResult` shape unchanged → no wasm/TS binding
-      churn. **(3) App wiring:** the live painter (`Tab.svelte`) start-anchors/mutes the new `defHeading`
-      /`defNote` roles (matching `svg.ts`/export); `examples/licks.ctab` added as a standalone library to
-      open. Decision logged as the parameterized-def resolution (representative args + fallback,
-      **provisional** — eventual: author-specified examples). Tests: `workspace.test.ts`/`App.test.ts`
-      (labels, Cmd/Ctrl-W, icon-discriminated tabs), `svg.test.ts`/`Tab.test.ts` (gallery role styling),
-      and core eval/layout/lib (sample mapping, fallback, no-leak, gallery branch, example, insta
-      `def_gallery_wire_format`). **Verify on real desktop** (lib render shows the gallery; ⌘W closes the
-      focused tab without closing the window).
+      *(NOTES #12, #13.)* Sub-decision resolved: a parameterized `def` previews under representative
+      sample args (the open melody strings 3-2-1) with a signature-card fallback (provisional). Tab close
+      also became a uniform "Close tab" on **Cmd/Ctrl-W**.
 
 *Render-layout → export track:*
 
-- [ ] **T7.17 — Justify systems + pin page width.** A line holding only one (or a few) measures renders
-      at its natural width, leaving the system short — stretch measures/events to fill the system width
-      (justified systems). *Includes* **pinning the page width to the layout target** so the header
-      (centred) and zoom stop reflowing as measures are added — root cause is `width = overall_width(...)`
-      in `layout()` (content-derived), fix is `overall_width(...).max(config.width)`, then justify within
-      that fixed page. **Blocks T7.19.** Relates to T3.3/T3.4 and T7.18.
+- [ ] **T7.17 — Justify systems + pin page width.** Pin the page to the layout target, then stretch
+      short systems to fill it. **Blocks T7.19.** Relates to T3.3/T3.4 and T7.18.
+  - [ ] T7.17a — **Pin page width.** `overall_width(...).max(config.width)` in `layout()` so the page is
+        the layout target, not content-derived — the centred header and zoom stop reflowing as measures
+        are added. (The def-gallery already pins; prerequisite for justifying.)
+  - [ ] T7.17b — **Justify systems.** Stretch measures/events to fill each system's width within the
+        pinned page, so a line holding one (or a few) measures no longer renders short.
 - [ ] **T7.18 — Even out intra-measure spacing.** A bar's last note gets trailing space equal to its
       full duration, reading as more room on its right than the small leading pad. Spacing pass: revisit
       trailing-space vs leading-pad symmetry / even distribution. Pairs with T7.17.
 - [ ] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
-      standard for tab. Unlike SVG/PNG (one continuous canvas, T5.3), PDF needs **pagination**: fixed
-      Letter/A4 pages, systems packed per page, margins, and a per-page sheet header — layout work, not
-      a serializer. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview T7.6).
-      Save via the io seam (binary write on desktop, download on web). *Tests:* page-break placement
-      (systems-per-page) golden cases; multi-page doc emits N pages; one-page doc emits one; valid PDF
-      bytes (header + page count).
+      standard for tab. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview
+      T7.6). Depends on T7.17.
+  - [ ] T7.19a — **Pagination layout.** Fixed Letter/A4 pages, systems packed per page, margins, and a
+        per-page sheet header — layout work, not a serializer. *Tests:* page-break placement
+        (systems-per-page) golden cases; multi-page doc emits N pages; one-page doc emits one.
+  - [ ] T7.19b — **PDF emission.** Serialize the paginated tree to valid PDF bytes. *Tests:* valid PDF
+        bytes (header + page count).
+  - [ ] T7.19c — **Save via the io seam.** Binary write on desktop, download on web.
 - [ ] **T7.20 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and the
       PDF export (T7.19) into a single **Export** button with a format picker (SVG / PNG / PDF). One
       control, one dropdown; reuses the io seam. Depends on T7.19; pairs with the cohesion pass (T7.34).
@@ -779,17 +570,21 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       contents and turns into a coloured side arrow to re-expand. CodeMirror `foldGutter`/code-folding
       keyed to the brace structure. *(NOTES #14.)*
 - [ ] **T7.24 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven by
-      the core's existing knowledge: every keyword with a fixed value set hints its options
-      (`instrument` → `banjo`/`guitar`; `tuning` → the named tunings; `barnumbers` → `lines`/`all`/`off`),
-      top-level keywords hint their operand (`title` → `"Title"`), and stdlib/`def` names complete as
-      identifiers. Tab to accept. A setting toggles autocomplete + inline hinting on/off. Source the
-      candidate lists from the keyword table + stdlib/def registry (no second source of truth), surfaced
-      through the `core` adapter.
+      the core's existing knowledge, Tab to accept, with a setting to toggle them on/off.
+  - [ ] T7.24a — **Candidate source from core.** Surface the completion lists through the `core` adapter
+        from the keyword table + stdlib/`def` registry (no second source of truth).
+  - [ ] T7.24b — **CodeMirror completion + inline hints.** Keywords with a fixed value set hint their
+        options (`instrument` → `banjo`/`guitar`; `tuning` → named tunings; `barnumbers` →
+        `lines`/`all`/`off`), top-level keywords hint their operand (`title` → `"Title"`), and
+        stdlib/`def` names complete as identifiers. Tab to accept.
+  - [ ] T7.24c — **On/off setting.** A toggle for autocomplete + inline hinting.
 - [ ] **T7.25 — DSL formatter (button + format-on-save toggle, D47).** A canonical pretty-printer for
-      `.ctab`: a **core** `format(source) -> String` over the parsed AST/token stream (deterministic,
-      idempotent, comment-preserving) plus a toolbar **Format** button and a **format-on-save** toggle.
-      Returns a document with parse errors untouched. *Tests:* idempotence (`fmt(fmt(x)) == fmt(x)`); a
-      corpus of messy→canonical golden cases; comments survive.
+      `.ctab`, exposed as a toolbar action and an on-save option.
+  - [ ] T7.25a — **Core `format(source) -> String`.** Over the parsed AST/token stream — deterministic,
+        idempotent, comment-preserving; a document with parse errors is returned untouched. *Tests:*
+        idempotence (`fmt(fmt(x)) == fmt(x)`); a messy→canonical golden corpus; comments survive.
+  - [ ] T7.25b — **Format button + format-on-save toggle.** Toolbar **Format** action plus a
+        **format-on-save** setting, both calling the core formatter.
 - [ ] **T7.26 — Theme switcher in the bottom bar.** Move the light / dark / system control out of the
       topbar into the bottom status bar (T7.3) as a compact control. Folds into T7.21's toggle and the
       T7.3 bottom-bar styling.
@@ -830,16 +625,11 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       gutter, panels, the dock / tabs / bottom bar, the **iconified controls + tooltips (T7.10/T7.14)**,
       and the open/save/export controls so the whole UI reads as one design. Umbrella for T7.31, T7.27,
       T7.32 and the shell chrome.
-- [ ] **T7.37 — Unify the render painter's role styling (kill the Tab.svelte/tabStyle drift).** The
-      single-source-of-truth `tabStyle.ts` (`TEXT_STYLE` + `START_ANCHORED`/`MUTED_ROLES`, used by the
-      export painter `svg.ts`) is *not* used for anchor/mute by the live painter `Tab.svelte`, which
-      re-implements both as CSS `data-role` selectors — and the two lists have drifted: `sectionLabel`
-      and `barNumber` are start-anchored (and `barNumber` muted) in `tabStyle` but not in `Tab.svelte`'s
-      CSS, so a role added to one is silently mis-drawn in the other (surfaced adding `defHeading`
-      /`defNote` in T7.16). Make `Tab.svelte` consume `textAnchor()`/`isMuted()` (e.g. bind
-      `text-anchor`/`fill` from the shared sets) so screen and export never drift again, then audit
-      `sectionLabel`/`barNumber` for any resulting visual change. Pairs with the cohesion pass (T7.34).
-      Render-painter cleanup surfaced by T7.16.
+- [ ] **T7.37 — Unify the render painter's role styling.** The live painter `Tab.svelte` re-implements
+      text anchor/mute as CSS `data-role` selectors instead of using `tabStyle.ts`'s shared
+      `textAnchor()`/`isMuted()` (which `svg.ts`/export use), and the two have drifted (`sectionLabel`
+      /`barNumber` differ). Make `Tab.svelte` consume the shared sets so screen and export never drift.
+      Pairs with the cohesion pass (T7.34).
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
 + web; justified systems with a fixed page; **paginated PDF export (T7.19)** behind a unified export
