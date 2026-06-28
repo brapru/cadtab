@@ -437,9 +437,15 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     back out — placeable in any group, resize via the existing gutters. *Multi-document coexistence
     (file A's vs file B's renders) arrives with the second document in **T7.4**;* T7.5 is the
     mechanism. *Deferred:* keyboard-driven tab move/merge (split covers separation by keyboard).
-- [ ] **T7.6 — Print-preview view.** *(document-bound)* The final printed (light) output regardless
+- [x] **T7.6 — Print-preview view.** *(document-bound)* The final printed (light) output regardless
       of editor theme. *Recommendation:* implement as a mode reusing the export styling (T5.3),
       **not** a separate pipeline, so it isn't duplicative of the live render.
+  - *Landed:* `PreviewView.svelte` (registered `preview` document-bound view) renders the document's
+    live render tree through the **export serializer** (`renderTreeToSvg`, T5.3) inline — the same
+    light, self-contained SVG export produces, shown as a white sheet on a fixed light backdrop so it
+    reads the same in either app theme. No second layout pipeline; it reuses the per-doc compile
+    result. A topbar **Preview** button opens it as a tab beside the render (active-follows-focus via
+    `onActivate`). Print-to-paper pagination is **T7.9** (PDF); this is the on-screen preview.
 - [ ] **T7.9 — PDF export (paginated, MVP — D30).** The MVP's third export format and the
       distribution standard for tab. Unlike SVG/PNG (one continuous canvas, shipped in T5.3), PDF
       needs **pagination**: fixed Letter/A4 pages, systems packed per page, margins, and a per-page

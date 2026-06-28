@@ -546,6 +546,28 @@ describe("App", () => {
     });
   });
 
+  it("opens the print preview as a tab showing the light export output", async () => {
+    const { container, getByText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    await fireEvent.click(getByText("Preview"));
+
+    // A Preview tab appears and renders the export SVG on a white sheet.
+    await vi.waitFor(() => {
+      const titles = [...container.querySelectorAll(".tab-title")].map(
+        (t) => t.textContent,
+      );
+      expect(titles).toContain("Preview");
+      expect(container.querySelector(".sheet svg")).not.toBeNull();
+    });
+    // The preview is the standalone export SVG, not the live themed render.
+    expect(
+      container.querySelector('.sheet svg rect[fill="#ffffff"]'),
+    ).not.toBeNull();
+  });
+
   it("surfaces the compile's diagnostics in the bottom bar", async () => {
     const { container } = render(App);
     // The fake compile reports one error, so the bottom bar leaves the clean

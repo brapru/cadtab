@@ -23,9 +23,15 @@ describe("view registry", () => {
   it("classes the built-in views by kind", () => {
     expect(viewDef("editor")?.kind).toBe("document-bound");
     expect(viewDef("render")?.kind).toBe("document-bound");
+    expect(viewDef("preview")?.kind).toBe("document-bound");
     expect(viewDef("bottomBar")?.kind).toBe("global-singleton");
     expect(viewDef("nope")).toBeUndefined();
-    expect(Object.keys(VIEWS)).toEqual(["editor", "render", "bottomBar"]);
+    expect(Object.keys(VIEWS)).toEqual([
+      "editor",
+      "render",
+      "preview",
+      "bottomBar",
+    ]);
   });
 });
 

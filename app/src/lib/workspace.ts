@@ -37,6 +37,12 @@ export const VIEWS: Record<string, ViewDef> = {
     icon: "♪",
     kind: "document-bound",
   },
+  preview: {
+    type: "preview",
+    title: "Preview",
+    icon: "❏",
+    kind: "document-bound",
+  },
   bottomBar: {
     type: "bottomBar",
     title: "Status Bar",

@@ -1,6 +1,7 @@
 <script lang="ts">
   import Editor from "./lib/Editor.svelte";
   import RenderView from "./lib/RenderView.svelte";
+  import PreviewView from "./lib/PreviewView.svelte";
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
   import Dock from "./lib/Dock.svelte";
@@ -231,6 +232,19 @@ score {
     compileDoc(o.id);
   }
 
+  // Open (or focus) the active document's print preview as a tab beside its
+  // render. The preview reuses that doc's compile result, so no extra compile.
+  function openPreview() {
+    if (!active) return;
+    const group =
+      groupOfType(workspace, "render") ??
+      groupOfType(workspace, "editor") ??
+      workspace.groups[0]?.id;
+    if (group) {
+      workspace = addTab(workspace, viewInstance("preview", active.id), group);
+    }
+  }
+
   // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B. The dock
   // panel it reveals lands in T7.2; the bottom bar already owns the control.
   let dockOpen = $state(false);
@@ -442,6 +456,10 @@ score {
         title="Save project bundle (Cmd/Ctrl+Shift+S)">Save Project</button
       >
       <span class="sep" aria-hidden="true"></span>
+      <button
+        onclick={openPreview}
+        title="Open the print preview (final light output)">Preview</button
+      >
       <button onclick={exportSvg} title="Export the tab as an SVG image"
         >Export SVG</button
       >
@@ -507,6 +525,12 @@ score {
               onZoomIn={zoomIn}
               onZoomOut={zoomOut}
               onZoomFit={zoomFit}
+            />
+          {:else if instance.type === "preview"}
+            <PreviewView
+              result={results[instance.docId ?? ""] ?? null}
+              error={errors[instance.docId ?? ""] ?? ""}
+              onActivate={() => instance.docId && focusDoc(instance.docId)}
             />
           {/if}
         {/key}
