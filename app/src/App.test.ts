@@ -40,9 +40,16 @@ const fake: CompileResult = {
   tokens: [],
 };
 
+const fakePaginated = {
+  pageWidth: 80,
+  pageHeight: 103.5,
+  pages: [{ bounds: { x: 0, y: 0, w: 80, h: 103.5 }, header: [], systems: [] }],
+};
 const wasmCompileMock = vi.fn(async (..._args: unknown[]) => fake);
+const wasmPaginateMock = vi.fn(async (..._args: unknown[]) => fakePaginated);
 vi.mock("./lib/wasm", () => ({
   compile: (...args: unknown[]) => wasmCompileMock(...args),
+  paginate: (...args: unknown[]) => wasmPaginateMock(...args),
 }));
 
 const openProjectMock = vi.fn();
@@ -56,6 +63,7 @@ const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
 const saveSvgMock = vi.fn();
 const savePngMock = vi.fn();
+const savePdfMock = vi.fn();
 // Capture the watch callback so a test can fire a synthetic fs change.
 let watchCallback: (() => void) | null = null;
 const unwatchMock = vi.fn();
@@ -75,6 +83,7 @@ vi.mock("./lib/io", () => ({
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
   savePng: (...args: unknown[]) => savePngMock(...args),
+  savePdf: (...args: unknown[]) => savePdfMock(...args),
   defaultDocName: () => "untitled.ctab",
   basename: (p: string) => p.split(/[\\/]/).pop() || p,
   resolvePath: (root: string, key: string) => `${root}/${key}`,
@@ -102,6 +111,13 @@ const svgToPngBlobMock = vi.fn(
 );
 vi.mock("./lib/png", () => ({
   svgToPngBlob: (...args: unknown[]) => svgToPngBlobMock(...args),
+}));
+
+const paginatedTreeToPdfMock = vi.fn(
+  async (..._args: unknown[]) => new Uint8Array([37, 80, 68, 70]),
+);
+vi.mock("./lib/pdf", () => ({
+  paginatedTreeToPdf: (...args: unknown[]) => paginatedTreeToPdfMock(...args),
 }));
 
 import App from "./App.svelte";
@@ -868,6 +884,31 @@ describe("App", () => {
     expect(svgToPngBlobMock).toHaveBeenCalled();
     const [blob] = savePngMock.mock.calls[0] as [Blob];
     expect(blob.type).toBe("image/png");
+  });
+
+  it("exports the document as a paginated PDF", async () => {
+    savePdfMock.mockReset();
+    paginatedTreeToPdfMock.mockClear();
+    wasmPaginateMock.mockClear();
+    savePdfMock.mockResolvedValue({ path: null, name: "untitled.pdf" });
+    const { container, getByText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    await fireEvent.click(screen.getByLabelText("Export"));
+    await fireEvent.click(getByText("Export PDF"));
+
+    await vi.waitFor(() => expect(savePdfMock).toHaveBeenCalled());
+    // The document was paginated, then painted to PDF bytes before saving.
+    expect(wasmPaginateMock).toHaveBeenCalled();
+    expect(paginatedTreeToPdfMock).toHaveBeenCalled();
+    const [bytes, target] = savePdfMock.mock.calls[0] as [
+      Uint8Array,
+      { path: string | null; suggestedName: string },
+    ];
+    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(target).toEqual({ path: null, suggestedName: "untitled.ctab" });
   });
 
   it("opens and dismisses the topbar Export menu", async () => {

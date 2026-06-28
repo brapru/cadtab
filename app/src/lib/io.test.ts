@@ -45,6 +45,7 @@ import {
   saveBundle,
   saveSvg,
   savePng,
+  savePdf,
   type DirEntry,
 } from "./io";
 import { serializeBundle, type ProjectBundle } from "./bundle";
@@ -397,6 +398,21 @@ describe("io desktop (Tauri) backend", () => {
     expect(Array.from(bytes)).toEqual([1, 2, 3]);
   });
 
+  it("exports a PDF through the binary writer", async () => {
+    writeFileMock.mockReset();
+    writeFileMock.mockResolvedValue(undefined);
+
+    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), {
+      path: "/x/tab.pdf",
+      suggestedName: "tab.pdf",
+    });
+
+    expect(result).toEqual({ path: "/x/tab.pdf", name: "tab.pdf" });
+    const [path, bytes] = writeFileMock.mock.calls[0] as [string, Uint8Array];
+    expect(path).toBe("/x/tab.pdf");
+    expect(Array.from(bytes)).toEqual([37, 80, 68, 70]);
+  });
+
   it("opens a folder: picks a directory and reads its .ctab tree", async () => {
     openMock.mockResolvedValue("/proj");
     readDirMock.mockImplementation((dir: string) =>
@@ -617,5 +633,24 @@ describe("io web backend", () => {
 
     expect(result).toEqual({ path: null, name: "tune.png" });
     expect(anchor.download).toBe("tune.png");
+  });
+
+  it("downloads a PDF export with the .pdf extension", async () => {
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:pdf"),
+      revokeObjectURL: vi.fn(),
+    });
+    const anchor = { href: "", download: "", click: vi.fn() };
+    vi.spyOn(document, "createElement").mockReturnValue(
+      anchor as unknown as HTMLElement,
+    );
+
+    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), {
+      path: null,
+      suggestedName: "tune.ctab",
+    });
+
+    expect(result).toEqual({ path: null, name: "tune.pdf" });
+    expect(anchor.download).toBe("tune.pdf");
   });
 });

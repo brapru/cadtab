@@ -7,7 +7,7 @@
   import Dock from "./lib/Dock.svelte";
   import ConfirmDialog from "./lib/ConfirmDialog.svelte";
   import Icon from "./lib/Icon.svelte";
-  import { compile, isTauri } from "./lib/core";
+  import { compile, paginate, isTauri } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
   import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
@@ -58,6 +58,7 @@
     saveBundle,
     saveSvg,
     savePng,
+    savePdf,
     defaultDocName,
     basename,
     resolvePath,
@@ -1027,10 +1028,26 @@ score {
     const blob = await svgToPngBlob(renderTreeToSvg(activeResult.renderTree));
     await savePng(blob, { path: null, suggestedName: exportName() });
   }
-  // The base name to seed an export with; `saveSvg`/`savePng` swap the extension.
+  // Logical units across a printable page's content area; sets PDF measures-per-
+  // line density (provisional — eyeballed against a Letter page).
+  const PDF_CONTENT_WIDTH = 80;
+  // Export the current document as a paginated, print-ready PDF: paginate it into
+  // fixed Letter pages in the core, paint the vector PDF, and save the bytes.
+  async function exportPdf() {
+    if (!active) return;
+    const tree = await paginate(
+      source,
+      { size: "letter", contentWidth: PDF_CONTENT_WIDTH },
+      { basePath: active.path, files: projectFiles },
+    );
+    const { paginatedTreeToPdf } = await import("./lib/pdf");
+    const bytes = await paginatedTreeToPdf(tree);
+    await savePdf(bytes, { path: null, suggestedName: exportName() });
+  }
+  // The base name to seed an export with; the save helpers swap the extension.
   const exportName = () => currentName ?? defaultDocName(source);
 
-  // The topbar Export menu (download ▾): one icon opening an SVG/PNG choice,
+  // The topbar Export menu (download ▾): one icon opening an SVG/PNG/PDF choice,
   // dismissed on Escape or a pointer down outside it.
   let exportMenuOpen = $state(false);
   function chooseExport(fn: () => void) {
@@ -1125,7 +1142,7 @@ score {
           aria-label="Export"
           aria-haspopup="menu"
           aria-expanded={exportMenuOpen}
-          use:tooltip={"Export the tab as an image"}
+          use:tooltip={"Export the tab (SVG, PNG, PDF)"}
           onclick={() => (exportMenuOpen = !exportMenuOpen)}
         >
           <Icon name="download" size={18} />
@@ -1141,6 +1158,11 @@ score {
               class="menu-item"
               role="menuitem"
               onclick={() => chooseExport(exportPng)}>Export PNG</button
+            >
+            <button
+              class="menu-item"
+              role="menuitem"
+              onclick={() => chooseExport(exportPdf)}>Export PDF</button
             >
             <button
               class="menu-item"

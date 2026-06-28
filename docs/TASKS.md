@@ -546,7 +546,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 - [x] **T7.18 — Even out intra-measure spacing.** Reviewed the trailing-space vs leading-pad asymmetry
       and **kept the onset-based model as-is by decision** (it's standard engraving — a long note earns
       space after it). No code change; see DESIGN changelog for the options weighed.
-- [ ] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
+- [x] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
       standard for tab. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview
       T7.6). Depends on T7.17.
   - [x] T7.19a — **Pagination layout.** Fixed Letter/A4 pages, systems packed per page, margins, and a
@@ -554,7 +554,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         (systems-per-page) golden cases; multi-page doc emits N pages; one-page doc emits one.
   - [x] T7.19b — **PDF emission.** Serialize the paginated tree to valid PDF bytes. *Tests:* valid PDF
         bytes (header + page count).
-  - [ ] T7.19c — **Save via the io seam.** Binary write on desktop, download on web.
+  - [x] T7.19c — **Save via the io seam.** Binary write on desktop, download on web.
 - [ ] **T7.20 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and the
       PDF export (T7.19) into a single **Export** button with a format picker (SVG / PNG / PDF). One
       control, one dropdown; reuses the io seam. Depends on T7.19; pairs with the cohesion pass (T7.34).

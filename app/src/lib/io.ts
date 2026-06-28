@@ -10,11 +10,13 @@ const CTAB_EXT = ".ctab";
 const BUNDLE_EXT = ".ctabz";
 const SVG_EXT = ".svg";
 const PNG_EXT = ".png";
+const PDF_EXT = ".pdf";
 const CADTAB_EXTS = [CTAB_EXT, BUNDLE_EXT];
 const CTAB_FILTER = { name: "cadtab score", extensions: ["ctab"] };
 const BUNDLE_FILTER = { name: "cadtab project", extensions: ["ctabz"] };
 const SVG_FILTER = { name: "SVG image", extensions: ["svg"] };
 const PNG_FILTER = { name: "PNG image", extensions: ["png"] };
+const PDF_FILTER = { name: "PDF document", extensions: ["pdf"] };
 
 type Filter = { name: string; extensions: string[] };
 
@@ -303,6 +305,22 @@ export async function savePng(
     return writeBinaryTauri(bytes, target, [PNG_FILTER]);
   }
   return downloadBlobWeb(png, target.suggestedName, PNG_EXT);
+}
+
+/// Export a PDF document (binary) to `target`: writes the bytes on desktop, or
+/// downloads them in the browser. Same seam as `savePng`.
+export function savePdf(
+  bytes: Uint8Array,
+  target: SaveTarget,
+): Promise<SaveResult | null> {
+  if (isTauri()) return writeBinaryTauri(bytes, target, [PDF_FILTER]);
+  // Cast: a Uint8Array is a valid BlobPart, but strict DOM types narrow its
+  // backing buffer to ArrayBuffer (excluding SharedArrayBuffer).
+  return downloadBlobWeb(
+    new Blob([bytes as BlobPart], { type: "application/pdf" }),
+    target.suggestedName,
+    PDF_EXT,
+  );
 }
 
 function pickFile(filters: Filter[]): Promise<OpenedDoc | null> {
