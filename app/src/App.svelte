@@ -200,6 +200,14 @@ score {
     docStore = setActive(docStore, id);
   }
 
+  // The kind of view the user is focused on, so Cmd/Ctrl +/- zooms the right
+  // thing — the editor's code font vs. the render's scale (T7.12).
+  let focusedKind = $state<string>("editor");
+  function focusView(inst: ViewInstance) {
+    if (inst.docId) focusDoc(inst.docId);
+    focusedKind = inst.type;
+  }
+
   // The workspace layout (D41): the active doc's editor|render split. Opening a
   // file adds its editor and render as tabs next to the existing ones.
   let workspace = $state<WorkspaceModel>(defaultWorkspace(initialId));
@@ -372,15 +380,28 @@ score {
     return () => window.removeEventListener("keydown", onDockKey);
   });
 
-  // Visual zoom of the render. Fit returns to 1, which fills the pane width since
-  // layout already reflows to it.
-  let zoom = $state(1);
-  const zoomIn = () => (zoom = clampZoom(zoom * ZOOM_STEP));
-  const zoomOut = () => (zoom = clampZoom(zoom / ZOOM_STEP));
-  const zoomFit = () => (zoom = 1);
+  // Zoom is per view type (T7.12): the editor's code font and the render's scale
+  // each have their own level, and Cmd/Ctrl +/- targets whichever the user is
+  // focused on. Render Fit (zoom 1) fills the pane width since layout reflows to
+  // it; editor Fit returns the code font to its base size.
+  let editorZoom = $state(1);
+  let renderZoom = $state(1);
+  const zoomTarget = () => (focusedKind === "editor" ? "editor" : "render");
+  function zoomBy(factor: number) {
+    if (zoomTarget() === "editor") editorZoom = clampZoom(editorZoom * factor);
+    else renderZoom = clampZoom(renderZoom * factor);
+  }
+  const zoomIn = () => zoomBy(ZOOM_STEP);
+  const zoomOut = () => zoomBy(1 / ZOOM_STEP);
+  function zoomFit() {
+    if (zoomTarget() === "editor") editorZoom = 1;
+    else renderZoom = 1;
+  }
+  // The tab-strip Fit control is render-only, so it always resets the render.
+  const fitRender = () => (renderZoom = 1);
 
-  // Cmd/Ctrl +/- zoom the render and Cmd/Ctrl 0 fits, overriding the browser's
-  // native page zoom. `=`/`+` share a key (shift), as do `-`/`_`.
+  // Cmd/Ctrl +/- zoom the focused view and Cmd/Ctrl 0 fits it, overriding the
+  // browser's native page zoom. `=`/`+` share a key (shift), as do `-`/`_`.
   function onZoomKey(e: KeyboardEvent) {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
     if (e.key === "=" || e.key === "+") zoomIn();
@@ -630,12 +651,12 @@ score {
     {/if}
     <Workspace
       bind:workspace
-      onActivateView={(inst) => inst.docId && focusDoc(inst.docId)}
+      onActivateView={focusView}
       onCloseTab={closeView}
       onOpenRender={openRender}
       onNew={newFromTemplate}
       newTemplates={TEMPLATES}
-      onFit={zoomFit}
+      onFit={fitRender}
     >
       {#snippet view(instance)}
         <!-- Key by instance so switching a group to a different document's tab
@@ -646,15 +667,13 @@ score {
             <!-- Pointerdown (not just CodeMirror's focus event) makes the doc
                  active, so active-follows-focus is reliable in WKWebView. -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
-            <div
-              class="editor-pane"
-              onpointerdown={() => instance.docId && focusDoc(instance.docId)}
-            >
+            <div class="editor-pane" onpointerdown={() => focusView(instance)}>
               <Editor
                 doc={docFor(instance.docId)?.content ?? ""}
                 onChange={onChangeFor(instance.docId ?? "")}
                 onCursor={(pos) => handleCursor(instance.docId ?? "", pos)}
-                onFocus={() => instance.docId && focusDoc(instance.docId)}
+                onFocus={() => focusView(instance)}
+                zoom={editorZoom}
                 selection={selections[instance.docId ?? ""] ?? null}
                 tokens={results[instance.docId ?? ""]?.tokens ?? []}
                 diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
@@ -664,19 +683,19 @@ score {
             <RenderView
               result={results[instance.docId ?? ""] ?? null}
               error={errors[instance.docId ?? ""] ?? ""}
-              {zoom}
+              zoom={renderZoom}
               activeSpan={activeSpans[instance.docId ?? ""] ?? null}
               onPrimitiveClick={(span) =>
                 handlePrimitiveClick(instance.docId ?? "", span)}
               onClearHighlight={() => clearHighlight(instance.docId ?? "")}
               onReflow={(px) => reflowDoc(instance.docId ?? "", px)}
-              onActivate={() => instance.docId && focusDoc(instance.docId)}
+              onActivate={() => focusView(instance)}
             />
           {:else if instance.type === "preview"}
             <PreviewView
               result={results[instance.docId ?? ""] ?? null}
               error={errors[instance.docId ?? ""] ?? ""}
-              onActivate={() => instance.docId && focusDoc(instance.docId)}
+              onActivate={() => focusView(instance)}
             />
           {/if}
         {/key}

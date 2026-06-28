@@ -177,29 +177,39 @@ describe("App", () => {
     return m ? Number(m[1]) : null;
   }
 
-  it("fits the render back to width from the tab-strip Fit control", async () => {
+  // The editor's code font scale, off the .editor container's inline font-size.
+  function editorEm(container: HTMLElement): number | null {
+    const style =
+      container.querySelector(".editor")?.getAttribute("style") ?? "";
+    const m = style.match(/font-size:\s*([\d.]+)em/);
+    return m ? Number(m[1]) : null;
+  }
+
+  it("fits the focused render back to width from the tab-strip Fit control", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
     expect(zoomOf(container)).toBe(1);
 
-    // Zoom in via the keyboard (the in-pane zoom toolbar is gone).
+    // Focus the render so zoom targets it (the in-pane zoom toolbar is gone), then
+    // zoom in via the keyboard.
+    await fireEvent.pointerDown(container.querySelector(".render-side")!);
     await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
     expect(zoomOf(container)).toBe(1.2);
 
-    // Fit lives on the active group's controls: activate the render group, then
-    // its Fit resets to fit-width.
-    await fireEvent.pointerDown(container.querySelectorAll(".group")[1]);
+    // The render group's Fit control resets to fit-width.
     await fireEvent.click(getByLabelText("Fit to width"));
     expect(zoomOf(container)).toBe(1);
   });
 
-  it("zooms from Cmd/Ctrl +/- and fits with Cmd/Ctrl 0", async () => {
+  it("zooms the focused render from Cmd/Ctrl +/- and fits with Cmd/Ctrl 0", async () => {
     const { container } = render(App);
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
     });
+    // Focus the render so the zoom keys target it, not the editor.
+    await fireEvent.pointerDown(container.querySelector(".render-side")!);
     expect(zoomOf(container)).toBe(1);
 
     await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
@@ -215,6 +225,24 @@ describe("App", () => {
     expect(zoomOf(container)).toBe(1);
   });
 
+  it("zooms the focused editor's code font, leaving the render untouched", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")).toBeTruthy();
+    });
+    // Focus the editor, then Cmd/Ctrl + grows the code font (not the render).
+    await fireEvent.pointerDown(container.querySelector(".editor-pane")!);
+    expect(editorEm(container)).toBe(1);
+
+    await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
+    expect(editorEm(container)).toBe(1.2);
+    expect(zoomOf(container)).toBe(1);
+
+    // Cmd/Ctrl 0 returns the code font to its base size.
+    await fireEvent.keyDown(window, { key: "0", ctrlKey: true });
+    expect(editorEm(container)).toBe(1);
+  });
+
   it("ignores +/- without a Cmd/Ctrl modifier", async () => {
     const { container } = render(App);
     await vi.waitFor(() => {
@@ -222,6 +250,7 @@ describe("App", () => {
     });
     await fireEvent.keyDown(window, { key: "=" });
     expect(zoomOf(container)).toBe(1);
+    expect(editorEm(container)).toBe(1);
   });
 
   it("opens a single score, shows its name, and stays clean", async () => {

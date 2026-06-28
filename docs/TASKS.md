@@ -531,7 +531,9 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       Escape); the topbar New `<select>` removed; an **empty-tabs placeholder** keeps New reachable when
       every tab is closed (with `defaultWorkspace` reseed in `openDoc`). (3) **Fit** moved into the
       group controls (`fit_screen`), the in-pane zoom toolbar (`− % + Fit`) deleted — zoom stays on
-      Cmd/Ctrl +/−. (4) **double-click a tab** toggles its group's maximize. (5) **iconified** the
+      Cmd/Ctrl +/−, and is now **per view type**: the keys target whatever the user is focused on —
+      the editor's **code font** or the render's scale (each its own level; Cmd/Ctrl 0 / the Fit
+      control reset). (4) **double-click a tab** toggles its group's maximize. (5) **iconified** the
       tab type-icons (registry `icon` is now a Material Symbols name: edit / music_note / preview) and
       the split (`vertical_split`) / maximize (`open_in_full` ↔ `close_fullscreen`) controls. (6) the
       control set shows on the **active group only** — tracked by the last group a pointer went down in

@@ -31,6 +31,7 @@
     diagnostics = [],
     selection = null,
     loadRequest = null,
+    zoom = 1,
   }: {
     doc?: string;
     onChange?: (value: string) => void;
@@ -40,6 +41,7 @@
     diagnostics?: Diagnostic[];
     selection?: { from: number; to: number } | null;
     loadRequest?: { content: string; token: number } | null;
+    zoom?: number;
   } = $props();
 
   let container: HTMLDivElement;
@@ -145,7 +147,9 @@
   onDestroy(() => view?.destroy());
 </script>
 
-<div class="editor" bind:this={container}></div>
+<!-- Zoom scales the code text: the editor inherits this font-size, so Cmd/Ctrl
+     +/- on a focused editor grows/shrinks the code (T7.12). 1em = base size. -->
+<div class="editor" bind:this={container} style="font-size: {zoom}em"></div>
 
 <style>
   .editor {
