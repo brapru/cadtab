@@ -54,12 +54,30 @@ describe("placeDiagnostics", () => {
     ]);
   });
 
-  it("drops empty and out-of-range diagnostics", () => {
-    const placed = placeDiagnostics("abc", [
-      diag("error", 1, 1),
-      diag("error", 2, 99),
+  it("drops out-of-range diagnostics (stale compile)", () => {
+    // A non-empty span reaching past the current source is left over from a
+    // longer text; it stays dropped (the fallback only rescues zero-width spans).
+    expect(placeDiagnostics("abc", [diag("error", 2, 99)])).toEqual([]);
+  });
+
+  it("underlines a zero-width diagnostic on the character before the point", () => {
+    // "expected `}` at end of input"-style errors point between characters; they
+    // fall back to the preceding character so the squiggle is still visible.
+    const eof = placeDiagnostics("abc", [diag("error", 3, 3, "expected `}`")]);
+    expect(eof).toEqual([
+      {
+        from: 2,
+        to: 3,
+        severity: "error",
+        message: "expected `}`",
+        help: null,
+      },
     ]);
-    expect(placed).toEqual([]);
+    // A point at the very start underlines the first character instead.
+    const start = placeDiagnostics("abc", [diag("error", 0, 0)]);
+    expect(start[0]).toMatchObject({ from: 0, to: 1 });
+    // Nothing to underline in an empty document → dropped.
+    expect(placeDiagnostics("", [diag("error", 0, 0)])).toEqual([]);
   });
 });
 

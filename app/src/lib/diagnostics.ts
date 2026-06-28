@@ -1,8 +1,8 @@
 import { StateField, StateEffect } from "@codemirror/state";
 import { Decoration, EditorView, hoverTooltip } from "@codemirror/view";
 import type { DecorationSet } from "@codemirror/view";
-import type { Diagnostic, Severity } from "./types";
-import { byteToCharIndex, spanToRange } from "./spans";
+import type { Diagnostic, Severity, Span } from "./types";
+import { byteToCharIndex, spanToRange, type CharRange } from "./spans";
 
 // Problem counts by severity, for the bottom bar's diagnostics indicator (info
 // diagnostics don't count as problems). T4.7m opens an exhaustive panel from it.
@@ -31,8 +31,11 @@ export interface PlacedDiagnostic {
   help: string | null;
 }
 
-// Resolve diagnostic byte spans against the source, dropping any that are empty
-// or out of range (e.g. left over from a stale compile of longer text).
+// Resolve diagnostic byte spans against the source, dropping any out of range
+// (e.g. left over from a stale compile of longer text). A zero-width span — an
+// "expected `}` at end of input"-style error that points between characters —
+// can't be underlined as-is, so it falls back to the character just before the
+// point, keeping every counted problem visible as a squiggle.
 export function placeDiagnostics(
   source: string,
   diagnostics: Diagnostic[],
@@ -40,7 +43,7 @@ export function placeDiagnostics(
   const map = byteToCharIndex(source);
   const placed: PlacedDiagnostic[] = [];
   for (const d of diagnostics) {
-    const r = spanToRange(map, d.span);
+    const r = spanToRange(map, d.span) ?? pointFallback(map, d.span);
     if (!r) continue;
     placed.push({
       ...r,
@@ -50,6 +53,18 @@ export function placeDiagnostics(
     });
   }
   return placed;
+}
+
+// Give a zero-width diagnostic something to underline: the character before the
+// point (or the first character when the point is at the very start). Only
+// applies to genuinely empty spans — a non-empty span that didn't resolve is out
+// of range and stays dropped.
+function pointFallback(map: number[], span: Span): CharRange | null {
+  if (span.start !== span.end) return null;
+  const at = map[span.start];
+  if (at === undefined) return null;
+  if (at > 0) return { from: at - 1, to: at };
+  return map.length > 1 ? { from: 0, to: 1 } : null;
 }
 
 // The diagnostics covering a position, for the hover tooltip.

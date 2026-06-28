@@ -316,10 +316,10 @@ impl<'a> Parser<'a> {
     /// (idents like `D4`, `F#4`). A missing `{` is reported; a non-pitch token
     /// inside is reported and skipped so the parse recovers.
     fn parse_tuning_strings(&mut self) -> Vec<Ident> {
-        let lb = self.peek().span.start;
+        let open = self.peek().span;
         if !self.eat(TokenKind::LBrace) {
             self.error_at(
-                Span::point(lb),
+                Span::point(open.start),
                 format!("expected `{{`, found {}", token_label(self.peek_kind())),
             );
             return Vec::new();
@@ -338,7 +338,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
         }
-        self.expect(TokenKind::RBrace);
+        self.expect_rbrace(open);
         strings
     }
 
@@ -403,10 +403,10 @@ impl<'a> Parser<'a> {
 
     /// `score { score_item* }` (the `score` keyword is already consumed).
     fn parse_score(&mut self) -> ItemKind {
-        let lb = self.peek().span.start;
+        let open = self.peek().span;
         if !self.eat(TokenKind::LBrace) {
             self.error_at(
-                Span::point(lb),
+                Span::point(open.start),
                 format!("expected `{{`, found {}", token_label(self.peek_kind())),
             );
             return ItemKind::Score(Score { items: Vec::new() });
@@ -429,7 +429,7 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
         }
-        self.expect(TokenKind::RBrace);
+        self.expect_rbrace(open);
         ItemKind::Score(Score { items })
     }
 
@@ -508,10 +508,10 @@ impl<'a> Parser<'a> {
     /// `repeat { event* ending(n){}* }` (the `repeat` keyword is consumed). The
     /// body events precede the voltas.
     fn parse_repeat(&mut self) -> ScoreItemKind {
-        let lb = self.peek().span.start;
+        let open = self.peek().span;
         if !self.eat(TokenKind::LBrace) {
             self.error_at(
-                Span::point(lb),
+                Span::point(open.start),
                 format!("expected `{{`, found {}", token_label(self.peek_kind())),
             );
             return ScoreItemKind::Repeat(Repeat {
@@ -524,7 +524,7 @@ impl<'a> Parser<'a> {
         while self.at_keyword(Keyword::Ending) {
             endings.push(self.parse_ending());
         }
-        self.expect(TokenKind::RBrace);
+        self.expect_rbrace(open);
         ScoreItemKind::Repeat(Repeat { body, endings })
     }
 
@@ -547,22 +547,22 @@ impl<'a> Parser<'a> {
 
     /// `{ event* }`. A missing `{` is reported; the body is empty in that case.
     fn parse_block(&mut self) -> Block {
-        let start = self.peek().span.start;
+        let open = self.peek().span;
         if !self.eat(TokenKind::LBrace) {
             self.error_at(
-                Span::point(start),
+                Span::point(open.start),
                 format!("expected `{{`, found {}", token_label(self.peek_kind())),
             );
             return Block {
                 events: Vec::new(),
-                span: Span::point(start),
+                span: Span::point(open.start),
             };
         }
         let events = self.parse_events_until(&[]);
-        self.expect(TokenKind::RBrace);
+        self.expect_rbrace(open);
         Block {
             events,
-            span: self.span_from(start),
+            span: self.span_from(open.start),
         }
     }
 
@@ -937,6 +937,22 @@ impl Parser<'_> {
             ),
         );
         false
+    }
+
+    /// Expect the `}` closing a block opened at `open`. A normal mismatch (a
+    /// stray token where `}` was due) behaves like [`expect`](Self::expect); but
+    /// at end of input the EOF token is a zero-width point past the source that
+    /// can't be underlined, so the diagnostic is anchored on the unclosed opening
+    /// brace instead — both meaningful to the reader and squiggle-able in editors.
+    fn expect_rbrace(&mut self, open: Span) {
+        if self.at_eof() {
+            self.diagnostics.push(
+                Diagnostic::error(open, "this `{` is never closed; expected `}`")
+                    .with_help("add a matching `}` to close the block"),
+            );
+            return;
+        }
+        self.expect(TokenKind::RBrace);
     }
 
     /// Skip tokens until one of `sync` (or `Eof`) is current.
@@ -1810,6 +1826,18 @@ mod tests {
         let msgs = diag_messages("score { time 4/4");
         assert_eq!(msgs.len(), 1);
         assert!(msgs[0].contains("expected `}`"));
+    }
+
+    #[test]
+    fn unclosed_brace_diagnostic_anchors_on_the_opening_brace() {
+        // At EOF the closing-brace error must point at the `{` (a non-empty span
+        // editors can underline), not a zero-width point past the source — that
+        // empty span is why the squiggle was missing. `{` sits at byte 6.
+        let d = &parse("score { time 4/4").diagnostics[0];
+        assert_eq!(d.span, Span::new(6, 7));
+        assert!(d.span.start < d.span.end);
+        assert!(d.message.contains("expected `}`"));
+        assert!(d.help.is_some());
     }
 
     #[test]
