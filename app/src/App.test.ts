@@ -188,7 +188,9 @@ describe("App", () => {
     await fireEvent.keyDown(window, { key: "=", ctrlKey: true });
     expect(zoomOf(container)).toBe(1.2);
 
-    // The Fit control now lives in the tab strip and resets to fit-width.
+    // Fit lives on the active group's controls: activate the render group, then
+    // its Fit resets to fit-width.
+    await fireEvent.pointerDown(container.querySelectorAll(".group")[1]);
     await fireEvent.click(getByLabelText("Fit to width"));
     expect(zoomOf(container)).toBe(1);
   });
@@ -755,8 +757,8 @@ describe("App", () => {
       expect(container.querySelector(".cm-content")).toBeTruthy();
     });
 
-    // The tab-strip New "+" opens a template menu; picking one opens a fresh
-    // untitled tab and focuses it. (Each group carries a "+"; use the first.)
+    // The tab-strip New "+" (on the active group) opens a template menu; picking
+    // one opens a fresh untitled tab and focuses it.
     await fireEvent.click(getAllByLabelText("New tab")[0]);
     await fireEvent.click(screen.getByText("Guitar (standard)"));
     await vi.waitFor(() => {

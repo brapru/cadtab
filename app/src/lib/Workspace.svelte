@@ -67,6 +67,20 @@
     };
   });
 
+  // The group whose control set (New / Fit / split / maximize) is shown — the one
+  // last interacted with (a pointer down anywhere inside it), defaulting to the
+  // first. A maximized group is the only one visible, so it owns the controls.
+  // Tracked locally rather than derived from the active doc, since the default
+  // editor|render layout puts one doc's views in two groups — doc id alone can't
+  // tell which group is focused.
+  let activeGroupId = $state<string | null>(null);
+  const controlGroupId = $derived(
+    workspace.maximizedId ??
+      (activeGroupId && workspace.groups.some((g) => g.id === activeGroupId)
+        ? activeGroupId
+        : (workspace.groups[0]?.id ?? null)),
+  );
+
   // Whether a document already has an open view of `type` anywhere in the layout
   // — drives the editor tab's render launcher (spawn vs. jump-to).
   function hasView(type: string, docId: string | null): boolean {
@@ -246,6 +260,7 @@
       bind:this={groupEls[i]}
       style="flex: {flexGrow(g.weight)}"
       role="group"
+      onpointerdowncapture={() => (activeGroupId = g.id)}
     >
       <div class="tabstrip">
         <div class="tabs" role="tablist">
@@ -293,43 +308,49 @@
             </div>
           {/each}
         </div>
+        <!-- The control set lives on the active (last-interacted) group only; the
+             per-tab close/launcher stay on every tab. -->
         <div class="group-actions">
-          {@render newControl(g.id)}
-          {#if active?.type === "render"}
-            <!-- Fit moved off the render toolbar (T7.12): resets zoom to fill the
-                 pane width. Shown when this group is showing a render. -->
+          {#if g.id === controlGroupId}
+            {@render newControl(g.id)}
+            {#if active?.type === "render"}
+              <!-- Fit moved off the render toolbar (T7.12): resets zoom to fill
+                   the pane width. Shown when this group is showing a render. -->
+              <button
+                class="fit"
+                aria-label="Fit to width"
+                title="Fit to width"
+                onclick={() => onFit?.()}
+              >
+                <Icon name="fit_screen" size={16} />
+              </button>
+            {/if}
+            {#if g.tabs.length > 1}
+              <button
+                class="split"
+                aria-label="Split group"
+                title="Split the active tab into its own group"
+                onclick={() => (workspace = splitTab(workspace, g.id))}
+              >
+                <Icon name="vertical_split" size={16} />
+              </button>
+            {/if}
             <button
-              class="fit"
-              aria-label="Fit to width"
-              title="Fit to width"
-              onclick={() => onFit?.()}
+              class="maximize"
+              aria-label={workspace.maximizedId
+                ? "Restore group"
+                : "Maximize group"}
+              title={workspace.maximizedId ? "Restore" : "Maximize"}
+              onclick={() => (workspace = toggleMaximize(workspace, g.id))}
             >
-              <Icon name="fit_screen" size={16} />
+              <Icon
+                name={workspace.maximizedId
+                  ? "close_fullscreen"
+                  : "open_in_full"}
+                size={16}
+              />
             </button>
           {/if}
-          {#if g.tabs.length > 1}
-            <button
-              class="split"
-              aria-label="Split group"
-              title="Split the active tab into its own group"
-              onclick={() => (workspace = splitTab(workspace, g.id))}
-            >
-              <Icon name="vertical_split" size={16} />
-            </button>
-          {/if}
-          <button
-            class="maximize"
-            aria-label={workspace.maximizedId
-              ? "Restore group"
-              : "Maximize group"}
-            title={workspace.maximizedId ? "Restore" : "Maximize"}
-            onclick={() => (workspace = toggleMaximize(workspace, g.id))}
-          >
-            <Icon
-              name={workspace.maximizedId ? "close_fullscreen" : "open_in_full"}
-              size={16}
-            />
-          </button>
         </div>
       </div>
       <div class="group-body">

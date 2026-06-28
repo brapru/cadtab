@@ -514,7 +514,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       live-compiler/edit-handler caches and `removeDoc` drops the session; `reconcileActive` re-points
       the active doc at a surviving view. Closing the last tab empties the layout; New/Open reseed a
       fresh `defaultWorkspace`. Tests across `workspace.test.ts`, `documents.test.ts`, `App.test.ts`.
-- [ ] **T7.12 — Group controls in the tab strip.** A tidy control set shown on the **active group**
+- [x] **T7.12 — Group controls in the tab strip.** A tidy control set shown on the **active group**
       only: **New ("+")** (replaces the topbar New), **maximize**, **close** (T7.11), **Fit**
       (aspect-ratio icon, moved off the render toolbar), and **split** (left/right — up/down deferred,
       D50). **Remove the render zoom toolbar** (the % field goes away; zoom lives in a command/Fit).
@@ -523,6 +523,22 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       that spawns that doc's render tab if closed, or jumps to it if already open — closing the original
       T7.11 gap where a closed render had no way back. (Preview reopening stays on the topbar Preview
       button.) *(NOTES #5, #6, #7, #10, #15.)*
+      **Done (built in chunks, each confirmed):** (1) **render launcher** on editor tabs (`openViewFor`
+      shared by render + preview; spawns-or-focuses via idempotent `addTab`; filled-accent ♪ + "Go to
+      render" when open). (2) **New "+"** opens a template popover menu (dismiss on outside-pointer /
+      Escape); the topbar New `<select>` removed; an **empty-tabs placeholder** keeps New reachable when
+      every tab is closed (with `defaultWorkspace` reseed in `openDoc`). (3) **Fit** moved into the
+      group controls (`fit_screen`), the in-pane zoom toolbar (`− % + Fit`) deleted — zoom stays on
+      Cmd/Ctrl +/−. (4) **double-click a tab** toggles its group's maximize. (5) **iconified** the
+      tab type-icons (registry `icon` is now a Material Symbols name: edit / music_note / preview) and
+      the split (`vertical_split`) / maximize (`open_in_full` ↔ `close_fullscreen`) controls. (6) the
+      control set shows on the **active group only** — tracked by the last group a pointer went down in
+      (local `controlGroupId`, defaulting to the first; a maximized group owns the controls). Chose
+      last-interacted tracking over deriving from the active doc, since the default editor|render layout
+      puts one doc's views in two groups (doc id can't tell them apart — Fit would never show). Per-tab
+      close/launcher stay on every tab. Tests across `workspace.test.ts` + `App.test.ts`.
+      **Deferred to T7.15b** (raised here): New should create an *unsaved dirty draft listed in the
+      dock* — rides with the dock-as-folder rework.
 - [ ] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
       dimming **only the drop region** (the group body) to a movable-cue colour, not outlining the
       whole field. Refines the T7.5 drop cue. *(NOTES #3.)*

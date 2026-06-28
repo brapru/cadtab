@@ -291,9 +291,12 @@ describe("Workspace chrome", () => {
   });
 
   it("maximizes a group, hiding the other and its gutter, then restores", async () => {
-    const { container, getAllByLabelText, getByLabelText } = mountShell();
+    const { container, getByLabelText } = mountShell();
 
-    await fireEvent.click(getAllByLabelText("Maximize group")[1]);
+    // Controls live on the active group; activate the render group first so its
+    // maximize control is the one shown.
+    await fireEvent.pointerDown(container.querySelectorAll(".group")[1]);
+    await fireEvent.click(getByLabelText("Maximize group"));
     expect(container.querySelectorAll(".group")).toHaveLength(1);
     expect(container.querySelectorAll(".gutter")).toHaveLength(0);
     expect(container.querySelector(".stub")?.textContent).toBe("render");
@@ -418,14 +421,17 @@ describe("Workspace chrome", () => {
     expect(container.querySelectorAll(".group")).toHaveLength(2);
   });
 
-  it("offers Fit only on a group showing a render, and reports it", async () => {
+  it("offers Fit only on the active group when it shows a render", async () => {
     const onFit = vi.fn();
     const { container, getByLabelText } = render(Workspace, {
       workspace: defaultWorkspace("doc"), // g1 editor | g2 render
       view: stubView,
       onFit,
     });
-    // Only the render group carries Fit — the editor group does not.
+    // The editor group is active by default — no Fit there.
+    expect(container.querySelectorAll(".fit")).toHaveLength(0);
+    // Activating the render group reveals Fit, which reports the request.
+    await fireEvent.pointerDown(container.querySelectorAll(".group")[1]);
     expect(container.querySelectorAll(".fit")).toHaveLength(1);
     await fireEvent.click(getByLabelText("Fit to width"));
     expect(onFit).toHaveBeenCalledOnce();
@@ -552,7 +558,7 @@ describe("Workspace chrome", () => {
   });
 
   it("fills a maximized sub-1-weight group", async () => {
-    const { container, getAllByLabelText } = mountShell();
+    const { container, getByLabelText } = mountShell();
     const groups = container.querySelectorAll(".group");
     (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
     (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
@@ -566,7 +572,9 @@ describe("Workspace chrome", () => {
     ptr(renderTab(), "pointerup", 50);
     await tick();
     await fireEvent.click(container.querySelector(".split")!);
-    await fireEvent.click(getAllByLabelText("Maximize group")[1]);
+    // Activate the popped (weight-0.5) group so its maximize control shows.
+    await fireEvent.pointerDown(container.querySelectorAll(".group")[1]);
+    await fireEvent.click(getByLabelText("Maximize group"));
     // Only the weight-0.5 group shows, and it fills.
     expect(flexGrows(container)).toEqual([1]);
   });
