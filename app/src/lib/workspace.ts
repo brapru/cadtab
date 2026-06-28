@@ -1,4 +1,4 @@
-// The workspace layout model (D41): a registry of views placed into editor
+// The workspace layout model: a registry of views placed into editor
 // groups. Pure data + operations, so the shell chrome stays thin and this is
 // testable in isolation. No free-floating docking — the area is a row of groups,
 // each a stack of tabs with one active, resizable and individually maximizable.

@@ -62,8 +62,6 @@ struct Resolver {
 type Scope<'a> = &'a HashMap<String, Span>;
 
 impl Resolver {
-    // --- pass 1: hoist top-level names ------------------------------------
-
     fn collect_top_level(&mut self, program: &Program) {
         for item in &program.items {
             match &item.kind {
@@ -90,8 +88,6 @@ impl Resolver {
         }
         self.globals.insert(name.to_string(), span);
     }
-
-    // --- pass 2: resolve every use ----------------------------------------
 
     fn resolve_uses(&mut self, program: &Program) {
         for item in &program.items {

@@ -593,7 +593,7 @@ describe("Workspace chrome", () => {
     expect(container.querySelectorAll(".group")).toHaveLength(2);
   });
 
-  it("cues only the target group's open tab space while dragging a tab over it (T7.13)", async () => {
+  it("cues only the target group's open tab space while dragging a tab over it", async () => {
     const { container } = mountShell();
     const groups = container.querySelectorAll(".group");
     (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);

@@ -2,8 +2,8 @@
   import { renderTreeToSvg } from "./svg";
   import type { CompileResult } from "./types";
 
-  // Print preview (T7.6): the final printed output of a document — the same
-  // light, self-contained SVG the export produces (T5.3), shown inline. Reuses
+  // Print preview: the final printed output of a document — the same
+  // light, self-contained SVG the export produces, shown inline. Reuses
   // the live render tree via the export serializer, so it is never a second
   // layout pipeline; always light, regardless of the app theme.
   let {

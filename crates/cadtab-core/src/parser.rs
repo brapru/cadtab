@@ -53,8 +53,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // --- cursor -----------------------------------------------------------
-
     /// The current token (clamped to the terminal `Eof`).
     fn peek(&self) -> LexToken {
         self.tokens[self.pos.min(self.tokens.len() - 1)]
@@ -81,8 +79,6 @@ impl<'a> Parser<'a> {
         tok
     }
 
-    // --- spans & source ---------------------------------------------------
-
     /// End offset of the most recently consumed token (0 before any consume).
     fn prev_end(&self) -> u32 {
         if self.pos == 0 {
@@ -96,8 +92,6 @@ impl<'a> Parser<'a> {
     fn span_from(&self, start: u32) -> Span {
         Span::new(start, self.prev_end())
     }
-
-    // --- diagnostics & recovery ------------------------------------------
 
     fn error_at(&mut self, span: Span, message: impl Into<String>) {
         self.diagnostics.push(Diagnostic::error(span, message));
@@ -128,8 +122,6 @@ impl<'a> Parser<'a> {
             self.bump();
         }
     }
-
-    // --- productions ------------------------------------------------------
 
     fn parse_program(mut self) -> Parsed {
         let mut items = Vec::new();
@@ -399,8 +391,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    // --- score block & its items -----------------------------------------
-
     /// `score { score_item* }` (the `score` keyword is already consumed).
     fn parse_score(&mut self) -> ItemKind {
         let open = self.peek().span;
@@ -590,8 +580,6 @@ impl<'a> Parser<'a> {
         events
     }
 
-    // --- events -----------------------------------------------------------
-
     /// `unit (~ unit)*` — a tie chain, left-associative. Returns `None` if the
     /// current token does not begin an event (so callers can dispatch/recover).
     fn parse_event(&mut self) -> Option<Event> {
@@ -776,8 +764,6 @@ impl<'a> Parser<'a> {
             span: self.span_from(start),
         })
     }
-
-    // --- expressions (Pratt) ---------------------------------------------
 
     /// An expression: a primary followed by `.N` index / `(args)` call postfixes.
     fn parse_expr(&mut self) -> Expr {
@@ -1041,8 +1027,6 @@ mod tests {
         assert!(matches!(parsed.program.items[0].kind, ItemKind::Error));
     }
 
-    // --- infra unit tests -------------------------------------------------
-
     #[test]
     fn cursor_peek_lookahead_and_bump() {
         let mut p = Parser::new("score : 4");
@@ -1097,8 +1081,6 @@ mod tests {
         let tok = p.peek();
         assert_eq!(p.text(tok.span), "banjo");
     }
-
-    // --- top-level declarations ------------------------------------
 
     use crate::ast::IntLit;
 
@@ -1237,8 +1219,6 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- score / pickup / repeat / measure / endings ---------------
-
     use crate::ast::{ScoreItemKind, TimeSig};
 
     fn score_items(src: &str) -> Vec<ScoreItem> {
@@ -1369,8 +1349,6 @@ mod tests {
         assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
         insta::assert_debug_snapshot!(parsed.program);
     }
-
-    // --- events (notes, chords, rests, ties) -----------------------
 
     use crate::ast::{EventKind, ExprKind, MarkKind};
 
@@ -1542,8 +1520,6 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- expressions (calls, index, spread) ------------------------
-
     /// The ident name of an expression, or `None`.
     fn ident_name(e: &Expr) -> Option<&str> {
         match &e.kind {
@@ -1657,8 +1633,6 @@ mod tests {
         insta::assert_debug_snapshot!(parsed.program);
     }
 
-    // --- def / let / loop ------------------------------------------
-
     #[test]
     fn def_with_params_and_body() {
         let parsed = parse("def forward_roll(chord) { chord.0 .t chord.1 .i chord.2 .m }");
@@ -1736,8 +1710,6 @@ mod tests {
         assert_eq!(parsed.program.items.len(), 3);
     }
 
-    // --- valid-program capstone: the showcase example -------------------------
-
     const SHOWCASE: &str = include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../../examples/showcase.ctab"
@@ -1757,8 +1729,6 @@ mod tests {
         );
         insta::assert_debug_snapshot!(parsed.program);
     }
-
-    // --- error-recovery corpus + multi-diagnostics -----------------
 
     fn diag_messages(src: &str) -> Vec<String> {
         parse(src)

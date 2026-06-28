@@ -244,7 +244,7 @@ pub struct Chord {
 
 /// A chord symbol (e.g. `G`, `D7`) sounding from a beat. It attaches to the
 /// event at that onset and is drawn above the staff; the span ties it back to
-/// its `chord "…"` source for bidirectional mapping (D20).
+/// its `chord "…"` source for bidirectional mapping.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChordSymbol {
@@ -323,7 +323,7 @@ impl Phrase {
 
 /// A rehearsal mark (section label) drawn above a measure's start, e.g. the "A"
 /// part. The span ties it back to the `section "…"` source for bidirectional
-/// mapping (D20).
+/// mapping.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SectionLabel {

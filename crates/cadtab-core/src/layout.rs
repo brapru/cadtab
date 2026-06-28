@@ -1591,7 +1591,7 @@ mod tests {
                 assert_eq!(content, "A");
                 // Left-anchored at the system's left margin (first measure start).
                 assert!((x - LEFT_MARGIN).abs() < 1e-5);
-                assert!(span.is_some()); // span-tagged for bidi mapping (D20)
+                assert!(span.is_some()); // span-tagged for bidi mapping
             }
             _ => unreachable!(),
         }
@@ -1663,7 +1663,7 @@ mod tests {
         match chords[0] {
             Primitive::Text { content, span, .. } => {
                 assert_eq!(content, "G");
-                assert!(span.is_some()); // span-tagged (D20)
+                assert!(span.is_some()); // span-tagged
             }
             _ => unreachable!(),
         }

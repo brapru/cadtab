@@ -140,8 +140,6 @@ impl Checker {
             .push(Diagnostic::error(span, message).with_help(help));
     }
 
-    // --- build the global environment -------------------------------------
-
     fn collect_signatures(&mut self, items: &[Item]) {
         // Pass A: def signatures (arity is structural, order-independent).
         for item in items {
@@ -160,8 +158,6 @@ impl Checker {
             }
         }
     }
-
-    // --- check bodies ------------------------------------------------------
 
     fn check_program(&mut self, program: &Program) {
         for item in &program.items {
@@ -224,8 +220,6 @@ impl Checker {
             | EventKind::Error => {}
         }
     }
-
-    // --- inference ---------------------------------------------------------
 
     fn infer(&mut self, e: &Expr) -> Ty {
         match &e.kind {

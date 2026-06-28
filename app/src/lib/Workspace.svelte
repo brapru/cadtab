@@ -155,7 +155,7 @@
     else if (e.key === "ArrowRight") nudge(i, 0.02);
   }
 
-  // Tab drag between groups (D41 "move a tab between groups"), built on pointer
+  // Tab drag between groups, built on pointer
   // events — not HTML5 drag-and-drop — so it works in WKWebView (the desktop
   // webview), where in-page HTML5 DnD is intercepted/unreliable. The gutter uses
   // the same approach; the split button is the keyboard-reachable counterpart.
@@ -221,7 +221,7 @@
   }
 </script>
 
-<!-- The New ("+") control: a button that opens a template menu (T7.12), reused by
+<!-- The New ("+") control: a button that opens a template menu, reused by
      each group's controls and the empty-tabs placeholder. `key` scopes which
      menu is open. -->
 {#snippet newControl(key: string)}
@@ -295,7 +295,7 @@
           {/each}
         </div>
         <!-- The open space after the tabs, where a dragged tab lands; it grows to
-             fill the strip and is the only region the drop cue highlights (T7.13). -->
+             fill the strip and is the only region the drop cue highlights. -->
         <div
           class="dropzone"
           class:droptarget={dragOverId === g.id && draggingId !== null}
@@ -307,7 +307,7 @@
             {@render newControl(g.id)}
             {#if active?.type === "editor"}
               {@const open = hasView("render", active.docId)}
-              <!-- Open/jump to the active editor's render (T7.12): closes the gap
+              <!-- Open/jump to the active editor's render: closes the gap
                    where a closed render had no way back. -->
               <button
                 class="launch"
@@ -320,8 +320,8 @@
               </button>
             {/if}
             {#if active?.type === "render"}
-              <!-- Fit moved off the render toolbar (T7.12): resets zoom to fill
-                   the pane width. Shown when this group is showing a render. -->
+              <!-- Fit resets zoom to fill the pane width. Shown when this group
+                   is showing a render. -->
               <button
                 class="fit"
                 aria-label="Fit to width"
@@ -383,8 +383,8 @@
     {/if}
   {/each}
   {#if visible.length === 0}
-    <!-- No open tabs: keep a New control reachable (the topbar New moved here in
-         T7.12), so an emptied workspace can still spawn a document. -->
+    <!-- No open tabs: keep a New control reachable here, so an emptied
+         workspace can still spawn a document. -->
     <div class="empty">
       <p>No open tabs</p>
       {@render newControl("empty")}
@@ -414,7 +414,7 @@
   .dropzone {
     flex: 1;
   }
-  /* Drag cue (T7.13): while a tab is dragged, highlight only this open space —
+  /* Drag cue: while a tab is dragged, highlight only this open space —
      where the tab would land — not the existing tabs, the view body, or the whole
      group. A translucent accent wash plus an accent bottom edge. */
   .dropzone.droptarget {

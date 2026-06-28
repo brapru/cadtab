@@ -3,10 +3,10 @@
   import { diagnosticCounts } from "./diagnostics";
   import { tooltip } from "./tooltip";
 
-  // The bottom status bar (D41 global singleton): a small, unobtrusive strip
+  // The bottom status bar: a small, unobtrusive strip
   // hosting the dock toggle and a live problem indicator. It sets the
-  // bottom-control styling the dock (T7.2), diagnostics panel (T4.7m), and theme
-  // switcher (T7.12) slot into.
+  // bottom-control styling the dock, diagnostics panel, and theme
+  // switcher slot into.
   let {
     diagnostics = [],
     dockOpen = false,
@@ -35,8 +35,7 @@
     </button>
   </div>
   <div class="group">
-    <!-- Live problem counts. T4.7m turns this into a button opening an
-         exhaustive diagnostics panel that jumps the editor to a clicked entry. -->
+    <!-- Live problem counts. -->
     <div
       class="diagnostics"
       class:clean

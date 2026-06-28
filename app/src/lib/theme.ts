@@ -8,7 +8,7 @@ export function nextTheme(current: Theme): Theme {
   return THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
 }
 
-// The Material Symbols icon for the toggle button, per theme (T7.14).
+// The Material Symbols icon for the toggle button, per theme.
 export function themeIcon(theme: Theme): string {
   return theme === "light"
     ? "light_mode"

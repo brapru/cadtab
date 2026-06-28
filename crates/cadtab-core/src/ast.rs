@@ -6,10 +6,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::span::Span;
 
-// ---------------------------------------------------------------------------
-// Leaf nodes
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Ident {
@@ -112,10 +108,6 @@ pub struct Fraction {
     pub span: Span,
 }
 
-// ---------------------------------------------------------------------------
-// Program & top-level items
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Program {
@@ -204,10 +196,6 @@ pub struct Block {
     pub span: Span,
 }
 
-// ---------------------------------------------------------------------------
-// Score-level items
-// ---------------------------------------------------------------------------
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScoreItem {
@@ -259,10 +247,6 @@ pub struct LoopBlock {
     pub count: IntLit,
     pub body: Block,
 }
-
-// ---------------------------------------------------------------------------
-// Events
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -329,10 +313,6 @@ pub struct Tie {
     pub left: Box<Event>,
     pub right: Box<Event>,
 }
-
-// ---------------------------------------------------------------------------
-// Expressions
-// ---------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

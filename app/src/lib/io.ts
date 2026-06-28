@@ -36,8 +36,6 @@ export type SaveResult = { path: string | null; name: string };
 /// none — prompt with a Save dialog seeded by `suggestedName`.
 export type SaveTarget = { path: string | null; suggestedName: string };
 
-// --- pure path/name helpers -------------------------------------------------
-
 /// The final path segment of a `/`- or `\`-separated path.
 export function basename(path: string): string {
   const segments = path.split(/[\\/]/);
@@ -74,8 +72,6 @@ export function defaultDocName(source: string): string {
     .replace(/^-+|-+$/g, "");
   return (slug || "untitled") + CTAB_EXT;
 }
-
-// --- public IO --------------------------------------------------------------
 
 /// Open a score (`.ctab`) or a project bundle (`.ctabz`), branching on the
 /// picked file's extension. Resolves null if the user cancels; rejects if a
@@ -130,8 +126,6 @@ export async function savePng(
   }
   return downloadBlobWeb(png, target.suggestedName, PNG_EXT);
 }
-
-// --- backend primitives -----------------------------------------------------
 
 function pickFile(filters: Filter[]): Promise<OpenedDoc | null> {
   return isTauri() ? pickFileTauri(filters) : pickFileWeb(filters);

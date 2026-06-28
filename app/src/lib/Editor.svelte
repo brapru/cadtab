@@ -148,7 +148,7 @@
 </script>
 
 <!-- Zoom scales the code text: the editor inherits this font-size, so Cmd/Ctrl
-     +/- on a focused editor grows/shrinks the code (T7.12). 1em = base size. -->
+     +/- on a focused editor grows/shrinks the code. 1em = base size. -->
 <div class="editor" bind:this={container} style="font-size: {zoom}em"></div>
 
 <style>

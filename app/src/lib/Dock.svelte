@@ -2,10 +2,10 @@
   import { projectFileList } from "./project";
   import { tooltip } from "./tooltip";
 
-  // The left project dock (D41 global singleton): a collapsible panel showing the
-  // open project's structure — the entry document plus its importable libs (D38).
+  // The left project dock: a collapsible panel showing the
+  // open project's structure — the entry document plus its importable libs.
   // Toggled from the bottom bar / Cmd-B (App owns `dockOpen`). Clicking a file
-  // opens (or focuses) it as an editor tab (T7.4b); `activePath` marks the file
+  // opens (or focuses) it as an editor tab; `activePath` marks the file
   // the focused tab is showing.
   let {
     entryName,

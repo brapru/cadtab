@@ -1,8 +1,7 @@
-// Open-document sessions (T7.4): the editor's model graduates from one global
+// Open-document sessions: the editor's model graduates from one global
 // document to a keyed collection so `import`ed files can open as their own tabs.
 // Pure data + operations; the reactive compile result lives in the UI layer,
-// keyed by the same id. The single-document phase (T7.4a) keeps exactly one
-// session; T7.4b opens more.
+// keyed by the same id.
 
 // One open document: its identity, where Save writes, and the dirty baseline.
 export interface DocSession {

@@ -50,7 +50,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  /* The page itself never scrolls; scrolling lives in the view panes (T7.9). */
+  /* The page itself never scrolls; scrolling lives in the view panes. */
   overflow: hidden;
 }
 
@@ -59,7 +59,7 @@ body {
   color: var(--fg);
 }
 
-/* Styled hover/focus tooltip (T7.14), portaled to <body> by the `tooltip` action
+/* Styled hover/focus tooltip, portaled to <body> by the `tooltip` action
    so it is never clipped. An inverted chip (ink background, page-coloured text)
    that reads clearly over either theme. */
 .app-tooltip {
@@ -76,7 +76,7 @@ body {
   box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 25%, transparent);
 }
 
-/* Self-hosted Material Symbols (D51): the variable font is bundled in
+/* Self-hosted Material Symbols: the variable font is bundled in
    public/fonts and served locally so icons work fully offline on desktop —
    never a CDN/Google Fonts load. The Icon.svelte wrapper is the one usage
    convention the chrome draws from. */

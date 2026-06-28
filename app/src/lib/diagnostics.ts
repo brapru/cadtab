@@ -5,7 +5,7 @@ import type { Diagnostic, Severity, Span } from "./types";
 import { byteToCharIndex, spanToRange, type CharRange } from "./spans";
 
 // Problem counts by severity, for the bottom bar's diagnostics indicator (info
-// diagnostics don't count as problems). T4.7m opens an exhaustive panel from it.
+// diagnostics don't count as problems).
 export interface DiagnosticCounts {
   errors: number;
   warnings: number;

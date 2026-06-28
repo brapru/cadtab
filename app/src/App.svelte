@@ -84,7 +84,7 @@ score {
   let activeSpans = $state<Record<string, Span | null>>({});
   let layoutWidths = $state<Record<string, number>>({});
 
-  // The open documents (T7.4b): each opened/imported file gets its own id, editor
+  // The open documents: each opened/imported file gets its own id, editor
   // tab, and render. The active doc drives the topbar name, Save/Export, and the
   // dirty indicator.
   const initialId = "doc";
@@ -203,14 +203,14 @@ score {
   }
 
   // The kind of view the user is focused on, so Cmd/Ctrl +/- zooms the right
-  // thing — the editor's code font vs. the render's scale (T7.12).
+  // thing — the editor's code font vs. the render's scale.
   let focusedKind = $state<string>("editor");
   function focusView(inst: ViewInstance) {
     if (inst.docId) focusDoc(inst.docId);
     focusedKind = inst.type;
   }
 
-  // The workspace layout (D41): the active doc's editor|render split. Opening a
+  // The workspace layout: the active doc's editor|render split. Opening a
   // file adds its editor and render as tabs next to the existing ones.
   let workspace = $state<WorkspaceModel>(defaultWorkspace(initialId));
 
@@ -313,13 +313,13 @@ score {
     if (active) openViewFor(active.id, "preview");
   }
 
-  // Reopen a document's render from its editor tab's launcher (T7.12) — closes
-  // the T7.11 gap where a closed render had no way back.
+  // Reopen a document's render from its editor tab's launcher — closes
+  // the gap where a closed render had no way back.
   function openRender(docId: string) {
     openViewFor(docId, "render");
   }
 
-  // Close a tab (T7.11). Each view closes on its own — removing just that
+  // Close a tab. Each view closes on its own — removing just that
   // instance, dropping a group it empties (like a move). A document's session
   // outlives its individual views and is cleaned up only once its *last* view
   // closes. Guard against losing unsaved work: closing the editor of a dirty doc
@@ -365,8 +365,7 @@ score {
     }
   }
 
-  // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B. The dock
-  // panel it reveals lands in T7.2; the bottom bar already owns the control.
+  // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B.
   let dockOpen = $state(false);
   const toggleDock = () => (dockOpen = !dockOpen);
 
@@ -382,7 +381,7 @@ score {
     return () => window.removeEventListener("keydown", onDockKey);
   });
 
-  // Zoom is per view type (T7.12): the editor's code font and the render's scale
+  // Zoom is per view type: the editor's code font and the render's scale
   // each have their own level, and Cmd/Ctrl +/- targets whichever the user is
   // focused on. Render Fit (zoom 1) fills the pane width since layout reflows to
   // it; editor Fit returns the code font to its base size.
@@ -428,7 +427,7 @@ score {
   });
 
   // Start a new untitled document from a starter template as its own tab in the
-  // current project context — driven by the tab-strip New ("+") menu (T7.12). No
+  // current project context — driven by the tab-strip New ("+") menu. No
   // discard guard: opening never replaces the edited doc, it adds a tab.
   function newFromTemplate(id: string) {
     const template = templateById(id);
@@ -477,7 +476,7 @@ score {
     confirmPrompt = null;
   }
 
-  // Opening a project replaces the current one (T7.8), which can discard unsaved
+  // Opening a project replaces the current one, which can discard unsaved
   // work. Guard it: when the current project has dirty docs, confirm before going
   // further; otherwise swap silently. Checked before the file picker so a declined
   // prompt never opens a dialog.
@@ -569,7 +568,7 @@ score {
 
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
   // derived artifacts, so they always prompt for a destination (path: null). Both
-  // live behind the topbar Export menu (T7.14).
+  // live behind the topbar Export menu.
   async function exportSvg() {
     if (!activeResult) return;
     const svg = renderTreeToSvg(activeResult.renderTree);
@@ -842,7 +841,7 @@ score {
     margin: 0.15rem 0.15rem;
     background: var(--border);
   }
-  /* Topbar actions are icon-only square buttons (T7.14), labelled by tooltip. */
+  /* Topbar actions are icon-only square buttons, labelled by tooltip. */
   .icon-btn {
     display: flex;
     align-items: center;

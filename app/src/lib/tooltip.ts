@@ -1,4 +1,4 @@
-// A reusable hover/focus tooltip (T7.14): `use:tooltip={text}` replaces native
+// A reusable hover/focus tooltip: `use:tooltip={text}` replaces native
 // `title=` with a styled element portaled to <body>, so it is never clipped by an
 // overflow:hidden/auto ancestor (the tab strip, the dock list). One tooltip shows
 // at a time; the visual styling lives in app.css (`.app-tooltip`).

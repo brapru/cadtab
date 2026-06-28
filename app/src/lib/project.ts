@@ -10,7 +10,7 @@ export interface ProjectFile {
 }
 
 // The project's files for the dock: the entry document plus its importable libs
-// (the D38 bundle map), sorted by path. The entry is flagged so the dock can
+// (the bundle map), sorted by path. The entry is flagged so the dock can
 // mark the active file. Hierarchical folder rendering is a later refinement —
 // bundles are flat today; this lists the structure that exists.
 export function projectFileList(

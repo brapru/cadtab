@@ -168,8 +168,8 @@ describe("App", () => {
     expect(gutter.classList.contains("dragging")).toBe(false);
   });
 
-  // Zoom is read off the rendered svg's --tab-zoom var (the in-pane % display was
-  // removed in T7.12 — zoom lives on Cmd/Ctrl +/- and the tab-strip Fit control).
+  // Zoom is read off the rendered svg's --tab-zoom var; zoom lives on Cmd/Ctrl
+  // +/- and the tab-strip Fit control.
   function zoomOf(container: HTMLElement): number | null {
     const style =
       container.querySelector("svg.tab")?.getAttribute("style") ?? "";
@@ -524,7 +524,7 @@ describe("App", () => {
       expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
     });
 
-    // Opening a project replaces the current one (T7.8); since the current doc is
+    // Opening a project replaces the current one; since the current doc is
     // dirty it raises our in-app confirm modal first. Accepting swaps in the
     // opened file as the sole doc.
     await fireEvent.keyDown(window, { key: "o", metaKey: true });
@@ -586,7 +586,7 @@ describe("App", () => {
     );
   });
 
-  it("closes one view at a time, the session outliving its views (T7.11)", async () => {
+  it("closes one view at a time, the session outliving its views", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
@@ -612,7 +612,7 @@ describe("App", () => {
     expect(container.querySelectorAll(".tab")).toHaveLength(0);
   });
 
-  it("reopens a closed render from the active group's render control (T7.12)", async () => {
+  it("reopens a closed render from the active group's render control", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
@@ -635,7 +635,7 @@ describe("App", () => {
     });
   });
 
-  it("closing the editor leaves its render view open (T7.11)", async () => {
+  it("closing the editor leaves its render view open", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
@@ -650,7 +650,7 @@ describe("App", () => {
     expect(container.querySelector(".dialog")).toBeNull();
   });
 
-  it("guards the editor close of a dirty doc, then the final-view discard (T7.11)", async () => {
+  it("guards the editor close of a dirty doc, then the final-view discard", async () => {
     const { container, getByLabelText } = render(App);
     let content!: Element;
     await vi.waitFor(() => {
@@ -699,7 +699,7 @@ describe("App", () => {
     });
   });
 
-  it("reseeds an editor|render layout when New runs on an emptied workspace (T7.11)", async () => {
+  it("reseeds an editor|render layout when New runs on an emptied workspace", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
@@ -784,7 +784,7 @@ describe("App", () => {
     expect(blob.type).toBe("image/png");
   });
 
-  it("opens and dismisses the topbar Export menu (T7.14)", async () => {
+  it("opens and dismisses the topbar Export menu", async () => {
     render(App);
     // Closed by default; the icon opens an SVG/PNG menu.
     expect(screen.queryByText("Export SVG")).toBeNull();

@@ -3,7 +3,7 @@
   import { debounce } from "./debounce";
   import type { CompileResult, Span } from "./types";
 
-  // One document's render, as a placeable view (T7.5/T7.4b). It owns its own pane
+  // One document's render, as a placeable view. It owns its own pane
   // width and reflow so several renders can coexist at different sizes; zoom is a
   // shared app-level control passed in. The doc-bound wiring (which file this
   // renders) lives in the parent's snippet.
@@ -37,8 +37,7 @@
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="render-side" onpointerdown={() => onActivate?.()}>
-  <!-- Zoom lives on Cmd/Ctrl +/- and the tab-strip Fit control (T7.12); the old
-       in-pane zoom toolbar (− % + Fit) is gone. -->
+  <!-- Zoom lives on Cmd/Ctrl +/- and the tab-strip Fit control. -->
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="render-pane"
@@ -71,7 +70,7 @@
     flex: 1;
     /* min-height: 0 lets this shrink within the column so its own overflow:auto
        engages on a tall render — without it the pane grows to content height and
-       pushes the shell instead of scrolling internally (T7.9). */
+       pushes the shell instead of scrolling internally. */
     min-height: 0;
     padding: 1rem;
     overflow: auto;

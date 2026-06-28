@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The one icon-usage convention (D51, T7.10). Renders a Material Symbols
+  // The one icon-usage convention. Renders a Material Symbols
   // ligature from the self-hosted variable font (see app.css). `name` is the
   // symbol ligature (e.g. "close", "add", "splitscreen_right").
   //
