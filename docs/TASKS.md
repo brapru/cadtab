@@ -406,6 +406,21 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
       divider rule between the gutter and the code text.
 - [ ] **T7.8 — Dark theme by default.** Default the app to the dark theme (keep the light / system
       toggle).
+- [ ] **T7.10 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven
+      by the core's existing knowledge: every keyword with a fixed value set hints its options
+      (`instrument` → `banjo`/`guitar`; `tuning` → the named tunings; `barnumbers` →
+      `lines`/`all`/`off`), top-level keywords hint their operand (`title` → `"Title"`), and
+      stdlib/`def` names complete as identifiers. Tab to accept. A setting toggles autocomplete +
+      inline hinting on/off. Source the candidate lists from the keyword table + stdlib/def registry
+      (no second source of truth), surfaced through the `core` adapter.
+- [ ] **T7.11 — DSL formatter (button + format-on-save toggle, D47).** A canonical pretty-printer
+      for `.ctab`: a **core** `format(source) -> String` over the parsed AST/token stream
+      (deterministic, idempotent, comment-preserving) plus a toolbar **Format** button and a
+      **format-on-save** toggle. Returns a document with parse errors untouched. *Tests:* idempotence
+      (`fmt(fmt(x)) == fmt(x)`); a corpus of messy→canonical golden cases; comments survive.
+- [ ] **T7.12 — Theme switcher in the bottom bar.** Move the light / dark / system control out of
+      the topbar into the bottom status bar (T7.3) as a compact control. Folds into T7.8's toggle and
+      the T7.3 bottom-bar styling.
 
 **Layout (migrated from T4.7):**
 
@@ -446,10 +461,21 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
       `measure {}` boxes, and extend the highlight (reusing T4.7r's treatment) to line/box prims so
       clicking or cursoring a repeat / ending / measure lights it up. *(Extends T4.5.)*
 
+**Desktop & export polish:**
+
+- [ ] **T7.13 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and
+      the PDF export (T7.9) into a single **Export** button with a format picker (SVG / PNG / PDF).
+      One control, one dropdown; reuses the existing io seam (binary write on desktop, download on
+      web). Depends on T7.9 for the PDF option; pairs with the cohesion pass (T4.7n).
+- [ ] **T7.14 — Native desktop menu bar (Tauri, D48).** Wire the desktop app's native top-bar menu
+      so every in-app command is reachable there, grouped conventionally — e.g. **View ▸ Zoom In /
+      Zoom Out / Reset Zoom**, **File ▸ Open / Save / Export…**, **Edit** basics. Menu items dispatch
+      the same commands as the in-app controls (single command source). Desktop-only (no-op on web).
+
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
-+ web; justified systems with a fixed page; **paginated PDF export (T7.9)**; readable diagnostics +
-panel; dark-by-default cohesive themed UI; structural elements participate in bidirectional mapping.
-Green.
++ web; justified systems with a fixed page; **paginated PDF export (T7.9)** behind a unified export
+control; autocomplete, formatter, and a native desktop menu; readable diagnostics + panel;
+dark-by-default cohesive themed UI; structural elements participate in bidirectional mapping. Green.
 
 ---
 
@@ -463,10 +489,14 @@ Green.
 - [ ] **T8.3 — Content.** Sample songs, broaden the stdlib, a short tutorial/getting-started doc.
 - [ ] **T8.4 — Packaging.** Tauri desktop bundles (mac/win/linux) + deployed web build; release CI.
 - [ ] **T8.5 — E2E smoke test** (Playwright/WebDriver) of the core flow.
+- [ ] **T8.6 — Marketing & downloads website.** A static site that hosts the desktop installers
+      (macOS / Windows / Linux from T8.4), shows examples and documentation, and links to the hosted
+      web UI. One of the last tasks — it publishes what T8.4 packages and what M0–M7 document.
 
 **DoD / MVP ship:** author `.ctab` banjo tab live (highlighting, diagnostics, rhythm via
 stems+beams, licks, repeats, pickups, metadata), bidirectional mapping, open/save, export
-SVG+PNG+PDF (paginated, T7.9) — on desktop and web. CI green; packaged.
+SVG+PNG+PDF (paginated, T7.9) — on desktop and web. CI green; packaged. **Static site (T8.6)** hosts
+downloads, examples, docs, and links to the web UI.
 
 ---
 

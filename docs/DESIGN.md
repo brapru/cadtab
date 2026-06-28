@@ -475,6 +475,34 @@ user-defined tunings. Decisions are captured here as each task lands.
   cost no space.
   This completes M6's above-staff machinery; the role flows to export via `tabStyle.ts` (D30).
 
+## 11f. M7 editor tooling & desktop polish (D46–D48)
+
+Pre-MVP additions identified after M6: editor completions, a `.ctab` formatter, and a single
+command source feeding both the in-app controls and the native desktop menu. Captured so the core
+stays the single source of truth (consistent with D27's "Rust lexer is the single source").
+
+- **D46 — Completions come from the core, not a second grammar (T7.10).** Autocomplete and inline
+  hints are driven by the *existing* core knowledge: the keyword table (every keyword with a fixed
+  value set — `instrument`, `tuning`, `barnumbers` — hints its options), the top-level operand
+  shapes (`title` → a string), and the loaded stdlib/`def` registry (identifier completion). The
+  `core` adapter exposes a completion query (position → candidates); CodeMirror renders them, tab
+  accepts. No JS-side list of keywords/tunings to drift (mirrors D27). A setting toggles
+  autocomplete + inline hinting off for users who want a quiet editor.
+- **D47 — The formatter is a core pretty-printer over the parse tree (T7.11).** A pure
+  `format(source) -> String` in `cadtab-core` that re-emits from the AST/token stream, so it is the
+  one canonical layout of a document. Properties: **idempotent** (`fmt(fmt(x)) == fmt(x)`),
+  **comment-preserving**, and **error-safe** — a document with parse errors is returned untouched
+  rather than half-formatted (the resilient parser would otherwise drop the broken span). The UI is
+  thin: a Format button and a format-on-save toggle both call the same core function. Lives in core
+  (not the editor) so desktop, web, and any future CLI share one formatter.
+- **D48 — One command source for in-app controls and the native desktop menu (T7.13, T7.14).**
+  User actions (open, save, export-as, zoom in/out/reset, toggle dock…) are defined once as named
+  commands; the toolbar/buttons and the Tauri native menu (View ▸ Zoom In, File ▸ Export…) both
+  dispatch the same command, so the two never diverge. The **unified export control** (one button +
+  SVG/PNG/PDF picker) is an instance: it replaces M5's separate buttons and routes every format
+  through the existing io seam (binary write on desktop, download on web; D29/D30). The native menu
+  is desktop-only (no-op on web); commands stay callable from the in-app UI on both targets.
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -499,4 +527,5 @@ dependency-ordered build plan.
 - *2026-06-27* — Section labels resolved: D43 (see §11e). `section "A"` marker → `Measure.section`; layout gains a reusable above-staff band (section over volta). Completes T6.1; T6.2/T6.3 reuse the band.
 - *2026-06-27* — Chord symbols resolved: D44 (see §11e). `chord "G"` contextual-keyword marker → `Event.chord` (attaches to next onset); above-staff band gains a chord row (under section, over volta). Completes T6.2.
 - *2026-06-27* — Bar numbering resolved: D45 (see §11e). `barnumbers lines|all|off` directive → `Score.bar_numbers` (default `lines`); band gains a top bar-number row. Completes T6.3 — **M6 done** (D42–D45).
+- *2026-06-27* — Pre-MVP M7 additions scoped: D46–D48 (see §11f). Core-driven completions (D46), core `.ctab` formatter (D47), one command source for in-app + native desktop menu incl. unified export (D48). Adds T7.10–T7.14, T8.6 to the plan; core stays the single source of truth (cf. D27).
 - *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.
