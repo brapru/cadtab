@@ -630,6 +630,10 @@ score {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    /* The shell is fixed to the viewport and never scrolls — overflow is pushed
+       down into the scrollable view bodies (editor, render, preview, dock), each
+       of which clips and scrolls on its own. */
+    overflow: hidden;
     margin: 0;
     font-family: system-ui, sans-serif;
     background: var(--bg);

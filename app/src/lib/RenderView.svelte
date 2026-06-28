@@ -101,6 +101,10 @@
   }
   .render-pane {
     flex: 1;
+    /* min-height: 0 lets this shrink within the column so its own overflow:auto
+       engages on a tall render — without it the pane grows to content height and
+       pushes the shell instead of scrolling internally (T7.9). */
+    min-height: 0;
     padding: 1rem;
     overflow: auto;
     min-width: 0;
