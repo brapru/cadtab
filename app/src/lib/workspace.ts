@@ -193,6 +193,42 @@ export function moveTab(
   return { groups, maximizedId };
 }
 
+// Close a tab: drop the instance from whichever group holds it, and drop a group
+// the close empties (like `moveTab`) so the row collapses. The group's active tab
+// is preserved unless it was the one closed, then it falls back to the first
+// remaining. A maximized group that vanished is un-maximized. No-op when the
+// instance isn't open. Can leave an empty `groups` — the shell reseeds on the
+// next open.
+export function closeTab(ws: Workspace, instanceId: string): Workspace {
+  const from = ws.groups.find((g) => g.tabs.some((t) => t.id === instanceId));
+  if (!from) return ws;
+  const groups = ws.groups
+    .map((g) => {
+      if (g.id !== from.id) return g;
+      const tabs = g.tabs.filter((t) => t.id !== instanceId);
+      const activeId = tabs.some((t) => t.id === g.activeId)
+        ? g.activeId
+        : (tabs[0]?.id ?? null);
+      return { ...g, tabs, activeId };
+    })
+    .filter((g) => g.tabs.length > 0);
+  const maximizedId =
+    ws.maximizedId && groups.some((g) => g.id === ws.maximizedId)
+      ? ws.maximizedId
+      : null;
+  return { groups, maximizedId };
+}
+
+// The set of document ids that still have an open view anywhere in the layout —
+// used to tell when a closed doc has no remaining views and its session can be
+// cleaned up.
+export function docIdsWithViews(ws: Workspace): Set<string> {
+  const ids = new Set<string>();
+  for (const g of ws.groups)
+    for (const t of g.tabs) if (t.docId) ids.add(t.docId);
+  return ids;
+}
+
 // The id of the first group holding a tab of `type` (any document), or null —
 // used to route a newly opened file's editor/render tabs next to the existing
 // ones.

@@ -550,6 +550,120 @@ describe("App", () => {
     );
   });
 
+  it("closes one view at a time, the session outliving its views (T7.11)", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    // Closing the render (a clean doc → no prompt) drops only that view; the
+    // editor and the document's session remain.
+    await fireEvent.click(getByLabelText("Close Render"));
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).toBeNull();
+      expect(container.querySelector(".cm-content")).not.toBeNull();
+    });
+    expect(container.querySelector(".dialog")).toBeNull();
+    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+      "untitled",
+    );
+
+    // Closing the editor too removes the last view, emptying the layout.
+    await fireEvent.click(getByLabelText("Close Editor"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".cm-content")).toBeNull(),
+    );
+    expect(container.querySelectorAll(".tab")).toHaveLength(0);
+  });
+
+  it("closing the editor leaves its render view open (T7.11)", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    // Views are independent: closing the (clean) editor keeps the render showing.
+    await fireEvent.click(getByLabelText("Close Editor"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".cm-content")).toBeNull(),
+    );
+    expect(container.querySelector("svg.tab")).not.toBeNull();
+    expect(container.querySelector(".dialog")).toBeNull();
+  });
+
+  it("guards the editor close of a dirty doc, then the final-view discard (T7.11)", async () => {
+    const { container, getByLabelText } = render(App);
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name.dirty")).not.toBeNull(),
+    );
+
+    // Closing the editor of a dirty doc warns; cancelling keeps it editable.
+    await fireEvent.click(getByLabelText("Close Editor"));
+    let cancelBtn!: HTMLElement;
+    await vi.waitFor(() => {
+      cancelBtn = container.querySelector(".dialog .cancel")!;
+      expect(cancelBtn).toBeTruthy();
+    });
+    await fireEvent.click(cancelBtn);
+    expect(container.querySelector(".cm-content")).not.toBeNull();
+
+    // Confirming closes the editor; the render keeps the dirty doc on screen.
+    await fireEvent.click(getByLabelText("Close Editor"));
+    await vi.waitFor(() => {
+      const confirm = container.querySelector<HTMLElement>(".dialog .confirm")!;
+      expect(confirm).toBeTruthy();
+    });
+    await fireEvent.click(container.querySelector(".dialog .confirm")!);
+    await vi.waitFor(() =>
+      expect(container.querySelector(".cm-content")).toBeNull(),
+    );
+    expect(container.querySelector("svg.tab")).not.toBeNull();
+    expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+
+    // Closing the render is now the last view of a still-dirty doc: a final
+    // discard prompt, after which the document is gone for good.
+    await fireEvent.click(getByLabelText("Close Render"));
+    await vi.waitFor(() => {
+      const confirm = container.querySelector<HTMLElement>(".dialog .confirm")!;
+      expect(confirm).toBeTruthy();
+    });
+    await fireEvent.click(container.querySelector(".dialog .confirm")!);
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).toBeNull();
+      expect(container.querySelectorAll(".tab")).toHaveLength(0);
+    });
+  });
+
+  it("reseeds an editor|render layout when New runs on an emptied workspace (T7.11)", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    // Empty the layout: close the render, then the (clean) editor.
+    await fireEvent.click(getByLabelText("Close Render"));
+    await fireEvent.click(getByLabelText("Close Editor"));
+    await vi.waitFor(() =>
+      expect(container.querySelectorAll(".tab")).toHaveLength(0),
+    );
+
+    // New from a template rebuilds the editor|render split from scratch.
+    const select = getByLabelText("New from template") as HTMLSelectElement;
+    await fireEvent.change(select, { target: { value: "guitar" } });
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")?.textContent).toContain(
+        "instrument guitar",
+      );
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+    });
+  });
+
   it("saves a project bundle from the Save Project button", async () => {
     saveBundleMock.mockReset();
     saveBundleMock.mockResolvedValue({

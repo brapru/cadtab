@@ -13,6 +13,7 @@
     viewDef,
   } from "./workspace";
   import { splitFromPointer, clampSplit } from "./split";
+  import Icon from "./Icon.svelte";
 
   // The shell renders groups, tab strips, resize gutters, and the maximize
   // toggle; the parent supplies `view`, a snippet that mounts the right
@@ -21,10 +22,12 @@
     workspace = $bindable(),
     view,
     onActivateView,
+    onCloseTab,
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
     onActivateView?: (instance: ViewInstance) => void;
+    onCloseTab?: (instance: ViewInstance) => void;
   } = $props();
 
   function activate(groupId: string, tab: ViewInstance) {
@@ -168,22 +171,32 @@
       <div class="tabstrip">
         <div class="tabs" role="tablist">
           {#each g.tabs as tab (tab.id)}
-            <button
-              class="tab"
-              class:active={tab.id === active?.id}
-              class:dragging={draggingId === tab.id}
-              role="tab"
-              aria-selected={tab.id === active?.id}
-              onpointerdown={(e) => onTabPointerDown(tab.id, e)}
-              onpointermove={onTabPointerMove}
-              onpointerup={onTabPointerUp}
-              onclick={() => onTabClick(g.id, tab)}
-            >
-              <span class="tab-icon" aria-hidden="true"
-                >{viewDef(tab.type)?.icon}</span
+            <div class="tab-wrap">
+              <button
+                class="tab"
+                class:active={tab.id === active?.id}
+                class:dragging={draggingId === tab.id}
+                role="tab"
+                aria-selected={tab.id === active?.id}
+                onpointerdown={(e) => onTabPointerDown(tab.id, e)}
+                onpointermove={onTabPointerMove}
+                onpointerup={onTabPointerUp}
+                onclick={() => onTabClick(g.id, tab)}
               >
-              <span class="tab-title">{viewDef(tab.type)?.title}</span>
-            </button>
+                <span class="tab-icon" aria-hidden="true"
+                  >{viewDef(tab.type)?.icon}</span
+                >
+                <span class="tab-title">{viewDef(tab.type)?.title}</span>
+              </button>
+              <button
+                class="tab-close"
+                aria-label="Close {viewDef(tab.type)?.title}"
+                title="Close"
+                onclick={() => onCloseTab?.(tab)}
+              >
+                <Icon name="close" size={14} />
+              </button>
+            </div>
           {/each}
         </div>
         <div class="group-actions">
@@ -262,22 +275,29 @@
     align-items: stretch;
     overflow: hidden;
   }
+  /* A tab is a label button plus a close button, sharing one bordered cell so
+     the active tint covers both. The label keeps the drag/click handlers. */
+  .tab-wrap {
+    display: flex;
+    align-items: stretch;
+    border-right: 1px solid var(--border);
+  }
   .tab {
     display: flex;
     align-items: center;
     gap: 0.35rem;
     border: none;
-    border-right: 1px solid var(--border);
     background: transparent;
     color: var(--muted);
-    padding: 0.3rem 0.7rem;
+    padding: 0.3rem 0.3rem 0.3rem 0.7rem;
     cursor: pointer;
     font-size: 0.8rem;
     line-height: 1;
     /* Pointer-driven drag: keep touch gestures from scrolling mid-drag. */
     touch-action: none;
   }
-  .tab.active {
+  .tab.active,
+  .tab.active + .tab-close {
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 6%, transparent);
   }
@@ -286,6 +306,21 @@
   }
   .tab-icon {
     font-size: 0.85rem;
+  }
+  .tab-close {
+    display: flex;
+    align-items: center;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 0 0.4rem;
+    cursor: pointer;
+    opacity: 0.6;
+  }
+  .tab-close:hover {
+    opacity: 1;
+    color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 12%, transparent);
   }
   .group-actions {
     display: flex;

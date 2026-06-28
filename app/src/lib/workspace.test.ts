@@ -1,5 +1,5 @@
 import { render, fireEvent } from "@testing-library/svelte";
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { createRawSnippet, tick } from "svelte";
 import Workspace from "./Workspace.svelte";
 import {
@@ -14,6 +14,8 @@ import {
   resizePair,
   moveTab,
   splitTab,
+  closeTab,
+  docIdsWithViews,
   groupOfType,
   addTab,
   type ViewInstance,
@@ -205,6 +207,62 @@ describe("addTab", () => {
   });
 });
 
+describe("closeTab", () => {
+  it("drops a tab and the group it empties", () => {
+    const ws = defaultWorkspace("doc"); // g1[editor] | g2[render]
+    const next = closeTab(ws, "render:doc");
+    expect(next.groups).toHaveLength(1);
+    expect(next.groups[0].id).toBe("g1");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["editor:doc"]);
+  });
+
+  it("keeps the active tab when a different tab is closed", () => {
+    // Stack editor+render in g1, render active; close the (inactive) editor.
+    const stacked = moveTab(defaultWorkspace("doc"), "render:doc", "g1");
+    expect(stacked.groups[0].activeId).toBe("render:doc");
+    const next = closeTab(stacked, "editor:doc");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["render:doc"]);
+    expect(next.groups[0].activeId).toBe("render:doc");
+  });
+
+  it("falls the active tab back to the first remaining when the active closes", () => {
+    const stacked = moveTab(defaultWorkspace("doc"), "render:doc", "g1");
+    const next = closeTab(stacked, "render:doc"); // render was active
+    expect(next.groups[0].activeId).toBe("editor:doc");
+  });
+
+  it("clears a maximize that pointed at the vanished group", () => {
+    const ws = toggleMaximize(defaultWorkspace("doc"), "g2");
+    const next = closeTab(ws, "render:doc"); // g2 empties and is dropped
+    expect(next.maximizedId).toBeNull();
+  });
+
+  it("can empty the layout when the last tab closes", () => {
+    const lone = moveTab(defaultWorkspace("doc"), "render:doc", "g1");
+    const a = closeTab(lone, "render:doc");
+    const b = closeTab(a, "editor:doc");
+    expect(b.groups).toHaveLength(0);
+  });
+
+  it("is a no-op for an unknown instance", () => {
+    const ws = defaultWorkspace("doc");
+    expect(closeTab(ws, "nope")).toBe(ws);
+  });
+});
+
+describe("docIdsWithViews", () => {
+  it("collects the doc ids that still have an open view", () => {
+    let ws = defaultWorkspace("a");
+    ws = addTab(ws, instance("editor", "b"), "g1");
+    expect([...docIdsWithViews(ws)].sort()).toEqual(["a", "b"]);
+    // Closing a's render leaves its editor, so a still counts...
+    expect(docIdsWithViews(closeTab(ws, "render:a")).has("a")).toBe(true);
+    // ...but closing both of a's views drops it.
+    const closed = closeTab(closeTab(ws, "render:a"), "editor:a");
+    expect(docIdsWithViews(closed).has("a")).toBe(false);
+  });
+});
+
 // A minimal stand-in for the parent's view snippet: render the tab's type, so we
 // can assert which view a group shows without pulling in Editor/Tab.
 const stubView = createRawSnippet((instance: () => ViewInstance) => ({
@@ -252,6 +310,24 @@ describe("Workspace chrome", () => {
         (t) => t.querySelector(".tab-title")?.textContent,
       ),
     ).toEqual(["Editor", "Render"]);
+  });
+
+  it("shows a close affordance on every tab that reports the instance closed", async () => {
+    const onCloseTab = vi.fn();
+    const { getByLabelText } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      onCloseTab,
+    });
+    // One labelled close button per tab (editor + render).
+    await fireEvent.click(getByLabelText("Close Editor"));
+    expect(onCloseTab).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "editor:doc", type: "editor" }),
+    );
+    await fireEvent.click(getByLabelText("Close Render"));
+    expect(onCloseTab).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "render:doc", type: "render" }),
+    );
   });
 
   // jsdom doesn't deliver clientX on synthetic pointer events, so dispatch a

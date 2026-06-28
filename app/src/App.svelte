@@ -15,8 +15,12 @@
     defaultWorkspace,
     instance as viewInstance,
     addTab,
+    closeTab,
+    docIdsWithViews,
     groupOfType,
+    activeTab,
     type Workspace as WorkspaceModel,
+    type ViewInstance,
   } from "./lib/workspace";
   import {
     newSession,
@@ -24,6 +28,7 @@
     activeDoc,
     isDirty,
     putDoc,
+    removeDoc,
     setDocContent,
     setActive,
     markActiveSaved,
@@ -221,6 +226,23 @@ score {
     for (const k in editHandlers) delete editHandlers[k];
   }
 
+  // Drop a single closed document's derived maps and caches, so it leaves no
+  // stale render/highlight or orphaned live compiler/edit handler behind. The
+  // per-doc `$state` maps are reassigned (omitting the id) so Svelte tracks it.
+  function without<T>(map: Record<string, T>, id: string): Record<string, T> {
+    const { [id]: _drop, ...rest } = map;
+    return rest;
+  }
+  function cleanupDoc(id: string) {
+    results = without(results, id);
+    errors = without(errors, id);
+    selections = without(selections, id);
+    activeSpans = without(activeSpans, id);
+    layoutWidths = without(layoutWidths, id);
+    delete compilers[id];
+    delete editHandlers[id];
+  }
+
   // Open or focus a document. Opening a *project* (a single score or a bundle
   // from disk, which supplies `context`) replaces the prior one: it closes the
   // old project's docs, tabs, and renders and resets the import context, so no
@@ -250,7 +272,12 @@ score {
         docStore,
         newSession(o.id, { name: o.name, path: o.path, content: o.content }),
       );
-      workspace = addDocTabs(workspace, o.id);
+      // Reseed a fresh editor|render layout when every tab was closed; otherwise
+      // add this doc's tabs beside the open ones.
+      workspace =
+        workspace.groups.length === 0
+          ? defaultWorkspace(o.id)
+          : addDocTabs(workspace, o.id);
     }
     focusDoc(o.id);
     compileDoc(o.id);
@@ -266,6 +293,52 @@ score {
       workspace.groups[0]?.id;
     if (group) {
       workspace = addTab(workspace, viewInstance("preview", active.id), group);
+    }
+  }
+
+  // Close a tab (T7.11). Each view closes on its own — removing just that
+  // instance, dropping a group it empties (like a move). A document's session
+  // outlives its individual views and is cleaned up only once its *last* view
+  // closes. Guard against losing unsaved work: closing the editor of a dirty doc
+  // warns (its changes are no longer editable here), and closing a dirty doc's
+  // last view warns that the changes are gone for good. After the close the
+  // active document follows whatever view remains.
+  async function closeView(inst: ViewInstance) {
+    const docId = inst.docId;
+    const after = closeTab(workspace, inst.id);
+    const orphaned = docId !== null && !docIdsWithViews(after).has(docId);
+    const doc = docId ? docFor(docId) : undefined;
+    if (doc && isDirty(doc) && (inst.type === "editor" || orphaned)) {
+      const name = doc.name ?? "untitled";
+      const ok = await askConfirm({
+        message: orphaned
+          ? `Discard unsaved changes to ${name}? They will be lost.`
+          : `Close the editor for ${name}? Its unsaved changes stay in the document's other open views.`,
+        confirmLabel: orphaned ? "Discard & Close" : "Close editor",
+        cancelLabel: "Keep open",
+        destructive: orphaned,
+      });
+      if (!ok) return;
+    }
+    workspace = after;
+    if (orphaned && docId) {
+      cleanupDoc(docId);
+      docStore = removeDoc(docStore, docId);
+    }
+    reconcileActive();
+  }
+
+  // Keep the active document pointing at a view that still exists after a close,
+  // preferring the active tab of the first group that has one.
+  function reconcileActive() {
+    const live = docIdsWithViews(workspace);
+    if (docStore.activeId && live.has(docStore.activeId)) return;
+    for (const g of workspace.groups) {
+      const t = activeTab(g);
+      if (t?.docId && live.has(t.docId)) {
+        docStore = setActive(docStore, t.docId);
+        return;
+      }
     }
   }
 
@@ -559,6 +632,7 @@ score {
     <Workspace
       bind:workspace
       onActivateView={(inst) => inst.docId && focusDoc(inst.docId)}
+      onCloseTab={closeView}
     >
       {#snippet view(instance)}
         <!-- Key by instance so switching a group to a different document's tab

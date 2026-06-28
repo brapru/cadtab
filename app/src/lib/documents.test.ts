@@ -9,6 +9,7 @@ import {
   setDocContent,
   setActive,
   markActiveSaved,
+  removeDoc,
 } from "./documents";
 
 describe("newSession", () => {
@@ -91,6 +92,42 @@ describe("setDocContent / setActive", () => {
     );
     expect(setActive(store, "a").activeId).toBe("a");
     expect(setActive(store, "ghost")).toBe(store);
+  });
+});
+
+describe("removeDoc", () => {
+  it("drops a document and moves focus to the last remaining one", () => {
+    let store = putDoc(
+      singleDocStore(newSession("a", { content: "1" })),
+      newSession("b", { content: "2" }),
+    ); // active = b
+    store = removeDoc(store, "b");
+    expect(store.docs.map((d) => d.id)).toEqual(["a"]);
+    expect(store.activeId).toBe("a");
+  });
+
+  it("keeps the current focus when a non-active doc is removed", () => {
+    let store = putDoc(
+      singleDocStore(newSession("a", { content: "1" })),
+      newSession("b", { content: "2" }),
+    );
+    store = setActive(store, "a"); // active = a
+    store = removeDoc(store, "b");
+    expect(store.activeId).toBe("a");
+  });
+
+  it("nulls focus when the last document closes", () => {
+    const store = removeDoc(
+      singleDocStore(newSession("a", { content: "1" })),
+      "a",
+    );
+    expect(store.docs).toEqual([]);
+    expect(store.activeId).toBeNull();
+  });
+
+  it("is a no-op for an unknown id", () => {
+    const store = singleDocStore(newSession("a", { content: "1" }));
+    expect(removeDoc(store, "ghost")).toBe(store);
   });
 });
 

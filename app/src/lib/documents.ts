@@ -58,6 +58,18 @@ export function putDoc(store: DocStore, doc: DocSession): DocStore {
   return { docs, activeId: doc.id };
 }
 
+// Remove a document session (its last view closed). Focus falls to the last
+// remaining doc, or null when none are left. No-op when the id isn't open.
+export function removeDoc(store: DocStore, id: string): DocStore {
+  if (!store.docs.some((d) => d.id === id)) return store;
+  const docs = store.docs.filter((d) => d.id !== id);
+  const activeId =
+    store.activeId === id
+      ? (docs[docs.length - 1]?.id ?? null)
+      : store.activeId;
+  return { docs, activeId };
+}
+
 // Update the active document's editor buffer (dirty derives from the baseline).
 export function setActiveContent(store: DocStore, content: string): DocStore {
   return mapDoc(store, store.activeId, (d) => ({ ...d, content }));
