@@ -403,7 +403,19 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     button that opens the exhaustive panel + jumps to spans is **T4.7m**.
 - [ ] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
       view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
-      tab/group mechanics come from T7.1.
+      tab/group mechanics come from T7.1. *Decomposed into T7.4a (model refactor) + T7.4b (multi-file
+      UX) to separate the risky model change from the new behavior.*
+  - [x] **T7.4a — Document-session model refactor (behavior-preserving).** Extracted App's
+    single-document globals (content, name, path, dirty baseline, save) into a keyed session store
+    `documents.ts` (`DocStore`/`DocSession` + pure `putDoc`/`setActiveContent`/`markActiveSaved`/
+    `isDirty`); App now derives the active doc's `source`/`name`/`path`/`dirty` from it and routes
+    open/new/save/edit through it. One session in this phase, so no visible change — green against
+    the existing 25 App tests (no regression). Compile-result/selection/zoom stay global; T7.4b makes
+    them per-doc.
+  - [ ] **T7.4b — Open files as editor tabs + dock wiring.** Give each opened/imported file its own
+    `docId` + editor tab across the groups; the dock's files open on click (the T7.2 deferral);
+    active-doc-follows-focus drives the topbar/Save/Export; per-doc compile so two files' renders
+    coexist on the T7.5 mechanism.
 - [x] **T7.5 — Render as a document-bound view.** Make the render a document-bound view placeable
       in any group, so "file + its render" sits side by side and file A's / file B's renders can
       coexist. Resize/reposition come from the group layout (T7.1) — no bespoke docking.

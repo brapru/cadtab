@@ -13,6 +13,16 @@
     defaultWorkspace,
     type Workspace as WorkspaceModel,
   } from "./lib/workspace";
+  import {
+    newSession,
+    singleDocStore,
+    activeDoc,
+    isDirty,
+    putDoc,
+    setActiveContent,
+    markActiveSaved,
+    type DocStore,
+  } from "./lib/documents";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
   import {
@@ -51,15 +61,37 @@ score {
 
   let result = $state<CompileResult | null>(null);
   let error = $state("");
-  // The source the current result was compiled from, so cursor<->span conversions
-  // line up with the spans in that render tree.
-  let source = $state(initialDoc);
   let selection = $state<{ from: number; to: number } | null>(null);
   let activeSpan = $state<Span | null>(null);
   // Layout width (logical units) and the measured render-pane width that drives
   // it; reflow re-lays-out when the pane resizes.
   let layoutWidth = $state(66);
   let paneWidth = $state(0);
+
+  // The open documents (T7.4). One stable id in this single-document phase; T7.4b
+  // gives each opened/imported file its own id and editor tab. The active doc's
+  // fields drive the topbar name, Save/Export, and the dirty guard.
+  const docId = "doc";
+  let docStore = $state<DocStore>(
+    singleDocStore(newSession(docId, { content: initialDoc })),
+  );
+  const active = $derived(activeDoc(docStore));
+  // The source the current result was compiled from, so cursor<->span conversions
+  // line up with the spans in that render tree.
+  const source = $derived(active?.content ?? "");
+  const currentName = $derived(active?.name ?? null);
+  const currentPath = $derived(active?.path ?? null);
+  const dirty = $derived(active ? isDirty(active) : false);
+
+  // The project's importable libs (path -> contents), backing import resolution
+  // on web; populated when a `.ctabz` bundle is opened. Project-level: shared by
+  // every open document, not part of any one session.
+  let projectFiles = $state<Record<string, string>>({});
+  // The opened/saved bundle's path (desktop), for in-place "Save Project".
+  let bundlePath = $state<string | null>(null);
+  // A versioned signal that pushes opened content into the editor.
+  let loadRequest = $state<{ content: string; token: number } | null>(null);
+  let loadToken = 0;
 
   const live = createLiveCompiler(
     compile,
@@ -73,7 +105,6 @@ score {
   );
 
   function recompile(src: string) {
-    source = src;
     // Import context: desktop resolves beside the open file (basePath) and from
     // the bundle map; web resolves from the bundle map alone.
     void live.run(
@@ -83,32 +114,10 @@ score {
     );
   }
 
-  // Document session: the name we last opened/saved as, and whether there are
-  // unsaved edits. Tabs/dirty-per-doc arrive with the M7 dock; for now it is a
-  // single in-place document.
-  let currentName = $state<string | null>(null);
-  // The open score's standalone path (desktop); null for the default doc, on
-  // web, or when the score lives inside an opened bundle. A known path lets Save
-  // overwrite in place instead of re-prompting.
-  let currentPath = $state<string | null>(null);
-  // The project's importable libs (path -> contents), backing import resolution
-  // on web; populated when a `.ctabz` bundle is opened. The entry score is the
-  // editor buffer, not in here.
-  let projectFiles = $state<Record<string, string>>({});
-  // The opened/saved bundle's path (desktop), for in-place "Save Project".
-  let bundlePath = $state<string | null>(null);
-  let dirty = $state(false);
-  // The text as of the last open/save: the baseline the dirty flag compares
-  // against, so editing then undoing back to it clears dirty (and a programmatic
-  // load, which echoes the baseline, never reads as an edit).
-  let savedContent = initialDoc;
-  // A versioned signal that pushes opened content into the editor.
-  let loadRequest = $state<{ content: string; token: number } | null>(null);
-  let loadToken = 0;
-
-  // Dirty iff the document now differs from the last saved/opened text.
+  // Editing updates the active document's buffer (dirty derives from its
+  // baseline) and recompiles.
   function handleEdit(value: string) {
-    dirty = value !== savedContent;
+    docStore = setActiveContent(docStore, value);
     recompile(value);
   }
 
@@ -145,9 +154,8 @@ score {
   }
 
   // The workspace layout (D41): editor and render as two groups, today's split
-  // expressed through the editor-groups model. A single stable doc id for now;
-  // T7.4 gives each open `.ctab` its own id so tabs can span files.
-  const docId = "doc";
+  // expressed through the editor-groups model. Keyed by the active doc id; T7.4b
+  // adds a group tab per open file.
   let workspace = $state<WorkspaceModel>(defaultWorkspace(docId));
 
   // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B. The dock
@@ -209,12 +217,18 @@ score {
     content: string;
     libs: Record<string, string>;
   }) {
-    savedContent = opts.content;
-    currentPath = opts.path;
+    // Swap the active session in place (fresh baseline → clean), set the project
+    // context, and push the content into the editor.
+    docStore = putDoc(
+      docStore,
+      newSession(docId, {
+        path: opts.path,
+        name: opts.name,
+        content: opts.content,
+      }),
+    );
     bundlePath = opts.bundlePath;
-    currentName = opts.name;
     projectFiles = opts.libs;
-    dirty = false;
     loadRequest = { content: opts.content, token: ++loadToken };
     recompile(opts.content);
   }
@@ -281,10 +295,10 @@ score {
       suggestedName: currentName ?? defaultDocName(source),
     });
     if (!saved) return;
-    savedContent = source;
-    currentPath = saved.path;
-    currentName = saved.name;
-    dirty = false;
+    docStore = markActiveSaved(docStore, {
+      path: saved.path,
+      name: saved.name,
+    });
   }
 
   // Save the whole project as one `.ctabz` bundle: the importable libs plus the
@@ -297,8 +311,11 @@ score {
     );
     if (!saved) return;
     bundlePath = saved.path;
-    savedContent = source;
-    dirty = false;
+    // The bundle write rebaselines the entry doc without changing its own path.
+    docStore = markActiveSaved(docStore, {
+      path: currentPath,
+      name: currentName,
+    });
   }
 
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are

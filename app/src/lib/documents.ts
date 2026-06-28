@@ -1,0 +1,86 @@
+// Open-document sessions (T7.4): the editor's model graduates from one global
+// document to a keyed collection so `import`ed files can open as their own tabs.
+// Pure data + operations; the reactive compile result lives in the UI layer,
+// keyed by the same id. The single-document phase (T7.4a) keeps exactly one
+// session; T7.4b opens more.
+
+// One open document: its identity, where Save writes, and the dirty baseline.
+export interface DocSession {
+  id: string;
+  name: string | null; // display/file name; null = untitled
+  path: string | null; // desktop fs path; null on web or never-saved
+  content: string; // current editor buffer
+  savedContent: string; // the text Save last wrote — what dirty compares against
+}
+
+// The open documents, in tab order, and which one has focus.
+export interface DocStore {
+  docs: DocSession[];
+  activeId: string | null;
+}
+
+export function newSession(
+  id: string,
+  init: { name?: string | null; path?: string | null; content: string },
+): DocSession {
+  return {
+    id,
+    name: init.name ?? null,
+    path: init.path ?? null,
+    content: init.content,
+    savedContent: init.content,
+  };
+}
+
+// A fresh store holding one document, focused.
+export function singleDocStore(doc: DocSession): DocStore {
+  return { docs: [doc], activeId: doc.id };
+}
+
+// Dirty iff the buffer has diverged from the last saved/opened text — so editing
+// then undoing back to the baseline reads as clean again.
+export function isDirty(doc: DocSession): boolean {
+  return doc.content !== doc.savedContent;
+}
+
+export function activeDoc(store: DocStore): DocSession | null {
+  return store.docs.find((d) => d.id === store.activeId) ?? null;
+}
+
+// Insert or replace the session with `doc.id` (keeping tab order) and focus it.
+// In the single-document phase this swaps the one open doc on open/new; once
+// multiple docs open it adds a tab or re-focuses an already-open file.
+export function putDoc(store: DocStore, doc: DocSession): DocStore {
+  const exists = store.docs.some((d) => d.id === doc.id);
+  const docs = exists
+    ? store.docs.map((d) => (d.id === doc.id ? doc : d))
+    : [...store.docs, doc];
+  return { docs, activeId: doc.id };
+}
+
+// Update the active document's editor buffer (dirty derives from the baseline).
+export function setActiveContent(store: DocStore, content: string): DocStore {
+  return mapDoc(store, store.activeId, (d) => ({ ...d, content }));
+}
+
+// Mark the active document saved: its current content becomes the new baseline,
+// adopting the path/name it was written to.
+export function markActiveSaved(
+  store: DocStore,
+  saved: { path: string | null; name: string | null },
+): DocStore {
+  return mapDoc(store, store.activeId, (d) => ({
+    ...d,
+    path: saved.path,
+    name: saved.name,
+    savedContent: d.content,
+  }));
+}
+
+function mapDoc(
+  store: DocStore,
+  id: string | null,
+  fn: (d: DocSession) => DocSession,
+): DocStore {
+  return { ...store, docs: store.docs.map((d) => (d.id === id ? fn(d) : d)) };
+}
