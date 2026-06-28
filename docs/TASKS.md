@@ -581,6 +581,17 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       a folder hierarchy (folders before files, alphabetical, folders keyed by full prefix);
       `Dock.svelte` renders it recursively with per-folder expand/collapse (folder/folder_open glyph
       toggles, no chevron; `music_note` on files). Tests in `project.test.ts`, `Dock.test.ts`.
+      **Chunk B1 done (model + dock rework; folds in T7.15b):** dropped the privileged "entry" —
+      doc ids are now scheme-prefixed (`file:<key>` for a project file keyed by its dock/import path,
+      `draft:<n>` for a draft); `projectFiles` holds *every* file in the project (the shared import
+      map). The dock renders all project files (dirty iff their open buffer has unsaved edits) **plus
+      every open unsaved draft** as a root leaf (`music_note` + dirty dot — user pick). `project.ts`
+      moved to a `DockEntry`-based `projectTree`/`fileEntries`; `documents.ts` gained `everSaved` so a
+      never-saved draft is **dirty from birth** (T7.15b half-a); New (`newDraft`) makes a dirty draft,
+      the starter stays clean (special-case, user pick). App's `openProjectInto`/`addOrFocusFile`/
+      `newDraft`/`onOpenEntry` replace the old `openDoc`; a lone score opens as a one-file project.
+      Tests across `documents.test.ts`, `Dock.test.ts`, `project.test.ts`, `App.test.ts`. **Chunk B2
+      next:** desktop Tauri open-folder + write-back to the live folder.
 - [ ] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
       create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
       in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two

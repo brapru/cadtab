@@ -1,28 +1,27 @@
 <script lang="ts">
-  import { projectFileList, projectTree, type TreeNode } from "./project";
+  import { projectTree, type TreeNode, type DockEntry } from "./project";
   import { tooltip } from "./tooltip";
   import Icon from "./Icon.svelte";
 
-  // The left project dock: a collapsible panel showing the open project's
-  // structure as a folder tree — nested folders over their `.ctab` files.
-  // Toggled from the bottom bar / Cmd-B (App owns `dockOpen`). Clicking a file
-  // opens (or focuses) it as an editor tab; `activePath` marks the file the
-  // focused tab is showing. Clicking a folder expands/collapses it.
+  // The left project dock: a collapsible panel showing the open project as a
+  // folder tree — nested folders over their `.ctab` files, with open-but-unsaved
+  // drafts listed as root leaves carrying a dirty dot. Toggled from the bottom
+  // bar / Cmd-B (App owns `dockOpen`). Clicking a file opens (or focuses) it as
+  // an editor tab; `activeKey` marks the entry the focused tab is showing.
+  // Clicking a folder expands/collapses it.
   let {
-    entryName,
-    libs = {},
+    entries = [],
     projectName = "Project",
-    activePath = null,
-    onOpenFile,
+    activeKey = null,
+    onOpen,
   }: {
-    entryName: string;
-    libs?: Record<string, string>;
+    entries?: DockEntry[];
     projectName?: string;
-    activePath?: string | null;
-    onOpenFile?: (path: string, isEntry: boolean) => void;
+    activeKey?: string | null;
+    onOpen?: (entry: DockEntry) => void;
   } = $props();
 
-  const tree = $derived(projectTree(projectFileList(entryName, libs)));
+  const tree = $derived(projectTree(entries));
 
   // Folders are expanded by default; this holds the ones collapsed by the user,
   // keyed by folder path so the state survives tree rebuilds.
@@ -49,7 +48,7 @@
       </button>
       {#if open}
         <ul class="file-list nested">
-          {#each node.children as child (child.kind === "folder" ? "d:" + child.path : "f:" + child.file.path)}
+          {#each node.children as child (child.kind === "folder" ? "d:" + child.path : "f:" + child.entry.key)}
             {@render row(child, depth + 1)}
           {/each}
         </ul>
@@ -59,13 +58,17 @@
     <li>
       <button
         class="row file"
-        class:active={activePath === node.file.path}
+        class:active={activeKey === node.entry.key}
+        class:dirty={node.entry.dirty}
         style="--depth: {depth}"
-        use:tooltip={node.file.path}
-        onclick={() => onOpenFile?.(node.file.path, node.file.isEntry)}
+        use:tooltip={node.entry.path ?? "unsaved draft"}
+        onclick={() => onOpen?.(node.entry)}
       >
         <Icon name="music_note" size={15} />
         <span class="file-name">{node.name}</span>
+        {#if node.entry.dirty}
+          <span class="dot" aria-label="unsaved">•</span>
+        {/if}
       </button>
     </li>
   {/if}
@@ -74,7 +77,7 @@
 <aside class="dock" aria-label="Project files">
   <div class="dock-header">{projectName}</div>
   <ul class="file-list">
-    {#each tree as node (node.kind === "folder" ? "d:" + node.path : "f:" + node.file.path)}
+    {#each tree as node (node.kind === "folder" ? "d:" + node.path : "f:" + node.entry.key)}
       {@render row(node, 0)}
     {/each}
   </ul>
@@ -141,8 +144,18 @@
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 6%, transparent);
   }
+  .file.dirty {
+    color: var(--fg);
+  }
   .file-name {
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  /* The unsaved dot trails the name, pushed to the row's end. */
+  .dot {
+    margin-left: auto;
+    padding-left: 0.3rem;
+    color: var(--muted);
+    line-height: 1;
   }
 </style>

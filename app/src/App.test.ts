@@ -298,10 +298,13 @@ describe("App", () => {
         "tune.ctab",
       );
     });
-    // ...and the sibling lib (not the entry) flows to compile as the bundle map.
+    // ...and the project's files (entry + sibling lib) flow to compile as the
+    // import map, so an `import` resolves against them.
     await vi.waitFor(() => {
-      const libsArgs = wasmCompileMock.mock.calls.map((c) => c[2]);
-      expect(libsArgs).toContainEqual({ "lib.ctab": "def roll() { 3:0 }" });
+      const maps = wasmCompileMock.mock.calls.map((c) => c[2]);
+      expect(maps).toContainEqual(
+        expect.objectContaining({ "lib.ctab": "def roll() { 3:0 }" }),
+      );
     });
   });
 
@@ -809,7 +812,8 @@ describe("App", () => {
     });
 
     // The tab-strip New "+" (on the active group) opens a template menu; picking
-    // one opens a fresh untitled tab and focuses it.
+    // one opens a fresh untitled tab and focuses it. A New draft is never-saved,
+    // so it's dirty from birth (the "•").
     await fireEvent.click(getAllByLabelText("New tab")[0]);
     await fireEvent.click(screen.getByText("Guitar (standard)"));
     await vi.waitFor(() => {
@@ -818,7 +822,7 @@ describe("App", () => {
       );
     });
     expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-      "untitled",
+      "untitled •",
     );
     // The default document is still open alongside it (two editor tabs), with no
     // discard prompt — New never replaces the current doc.
@@ -935,6 +939,44 @@ describe("App", () => {
     expect(
       container.querySelector(".file.active .file-name")?.textContent,
     ).toBe("tune.ctab");
+  });
+
+  it("surfaces drafts in the dock: a clean starter, then a dirty New draft", async () => {
+    const { container, getAllByLabelText } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")).toBeTruthy();
+    });
+
+    // The starter is an unsaved draft but kept clean, so the dock lists it with
+    // no unsaved dot.
+    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    expect(
+      [...container.querySelectorAll(".dock .file-name")].map(
+        (n) => n.textContent,
+      ),
+    ).toEqual(["untitled"]);
+    expect(container.querySelectorAll(".dock .dot")).toHaveLength(0);
+
+    // A New draft joins the dock and is dirty from birth (its row + the topbar
+    // both carry the unsaved dot).
+    await fireEvent.click(getAllByLabelText("New tab")[0]);
+    await fireEvent.click(screen.getByText("Guitar (standard)"));
+    await vi.waitFor(() => {
+      expect(container.querySelectorAll(".dock .file-name")).toHaveLength(2);
+    });
+    expect(container.querySelectorAll(".dock .dot")).toHaveLength(1);
+    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+      "untitled •",
+    );
+
+    // Clicking the clean starter row in the dock refocuses it — the topbar's
+    // active doc (and its dot) follow.
+    await fireEvent.click(container.querySelector(".dock .file")!);
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "untitled",
+      );
+    });
   });
 
   it("cycles the colour theme onto the document root", async () => {

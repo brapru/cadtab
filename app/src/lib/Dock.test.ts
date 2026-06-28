@@ -1,28 +1,34 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import Dock from "./Dock.svelte";
+import type { DockEntry } from "./project";
+
+function file(path: string, dirty = false): DockEntry {
+  return { key: path, name: path.split("/").pop()!, path, dirty };
+}
+function draft(key: string, name: string, dirty = true): DockEntry {
+  return { key, name, path: null, dirty };
+}
 
 describe("Dock", () => {
-  it("shows the project name and lists the entry plus libs", () => {
+  it("shows the project name and lists the files", () => {
     const { container } = render(Dock, {
-      entryName: "tune.ctab",
-      libs: { "lib.ctab": "def x() {}" },
+      entries: [file("tune.ctab"), file("lib.ctab")],
       projectName: "proj.ctabz",
     });
     expect(container.querySelector(".dock-header")?.textContent).toBe(
       "proj.ctabz",
     );
-    const names = [...container.querySelectorAll(".file-name")].map(
+    const names = [...container.querySelectorAll(".file .file-name")].map(
       (n) => n.textContent,
     );
     expect(names).toEqual(["lib.ctab", "tune.ctab"]);
   });
 
-  it("marks the file matching activePath as active", () => {
+  it("marks the file matching activeKey as active", () => {
     const { container } = render(Dock, {
-      entryName: "tune.ctab",
-      libs: { "lib.ctab": "" },
-      activePath: "lib.ctab",
+      entries: [file("tune.ctab"), file("lib.ctab")],
+      activeKey: "lib.ctab",
     });
     const active = [
       ...container.querySelectorAll(".file.active .file-name"),
@@ -30,21 +36,20 @@ describe("Dock", () => {
     expect(active).toEqual(["lib.ctab"]);
   });
 
-  it("fires onOpenFile with the path and entry flag on click", async () => {
-    const onOpenFile = vi.fn();
+  it("fires onOpen with the clicked entry", async () => {
+    const onOpen = vi.fn();
     const { getByText } = render(Dock, {
-      entryName: "tune.ctab",
-      libs: { "lib.ctab": "" },
-      onOpenFile,
+      entries: [file("tune.ctab"), file("lib.ctab")],
+      onOpen,
     });
     await fireEvent.click(getByText("lib.ctab"));
-    expect(onOpenFile).toHaveBeenCalledWith("lib.ctab", false);
-    await fireEvent.click(getByText("tune.ctab"));
-    expect(onOpenFile).toHaveBeenCalledWith("tune.ctab", true);
+    expect(onOpen).toHaveBeenCalledWith(
+      expect.objectContaining({ key: "lib.ctab" }),
+    );
   });
 
   it("defaults the header to 'Project'", () => {
-    const { container } = render(Dock, { entryName: "untitled" });
+    const { container } = render(Dock, { entries: [] });
     expect(container.querySelector(".dock-header")?.textContent).toBe(
       "Project",
     );
@@ -52,8 +57,11 @@ describe("Dock", () => {
 
   it("renders nested paths as folders over their files", () => {
     const { container } = render(Dock, {
-      entryName: "tune.ctab",
-      libs: { "licks/roll.ctab": "", "licks/pinch.ctab": "" },
+      entries: [
+        file("tune.ctab"),
+        file("licks/roll.ctab"),
+        file("licks/pinch.ctab"),
+      ],
     });
     const folders = [...container.querySelectorAll(".folder .file-name")].map(
       (n) => n.textContent,
@@ -67,8 +75,7 @@ describe("Dock", () => {
 
   it("collapses a folder's files when its row is clicked", async () => {
     const { container, getByText, queryByText } = render(Dock, {
-      entryName: "tune.ctab",
-      libs: { "licks/roll.ctab": "" },
+      entries: [file("tune.ctab"), file("licks/roll.ctab")],
     });
     expect(getByText("roll.ctab")).toBeTruthy();
     const folder = container.querySelector(".folder") as HTMLElement;
@@ -78,5 +85,16 @@ describe("Dock", () => {
     expect(queryByText("roll.ctab")).toBeNull();
     // the root entry stays visible — only the folder's contents hide
     expect(getByText("tune.ctab")).toBeTruthy();
+  });
+
+  it("shows unsaved drafts as root leaves with a dirty dot", () => {
+    const { container } = render(Dock, {
+      entries: [file("tune.ctab"), draft("draft:1", "untitled-1")],
+    });
+    const dirty = [...container.querySelectorAll(".file.dirty .file-name")].map(
+      (n) => n.textContent,
+    );
+    expect(dirty).toEqual(["untitled-1"]);
+    expect(container.querySelectorAll(".dot")).toHaveLength(1);
   });
 });

@@ -36,6 +36,7 @@
     type DocStore,
     type DocSession,
   } from "./lib/documents";
+  import { fileEntries, type DockEntry } from "./lib/project";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeIcon, type Theme } from "./lib/theme";
   import {
@@ -86,8 +87,11 @@ score {
 
   // The open documents: each opened/imported file gets its own id, editor
   // tab, and render. The active doc drives the topbar name, Save/Export, and the
-  // dirty indicator.
-  const initialId = "doc";
+  // dirty indicator. Doc ids are scheme-prefixed: `file:<key>` for a project
+  // file (the key is its dock/import path), `draft:<n>` for an unsaved draft.
+  // The starter is a draft, but kept clean (everSaved) so the app doesn't open
+  // looking unsaved.
+  const initialId = "draft:0";
   let docStore = $state<DocStore>(
     singleDocStore(newSession(initialId, { content: initialDoc })),
   );
@@ -100,17 +104,40 @@ score {
   const dirty = $derived(active ? isDirty(active) : false);
   const activeResult = $derived(active ? (results[active.id] ?? null) : null);
 
-  // The project context shared by every open document's compile: importable libs
-  // (path -> contents) and the bundle path for "Save Project". A stable project
-  // entry name heads the dock independent of which doc is focused.
+  // The open project: every file in it (key -> latest contents — the import map
+  // shared by every compile), the fs path each key maps to (desktop write-back /
+  // import base; empty for bundle/web), the bundle path for "Save Project", and
+  // the dock header name.
   let projectFiles = $state<Record<string, string>>({});
+  let filePaths = $state<Record<string, string>>({});
   let bundlePath = $state<string | null>(null);
-  let projectEntryName = $state("untitled");
-  // The dock path of the active doc, so the dock marks the focused file.
-  const activeDockPath = $derived(
-    active && active.id.startsWith("lib:")
-      ? active.id.slice(4)
-      : (currentName ?? null),
+  let projectName = $state("Project");
+
+  // The dock's rows: every project file (dirty iff its open doc has unsaved
+  // edits) plus every open unsaved draft as a root leaf.
+  const dockEntries = $derived.by(() => {
+    const entries = fileEntries(
+      Object.keys(projectFiles).map((key) => {
+        const doc = docFor(`file:${key}`);
+        return { path: key, dirty: doc ? isDirty(doc) : false };
+      }),
+    );
+    for (const d of docStore.docs) {
+      if (d.id.startsWith("draft:")) {
+        entries.push({
+          key: d.id,
+          name: d.name ?? "untitled",
+          path: null,
+          dirty: isDirty(d),
+        });
+      }
+    }
+    return entries;
+  });
+  // The dock key of the active doc, so the dock marks the focused row: a file's
+  // project key, or a draft's id.
+  const activeKey = $derived(
+    active?.id.startsWith("file:") ? active.id.slice(5) : (active?.id ?? null),
   );
 
   function docFor(id: string | null): DocSession | undefined {
@@ -148,13 +175,13 @@ score {
   }
 
   // Editing updates that document's buffer (dirty derives) and recompiles it. A
-  // lib edit also updates the shared project map and recompiles the other open
-  // docs that may import it.
+  // project-file edit also updates the shared import map and recompiles the
+  // other open docs that may import it.
   function handleEdit(id: string, value: string) {
     docStore = setDocContent(docStore, id, value);
-    if (id.startsWith("lib:")) {
-      const libPath = id.slice(4);
-      projectFiles = { ...projectFiles, [libPath]: value };
+    if (id.startsWith("file:")) {
+      const key = id.slice(5);
+      projectFiles = { ...projectFiles, [key]: value };
       for (const d of docStore.docs) if (d.id !== id) compileDoc(d.id);
     }
     compileDoc(id);
@@ -253,44 +280,67 @@ score {
     delete editHandlers[id];
   }
 
-  // Open or focus a document. Opening a *project* (a single score or a bundle
-  // from disk, which supplies `context`) replaces the prior one: it closes the
-  // old project's docs, tabs, and renders and resets the import context, so no
-  // stale render lingers. Files opened *within* a project — dock-opened libs and
-  // New-from-template — omit `context` and just add or focus a tab.
-  function openDoc(o: {
-    id: string;
-    name: string | null;
-    path: string | null;
-    content: string;
-    context?: { libs: Record<string, string>; bundlePath: string | null };
+  // A session for a project file, seeded from the import map and its fs path (if
+  // any). The id carries the project key so the dock and edit-sync can find it.
+  function fileSession(key: string): DocSession {
+    return newSession(`file:${key}`, {
+      name: basename(key),
+      path: filePaths[key] ?? null,
+      content: projectFiles[key] ?? "",
+      everSaved: true,
+    });
+  }
+
+  // Open a *project* (a single score, a bundle, or — Chunk B2 — a folder),
+  // replacing the prior one: reset the import map/paths, drop every old doc, tab,
+  // and render, and open one file as the first tab. So no stale render lingers
+  // and the dock reflects only the new project.
+  function openProjectInto(opts: {
+    files: Record<string, string>;
+    filePaths?: Record<string, string>;
+    openKey: string;
+    projectName: string;
+    bundlePath: string | null;
   }) {
-    if (o.context) {
-      projectFiles = o.context.libs;
-      bundlePath = o.context.bundlePath;
-      projectEntryName = o.name ?? "untitled";
-      resetDocState();
-      docStore = singleDocStore(
-        newSession(o.id, { name: o.name, path: o.path, content: o.content }),
-      );
-      workspace = defaultWorkspace(o.id);
-      compileDoc(o.id);
-      return;
-    }
-    if (!docStore.docs.some((d) => d.id === o.id)) {
-      docStore = putDoc(
-        docStore,
-        newSession(o.id, { name: o.name, path: o.path, content: o.content }),
-      );
-      // Reseed a fresh editor|render layout when every tab was closed; otherwise
-      // add this doc's tabs beside the open ones.
+    projectFiles = opts.files;
+    filePaths = opts.filePaths ?? {};
+    bundlePath = opts.bundlePath;
+    projectName = opts.projectName;
+    resetDocState();
+    const doc = fileSession(opts.openKey);
+    docStore = singleDocStore(doc);
+    workspace = defaultWorkspace(doc.id);
+    compileDoc(doc.id);
+  }
+
+  // Open (or focus) a project file as a tab within the current project — a dock
+  // click. Adds tabs beside the open ones, or reseeds a layout when the
+  // workspace was emptied; never replaces the project.
+  function addOrFocusFile(key: string) {
+    const id = `file:${key}`;
+    if (!docStore.docs.some((d) => d.id === id)) {
+      docStore = putDoc(docStore, fileSession(key));
       workspace =
         workspace.groups.length === 0
-          ? defaultWorkspace(o.id)
-          : addDocTabs(workspace, o.id);
+          ? defaultWorkspace(id)
+          : addDocTabs(workspace, id);
     }
-    focusDoc(o.id);
-    compileDoc(o.id);
+    focusDoc(id);
+    compileDoc(id);
+  }
+
+  // Start a new unsaved draft tab in the current project (the tab-strip New
+  // "+"). A draft is dirty from birth (never saved) and shows in the dock until
+  // saved through the in-app flow.
+  function newDraft(content: string) {
+    const id = `draft:${++untitledCount}`;
+    docStore = putDoc(docStore, newSession(id, { content, everSaved: false }));
+    workspace =
+      workspace.groups.length === 0
+        ? defaultWorkspace(id)
+        : addDocTabs(workspace, id);
+    focusDoc(id);
+    compileDoc(id);
   }
 
   // Open (or focus) a document-bound view as a tab beside the existing renders,
@@ -426,18 +476,13 @@ score {
     else root.setAttribute("data-theme", theme);
   });
 
-  // Start a new untitled document from a starter template as its own tab in the
-  // current project context — driven by the tab-strip New ("+") menu. No
-  // discard guard: opening never replaces the edited doc, it adds a tab.
+  // Start a new draft from a starter template as its own tab in the current
+  // project — driven by the tab-strip New ("+") menu. No discard guard: New
+  // never replaces the edited doc, it adds a tab.
   function newFromTemplate(id: string) {
     const template = templateById(id);
     if (!template) return;
-    openDoc({
-      id: `untitled-${++untitledCount}`,
-      name: null,
-      path: null,
-      content: template.source,
-    });
+    newDraft(template.source);
   }
 
   // Open a score (`.ctab`) or a whole project bundle (`.ctabz`) as a new tab (or
@@ -502,37 +547,32 @@ score {
     if (!opened) return;
 
     if (opened.kind === "single") {
-      openDoc({
-        id: opened.path ?? `web:${opened.name}`,
-        name: opened.name,
-        path: opened.path,
-        content: opened.content,
-        context: { libs: {}, bundlePath: null },
+      // A lone score is a one-file project, keyed by its fs path (desktop) or
+      // name (web), so it lists in the dock like any project.
+      const key = opened.path ?? opened.name;
+      openProjectInto({
+        files: { [key]: opened.content },
+        filePaths: opened.path ? { [key]: opened.path } : {},
+        openKey: key,
+        projectName: opened.name,
+        bundlePath: null,
       });
       return;
     }
     const { entry, files } = opened.bundle;
-    const libs = { ...files };
-    delete libs[entry];
-    openDoc({
-      id: `entry:${entry}`,
-      name: entry,
-      path: null,
-      content: files[entry],
-      context: { libs, bundlePath: opened.path },
+    openProjectInto({
+      files,
+      openKey: entry,
+      projectName: opened.name,
+      bundlePath: opened.path,
     });
   }
 
-  // Open (or focus) a file clicked in the project dock. The entry row is the
-  // active project document already; a lib row opens from the project map.
-  function openDockFile(path: string, isEntry: boolean) {
-    if (isEntry) return;
-    openDoc({
-      id: `lib:${path}`,
-      name: basename(path),
-      path: null,
-      content: projectFiles[path] ?? "",
-    });
+  // Open (or focus) an entry clicked in the project dock: a saved file opens
+  // from the project map, a draft just refocuses its open tab.
+  function onOpenEntry(entry: DockEntry) {
+    if (entry.path !== null) addOrFocusFile(entry.key);
+    else focusDoc(entry.key);
   }
 
   // Save the current score. Overwrites the known path in place; for a never-
@@ -549,17 +589,21 @@ score {
     });
   }
 
-  // Save the whole project as one `.ctabz` bundle: the importable libs plus the
-  // live entry source. Overwrites the known bundle path in place, else prompts.
+  // Save the whole project as one `.ctabz` bundle: every project file plus the
+  // live active source under its key. The bundle format names one entry — the
+  // active doc (its project key, or a derived name for a draft). Overwrites the
+  // known bundle path in place, else prompts.
   async function saveProject() {
-    const entry = currentName ?? defaultDocName(source);
+    const entry = active?.id.startsWith("file:")
+      ? active.id.slice(5)
+      : (currentName ?? defaultDocName(source));
     const saved = await saveBundle(
       { entry, files: { ...projectFiles, [entry]: source } },
-      { path: bundlePath, suggestedName: entry },
+      { path: bundlePath, suggestedName: basename(entry) },
     );
     if (!saved) return;
     bundlePath = saved.path;
-    // The bundle write rebaselines the entry doc without changing its own path.
+    // The bundle write rebaselines the active doc without changing its own path.
     docStore = markActiveSaved(docStore, {
       path: currentPath,
       name: currentName,
@@ -712,11 +756,10 @@ score {
   <div class="body">
     {#if dockOpen}
       <Dock
-        entryName={projectEntryName}
-        libs={projectFiles}
-        projectName={bundlePath ? basename(bundlePath) : "Project"}
-        activePath={activeDockPath}
-        onOpenFile={openDockFile}
+        entries={dockEntries}
+        {projectName}
+        {activeKey}
+        onOpen={onOpenEntry}
       />
     {/if}
     <Workspace

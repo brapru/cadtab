@@ -10,6 +10,7 @@ export interface DocSession {
   path: string | null; // desktop fs path; null on web or never-saved
   content: string; // current editor buffer
   savedContent: string; // the text Save last wrote — what dirty compares against
+  everSaved: boolean; // false = a never-saved draft, dirty until its first save
 }
 
 // The open documents, in tab order, and which one has focus.
@@ -20,7 +21,12 @@ export interface DocStore {
 
 export function newSession(
   id: string,
-  init: { name?: string | null; path?: string | null; content: string },
+  init: {
+    name?: string | null;
+    path?: string | null;
+    content: string;
+    everSaved?: boolean;
+  },
 ): DocSession {
   return {
     id,
@@ -28,6 +34,7 @@ export function newSession(
     path: init.path ?? null,
     content: init.content,
     savedContent: init.content,
+    everSaved: init.everSaved ?? true,
   };
 }
 
@@ -36,10 +43,11 @@ export function singleDocStore(doc: DocSession): DocStore {
   return { docs: [doc], activeId: doc.id };
 }
 
-// Dirty iff the buffer has diverged from the last saved/opened text — so editing
+// Dirty iff the doc was never saved (an untitled draft, dirty until its first
+// save) or its buffer has diverged from the last saved/opened text — so editing
 // then undoing back to the baseline reads as clean again.
 export function isDirty(doc: DocSession): boolean {
-  return doc.content !== doc.savedContent;
+  return !doc.everSaved || doc.content !== doc.savedContent;
 }
 
 export function activeDoc(store: DocStore): DocSession | null {
@@ -105,6 +113,7 @@ export function markActiveSaved(
     path: saved.path,
     name: saved.name,
     savedContent: d.content,
+    everSaved: true,
   }));
 }
 

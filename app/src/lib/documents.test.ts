@@ -13,7 +13,7 @@ import {
 } from "./documents";
 
 describe("newSession", () => {
-  it("seeds the dirty baseline from the initial content", () => {
+  it("seeds the dirty baseline from the initial content (saved by default)", () => {
     const d = newSession("doc", { content: "score {}" });
     expect(d).toEqual({
       id: "doc",
@@ -21,8 +21,15 @@ describe("newSession", () => {
       path: null,
       content: "score {}",
       savedContent: "score {}",
+      everSaved: true,
     });
     expect(isDirty(d)).toBe(false);
+  });
+
+  it("a never-saved draft is dirty from birth", () => {
+    const d = newSession("draft:1", { content: "x", everSaved: false });
+    expect(d.everSaved).toBe(false);
+    expect(isDirty(d)).toBe(true);
   });
 });
 
@@ -31,6 +38,12 @@ describe("isDirty", () => {
     const d = newSession("doc", { content: "a" });
     expect(isDirty({ ...d, content: "b" })).toBe(true);
     expect(isDirty({ ...d, content: "a" })).toBe(false);
+  });
+
+  it("stays dirty for a never-saved draft even at its baseline content", () => {
+    const d = newSession("draft:1", { content: "a", everSaved: false });
+    expect(isDirty(d)).toBe(true);
+    expect(isDirty({ ...d, content: "a" })).toBe(true);
   });
 });
 
@@ -141,5 +154,14 @@ describe("markActiveSaved", () => {
     expect(doc.savedContent).toBe("ab");
     expect(doc.path).toBe("/x.ctab");
     expect(doc.name).toBe("x.ctab");
+  });
+
+  it("clears the never-saved flag on a draft's first save", () => {
+    let store = singleDocStore(
+      newSession("draft:1", { content: "a", everSaved: false }),
+    );
+    expect(isDirty(activeDoc(store)!)).toBe(true);
+    store = markActiveSaved(store, { path: null, name: "a.ctab" });
+    expect(isDirty(activeDoc(store)!)).toBe(false);
   });
 });

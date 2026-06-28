@@ -1,38 +1,21 @@
 import { basename } from "./io";
 
-// One row in the project dock: a file in the open project, keyed by the path the
-// import model uses (the entry name or a lib path), with a basename label and a
-// flag for the entry document (the one currently in the editor).
-export interface ProjectFile {
-  path: string;
+// One row in the project dock. A saved project file carries the `path` the
+// import model keys it by; an unsaved draft has `path: null` and renders as a
+// root leaf. `key` is the stable identity the dock reports back on open (a path
+// for files, a draft id for drafts); `dirty` drives the unsaved dot.
+export interface DockEntry {
+  key: string;
   name: string;
-  isEntry: boolean;
+  path: string | null;
+  dirty: boolean;
 }
 
-// The project's files for the dock: the entry document plus its importable libs
-// (the bundle map), sorted by path. The entry is flagged so the dock can
-// mark the active file. Hierarchical folder rendering is a later refinement —
-// bundles are flat today; this lists the structure that exists.
-export function projectFileList(
-  entry: string,
-  libs: Record<string, string>,
-): ProjectFile[] {
-  const files: ProjectFile[] = [
-    { path: entry, name: basename(entry), isEntry: true },
-    ...Object.keys(libs).map((path) => ({
-      path,
-      name: basename(path),
-      isEntry: false,
-    })),
-  ];
-  return files.sort((a, b) => a.path.localeCompare(b.path));
-}
-
-// A file leaf in the dock tree, carrying its flat ProjectFile for open/active.
+// A file leaf in the dock tree, carrying its DockEntry for open/active/dirty.
 export interface TreeFileNode {
   kind: "file";
   name: string;
-  file: ProjectFile;
+  entry: DockEntry;
 }
 
 // A folder node, keyed by its accumulated path prefix so the dock can persist
@@ -46,16 +29,16 @@ export interface TreeFolderNode {
 
 export type TreeNode = TreeFileNode | TreeFolderNode;
 
-// Fold a flat file list into a folder hierarchy by splitting each path on `/`
-// (or `\`): every segment but the last is a nested folder, the last is the file
-// leaf. Folders sort before files, each alphabetical by name (case-insensitive).
-export function projectTree(files: ProjectFile[]): TreeNode[] {
+// Fold dock entries into a folder hierarchy by splitting each path on `/` (or
+// `\`): every segment but the last is a nested folder, the last is the file
+// leaf. Path-null entries (unsaved drafts) become root leaves named by `name`.
+// Folders sort before files, each alphabetical by name (case-insensitive).
+export function projectTree(entries: DockEntry[]): TreeNode[] {
   const roots: TreeNode[] = [];
   const folders = new Map<string, TreeFolderNode>();
 
-  for (const file of files) {
-    const segments = file.path.split(/[\\/]/).filter((s) => s !== "");
-    if (segments.length === 0) continue;
+  for (const entry of entries) {
+    const segments = (entry.path ?? "").split(/[\\/]/).filter((s) => s !== "");
     let siblings = roots;
     let prefix = "";
     for (let i = 0; i < segments.length - 1; i++) {
@@ -69,7 +52,7 @@ export function projectTree(files: ProjectFile[]): TreeNode[] {
       }
       siblings = folder.children;
     }
-    siblings.push({ kind: "file", name: file.name, file });
+    siblings.push({ kind: "file", name: entry.name, entry });
   }
 
   sortNodes(roots);
@@ -85,4 +68,17 @@ function sortNodes(nodes: TreeNode[]): void {
       : a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
   );
   for (const n of nodes) if (n.kind === "folder") sortNodes(n.children);
+}
+
+// Build dock entries for a set of project files (path -> dirty), each labelled
+// by its basename. Drafts are appended separately by the caller.
+export function fileEntries(
+  files: { path: string; dirty: boolean }[],
+): DockEntry[] {
+  return files.map((f) => ({
+    key: f.path,
+    name: basename(f.path),
+    path: f.path,
+    dirty: f.dirty,
+  }));
 }
