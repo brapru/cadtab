@@ -454,10 +454,12 @@
   .tab-close {
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 1.6rem;
     border: none;
     background: transparent;
     color: var(--muted);
-    padding: 0 0.4rem;
+    padding: 0;
     cursor: pointer;
     opacity: 0.6;
   }
@@ -468,8 +470,12 @@
   }
   .group-actions {
     display: flex;
-    align-items: stretch;
+    align-items: center;
+    padding: 0 0.2rem;
   }
+  /* Icon-only chrome buttons are uniform squares (explicit equal width/height,
+     not stretch) sitting flush next to each other, each with its own square
+     hover highlight. */
   .new,
   .launch,
   .fit,
@@ -477,11 +483,15 @@
   .maximize {
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
     border: none;
     background: transparent;
     color: var(--muted);
     cursor: pointer;
-    padding: 0 0.6rem;
+    padding: 0;
+    border-radius: 0.3rem;
     font-size: 0.8rem;
     line-height: 1;
   }
@@ -491,6 +501,7 @@
   .split:hover,
   .maximize:hover {
     color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 12%, transparent);
   }
   /* When the active editor's render is already open, the launcher reads as a
      jump-to toggle. */
