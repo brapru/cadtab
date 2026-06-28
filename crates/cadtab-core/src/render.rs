@@ -65,6 +65,9 @@ pub enum TextRole {
     /// A def-gallery card note, e.g. "parameterized — no preview" under the
     /// heading of a def that does not render under sample arguments.
     DefNote,
+    /// A folio page number on a paginated page (top-right; pages after the
+    /// first). Page 1 omits it, carrying the full title block instead.
+    PageNumber,
 }
 
 /// A positioned drawing primitive. Span-bearing variants carry the source span
@@ -130,6 +133,30 @@ pub struct RenderTree {
     pub systems: Vec<System>,
 }
 
+/// One page of a paginated document (T7.19): its fixed page box (logical units,
+/// origin top-left), the per-page header furniture (the full title block on page
+/// one, a folio number on later pages), and the systems placed within it. Each
+/// page is its own coordinate space starting at `(0, 0)`, so the painter draws a
+/// page exactly like a `RenderTree`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Page {
+    pub bounds: Rect,
+    pub header: Vec<Primitive>,
+    pub systems: Vec<System>,
+}
+
+/// A score laid out across fixed-size pages: the shared page dimensions and the
+/// ordered pages. This is the layout-side output of pagination; serializing it to
+/// PDF bytes is a later pass (T7.19b).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PaginatedTree {
+    pub page_width: f32,
+    pub page_height: f32,
+    pub pages: Vec<Page>,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,6 +187,9 @@ mod tests {
         TextRole::SectionLabel,
         TextRole::ChordSymbol,
         TextRole::BarNumber,
+        TextRole::DefHeading,
+        TextRole::DefNote,
+        TextRole::PageNumber,
     ];
 
     fn rect() -> Rect {
@@ -234,6 +264,29 @@ mod tests {
             systems: vec![system],
         };
         round_trip(&tree);
+    }
+
+    #[test]
+    fn paginated_tree_round_trips() {
+        let page = Page {
+            bounds: Rect {
+                x: 0.0,
+                y: 0.0,
+                w: 80.0,
+                h: 103.5,
+            },
+            header: vec![text(TextRole::PageNumber)],
+            systems: vec![System {
+                bounds: rect(),
+                prims: vec![text(TextRole::StringLabel)],
+                measures: vec![],
+            }],
+        };
+        round_trip(&PaginatedTree {
+            page_width: 80.0,
+            page_height: 103.5,
+            pages: vec![page],
+        });
     }
 
     #[test]

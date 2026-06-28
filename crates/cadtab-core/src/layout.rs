@@ -17,7 +17,9 @@ use crate::model::{
     BarNumbers, Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique,
     TimeSig,
 };
-use crate::render::{LayoutMeta, MeasureBox, Primitive, Rect, RenderTree, System, TextRole};
+use crate::render::{
+    LayoutMeta, MeasureBox, Page, PaginatedTree, Primitive, Rect, RenderTree, System, TextRole,
+};
 use crate::span::Span;
 
 /// Inputs that parameterize layout. The same engine serves the screen (viewport
@@ -26,6 +28,41 @@ use crate::span::Span;
 #[serde(rename_all = "camelCase")]
 pub struct LayoutConfig {
     pub width: f32,
+}
+
+/// A fixed print page size. The logical page box takes this size's portrait
+/// aspect ratio; the absolute scale is set by `PageConfig::content_width`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PageSize {
+    /// US Letter, 8.5 × 11 in.
+    Letter,
+    /// ISO A4, 210 × 297 mm.
+    A4,
+}
+
+impl PageSize {
+    /// Portrait page dimensions in inches `(width, height)`. Used only for the
+    /// aspect ratio that shapes the logical page box — pagination never works in
+    /// physical units; the exporter chooses the print DPI.
+    fn inches(self) -> (f32, f32) {
+        match self {
+            // 210 mm × 297 mm in inches.
+            PageSize::A4 => (8.268, 11.693),
+            PageSize::Letter => (8.5, 11.0),
+        }
+    }
+}
+
+/// Inputs that parameterize pagination (T7.19). `content_width` is the justify
+/// target in logical units — the same width `layout` packs systems to — so the
+/// engine, justification, and per-system geometry are shared with the screen
+/// render; the page just bounds the height and breaks systems across pages.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PageConfig {
+    pub size: PageSize,
+    pub content_width: f32,
 }
 
 // Vertical metrics (logical units; 1 unit = string spacing).
@@ -40,6 +77,9 @@ const STRING_SPACING: f32 = 1.0;
 const BOTTOM_MARGIN: f32 = 2.8;
 // Vertical gap between stacked systems (room below the numbers for stems/marks).
 const SYSTEM_GAP: f32 = 3.5;
+// Vertical room a continuation page (T7.19, page 2+) reserves at the top for its
+// folio number, before the first system. Page one uses its title block instead.
+const FOLIO_SPACE: f32 = 1.4;
 // Vertical room reserved above the staff for volta brackets, when any exist.
 const VOLTA_SPACE: f32 = 1.2;
 const VOLTA_GAP: f32 = 0.8;
@@ -137,9 +177,24 @@ struct MeasurePlan {
     meter_mark: Option<TimeSig>,
 }
 
-/// Lay a `Score` out into a positioned render tree, wrapping measures into
-/// stacked systems no wider than `config.width`.
-pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
+/// A score resolved up to (but not including) vertical stacking: the pinned page
+/// width, the per-measure plans/beams/bar-numbers, and the system groupings. Both
+/// the continuous render (`layout`) and the paginated render (`paginate`) share
+/// this prep, then differ only in how they stack the systems down the page(s).
+struct Prepared {
+    width: f32,
+    plans: Vec<MeasurePlan>,
+    beams: Vec<Vec<beam::BeamGroup>>,
+    bar_nums: Vec<Option<u32>>,
+    groups: Vec<(usize, usize)>,
+    has_barnum: bool,
+    staff_height: f32,
+    n_strings: usize,
+}
+
+/// Resolve a score to its `Prepared` form: measure plans, beam groups, bar
+/// numbers, the system groupings, and the page width pinned to the layout target.
+fn prepare(score: &Score, config: LayoutConfig) -> Prepared {
     let n_strings = score.instrument.string_count();
     let staff_height = ((n_strings.max(1) - 1) as f32) * STRING_SPACING;
 
@@ -187,8 +242,6 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
         })
         .collect();
 
-    let (header, header_bottom) = build_header(score, width);
-
     // Measure numbers, 1-based over the full bars (pickups are not numbered).
     let mut bar_count = 0u32;
     let bar_nums: Vec<Option<u32>> = score
@@ -203,40 +256,61 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
             }
         })
         .collect();
-    let has_barnum = score.bar_numbers != BarNumbers::Off;
+
+    Prepared {
+        width,
+        plans,
+        beams,
+        bar_nums,
+        groups,
+        has_barnum: score.bar_numbers != BarNumbers::Off,
+        staff_height,
+        n_strings,
+    }
+}
+
+/// The height the above-staff band reserves for one system, summing the rows it
+/// carries (top → staff): section label, chord symbols, bar number, and volta
+/// bracket. Zero when the system carries none of them.
+fn band_above(measures: &[Measure], has_barnum: bool) -> f32 {
+    let has_section = measures.iter().any(|m| m.section.is_some());
+    let has_chord = measures
+        .iter()
+        .any(|m| m.events.iter().any(|e| e.chord.is_some()));
+    let has_volta = measures.iter().any(|m| m.ending.is_some());
+    (if has_barnum { BARNUM_SPACE } else { 0.0 })
+        + if has_section { SECTION_SPACE } else { 0.0 }
+        + if has_chord { CHORD_SPACE } else { 0.0 }
+        + if has_volta { VOLTA_SPACE } else { 0.0 }
+}
+
+/// Lay a `Score` out into a positioned render tree, wrapping measures into
+/// stacked systems no wider than `config.width`.
+pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
+    let prep = prepare(score, config);
+    let (header, header_bottom) = build_header(score, prep.width, TOP_MARGIN);
 
     // Stack the systems vertically, each restating the staff lines.
-    let mut systems = Vec::with_capacity(groups.len());
+    let mut systems = Vec::with_capacity(prep.groups.len());
     let mut cursor = header_bottom + HEADER_GAP;
     let mut last_bottom = cursor;
-    for &(start, end) in &groups {
+    for &(start, end) in &prep.groups {
         let measures = &score.measures[start..end];
-        // The above-staff band stacks (top → staff): section label, chord
-        // symbols, bar number, then volta bracket.
-        let has_section = measures.iter().any(|m| m.section.is_some());
-        let has_chord = measures
-            .iter()
-            .any(|m| m.events.iter().any(|e| e.chord.is_some()));
-        let has_volta = measures.iter().any(|m| m.ending.is_some());
         let band_top = cursor;
-        let above = if has_barnum { BARNUM_SPACE } else { 0.0 }
-            + if has_section { SECTION_SPACE } else { 0.0 }
-            + if has_chord { CHORD_SPACE } else { 0.0 }
-            + if has_volta { VOLTA_SPACE } else { 0.0 };
-        let staff_top = band_top + above;
-        let staff_bottom = staff_top + staff_height;
+        let staff_top = band_top + band_above(measures, prep.has_barnum);
+        let staff_bottom = staff_top + prep.staff_height;
         systems.push(build_system(
             measures,
-            &plans[start..end],
-            &beams[start..end],
-            &bar_nums[start..end],
+            &prep.plans[start..end],
+            &prep.beams[start..end],
+            &prep.bar_nums[start..end],
             score.bar_numbers,
-            width,
+            prep.width,
             true,
             band_top,
             staff_top,
-            staff_height,
-            n_strings,
+            prep.staff_height,
+            prep.n_strings,
         ));
         last_bottom = staff_bottom;
         cursor = staff_bottom + SYSTEM_GAP;
@@ -244,9 +318,143 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
 
     let height = last_bottom + BOTTOM_MARGIN;
     RenderTree {
-        meta: LayoutMeta { width, height },
+        meta: LayoutMeta {
+            width: prep.width,
+            height,
+        },
         header,
         systems,
+    }
+}
+
+/// Geometry of one print page in logical units, derived from a `PageConfig` and
+/// the pinned content width.
+struct PageGeometry {
+    page_width: f32,
+    page_height: f32,
+    /// The y a continuation page's content band starts from (the top margin).
+    top: f32,
+    /// The lowest y a system's footprint may reach before it spills to the next
+    /// page (the page height less the bottom margin).
+    bottom_limit: f32,
+}
+
+/// Resolve a page's logical box from its size and the pinned content width. The
+/// page is `width` wide (the content already inset by LEFT/RIGHT_MARGIN within
+/// it) and takes the size's portrait aspect ratio for its height.
+fn page_geometry(config: PageConfig, width: f32) -> PageGeometry {
+    let (w_in, h_in) = config.size.inches();
+    let page_height = width * (h_in / w_in);
+    PageGeometry {
+        page_width: width,
+        page_height,
+        top: TOP_MARGIN,
+        bottom_limit: page_height - BOTTOM_MARGIN,
+    }
+}
+
+/// Lay a `Score` out across fixed-size print pages (T7.19): the same engine and
+/// justified systems as `layout`, packed top-to-bottom onto pages of the chosen
+/// `PageSize` and broken to a new page when the next system would overflow. Page
+/// one carries the full title block; later pages carry a folio number. Each page
+/// is its own coordinate space (origin top-left), so the painter draws a page
+/// exactly like a single-page tree.
+pub fn paginate(score: &Score, config: PageConfig) -> PaginatedTree {
+    let prep = prepare(
+        score,
+        LayoutConfig {
+            width: config.content_width,
+        },
+    );
+    let geom = page_geometry(config, prep.width);
+    let page_box = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: geom.page_width,
+        h: geom.page_height,
+    };
+
+    // Page one carries the full title block, laid out from the top margin.
+    let (title_block, title_bottom) = build_header(score, prep.width, TOP_MARGIN);
+
+    let mut pages: Vec<Page> = Vec::new();
+    let mut i = 0;
+    while i < prep.groups.len() {
+        let first_page = pages.is_empty();
+        // Page one's first system clears the title block; later pages clear the
+        // folio band at the top margin.
+        let mut cursor = if first_page {
+            title_bottom + HEADER_GAP
+        } else {
+            geom.top + FOLIO_SPACE
+        };
+        let mut page_systems: Vec<System> = Vec::new();
+
+        // Pack systems down the page until the next one's footprint — its band,
+        // staff, and the below-staff room SYSTEM_GAP reserves for stems/marks —
+        // would cross the bottom margin. Always place at least one system per
+        // page, even if it alone overflows (mirrors `pack_systems` horizontally).
+        while i < prep.groups.len() {
+            let (start, end) = prep.groups[i];
+            let measures = &score.measures[start..end];
+            let band_top = cursor;
+            let staff_top = band_top + band_above(measures, prep.has_barnum);
+            let staff_bottom = staff_top + prep.staff_height;
+            if !page_systems.is_empty() && staff_bottom + SYSTEM_GAP > geom.bottom_limit {
+                break;
+            }
+            page_systems.push(build_system(
+                measures,
+                &prep.plans[start..end],
+                &prep.beams[start..end],
+                &prep.bar_nums[start..end],
+                score.bar_numbers,
+                prep.width,
+                true,
+                band_top,
+                staff_top,
+                prep.staff_height,
+                prep.n_strings,
+            ));
+            cursor = staff_bottom + SYSTEM_GAP;
+            i += 1;
+        }
+
+        let header = if first_page {
+            title_block.clone()
+        } else {
+            // Folio number, top-right within the top-margin band (right-anchored
+            // by the painter). Pages are 1-based; page one omits its folio.
+            vec![Primitive::Text {
+                x: prep.width - RIGHT_MARGIN,
+                y: geom.top + FOLIO_SPACE / 2.0,
+                content: (pages.len() + 1).to_string(),
+                role: TextRole::PageNumber,
+                span: None,
+            }]
+        };
+
+        pages.push(Page {
+            bounds: page_box,
+            header,
+            systems: page_systems,
+        });
+    }
+
+    // An empty score still emits one page, carrying just its (possibly empty)
+    // title block — a render is never blank.
+    if pages.is_empty() {
+        pages.push(Page {
+            bounds: page_box,
+            header: title_block,
+            systems: Vec::new(),
+        });
+    }
+
+    PaginatedTree {
+        page_width: geom.page_width,
+        page_height: geom.page_height,
+        pages,
     }
 }
 
@@ -1050,10 +1258,10 @@ fn bar_numbers(
 /// Build the header block: a centred title/composer at the top, then a
 /// left-aligned tuning block (tuning name over a circled-number string grid), a
 /// tempo line, and a capo line. Returns the primitives and the y it ends at.
-fn build_header(score: &Score, width: f32) -> (Vec<Primitive>, f32) {
+fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
     let cx = width / 2.0;
     let mut prims = Vec::new();
-    let mut y = TOP_MARGIN;
+    let mut y = top;
     let line =
         |prims: &mut Vec<Primitive>, x: f32, baseline: f32, content: String, role: TextRole| {
             prims.push(Primitive::Text {
@@ -2934,5 +3142,177 @@ mod tests {
         assert!(tree.systems.len() == 2);
         assert!(tree.systems[1].bounds.y > tree.systems[0].bounds.y);
         assert!(tree.meta.height > tree.systems[1].bounds.y);
+    }
+
+    // --- Pagination (T7.19a) ---
+
+    fn page_cfg(content_width: f32) -> PageConfig {
+        PageConfig {
+            size: PageSize::Letter,
+            content_width,
+        }
+    }
+
+    fn paginate_banjo(n: u32, content_width: f32) -> PaginatedTree {
+        paginate(&banjo_score(measures_of(n)), page_cfg(content_width))
+    }
+
+    fn folios(page: &Page) -> Vec<String> {
+        page.header
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::PageNumber,
+                    content,
+                    ..
+                } => Some(content.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn has_role(prims: &[Primitive], role: TextRole) -> bool {
+        prims
+            .iter()
+            .any(|p| matches!(p, Primitive::Text { role: r, .. } if *r == role))
+    }
+
+    #[test]
+    fn a_short_score_emits_a_single_page() {
+        let doc = paginate(&banjo_score(measures_of(2)), page_cfg(80.0));
+        assert_eq!(doc.pages.len(), 1);
+        // The lone page carries the title block, never a folio.
+        assert!(folios(&doc.pages[0]).is_empty());
+    }
+
+    #[test]
+    fn an_empty_score_still_emits_one_page() {
+        let doc = paginate(&banjo_score(vec![]), page_cfg(80.0));
+        assert_eq!(doc.pages.len(), 1);
+        assert!(doc.pages[0].systems.is_empty());
+    }
+
+    #[test]
+    fn a_long_score_emits_multiple_pages() {
+        let doc = paginate_banjo(400, 50.0);
+        assert!(doc.pages.len() >= 3, "got {} pages", doc.pages.len());
+    }
+
+    #[test]
+    fn pagination_preserves_every_system_in_order() {
+        let score = banjo_score(measures_of(400));
+        let flat = layout(&score, LayoutConfig { width: 50.0 });
+        let doc = paginate(&score, page_cfg(50.0));
+        let paged: usize = doc.pages.iter().map(|p| p.systems.len()).sum();
+        assert_eq!(paged, flat.systems.len());
+        // The flattened sequence of measure spans is identical to the single-page
+        // render's: pagination only repartitions systems, never drops, dupes, or
+        // reorders them.
+        let flat_spans: Vec<Option<Span>> = flat
+            .systems
+            .iter()
+            .flat_map(|s| s.measures.iter().map(|m| m.span))
+            .collect();
+        let paged_spans: Vec<Option<Span>> = doc
+            .pages
+            .iter()
+            .flat_map(|p| p.systems.iter())
+            .flat_map(|s| s.measures.iter().map(|m| m.span))
+            .collect();
+        assert_eq!(flat_spans, paged_spans);
+    }
+
+    #[test]
+    fn pages_pack_systems_tightly() {
+        // The page-break golden: every page but the last is full — the next page's
+        // first system would not have fit after the current page's last one.
+        let doc = paginate_banjo(400, 50.0);
+        assert!(doc.pages.len() >= 2);
+        let limit = doc.page_height - BOTTOM_MARGIN;
+        for pair in doc.pages.windows(2) {
+            let last = pair[0].systems.last().unwrap();
+            let next = &pair[1].systems[0];
+            // Re-place the next page's first system right after the prior page's
+            // last (band height is 0 for these measures, so staff_top == cursor).
+            let cursor = last.bounds.y + last.bounds.h + SYSTEM_GAP;
+            let projected_bottom = cursor + next.bounds.h;
+            assert!(
+                projected_bottom + SYSTEM_GAP > limit,
+                "page left room for another system"
+            );
+        }
+    }
+
+    #[test]
+    fn every_system_sits_within_its_page() {
+        let doc = paginate_banjo(400, 50.0);
+        for page in &doc.pages {
+            for sys in &page.systems {
+                assert!(sys.bounds.y >= 0.0);
+                assert!(sys.bounds.y + sys.bounds.h <= page.bounds.h);
+            }
+        }
+    }
+
+    #[test]
+    fn page_one_carries_the_title_block_continuation_pages_a_folio() {
+        let mut score = banjo_score(measures_of(400));
+        score.meta.title = Some("Cripple Creek".to_string());
+        let doc = paginate(&score, page_cfg(50.0));
+        assert!(doc.pages.len() >= 2);
+
+        // Page one: the title, no folio.
+        assert!(has_role(&doc.pages[0].header, TextRole::Title));
+        assert!(folios(&doc.pages[0]).is_empty());
+
+        // Later pages: a folio numbered by position (1-based), no title block.
+        for (i, page) in doc.pages.iter().enumerate().skip(1) {
+            assert_eq!(folios(page), vec![(i + 1).to_string()]);
+            assert!(!has_role(&page.header, TextRole::Title));
+        }
+    }
+
+    #[test]
+    fn a_continuation_page_starts_above_page_one() {
+        // With no title block to clear, page two's first system sits higher than
+        // page one's.
+        let mut score = banjo_score(measures_of(400));
+        score.meta.title = Some("T".to_string());
+        let doc = paginate(&score, page_cfg(50.0));
+        assert!(doc.pages.len() >= 2);
+        assert!(doc.pages[1].systems[0].bounds.y < doc.pages[0].systems[0].bounds.y);
+    }
+
+    #[test]
+    fn every_page_shares_one_letter_proportioned_box() {
+        let doc = paginate_banjo(400, 50.0);
+        let (w, h) = (doc.page_width, doc.page_height);
+        assert!((h / w - 11.0 / 8.5).abs() < 1e-3);
+        for page in &doc.pages {
+            assert_eq!(
+                page.bounds,
+                Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    w,
+                    h
+                }
+            );
+        }
+    }
+
+    #[test]
+    fn a4_is_taller_than_letter_at_the_same_width() {
+        let measures = measures_of(4);
+        let letter = paginate(&banjo_score(measures.clone()), page_cfg(80.0));
+        let a4 = paginate(
+            &banjo_score(measures),
+            PageConfig {
+                size: PageSize::A4,
+                content_width: 80.0,
+            },
+        );
+        assert_eq!(letter.page_width, a4.page_width);
+        assert!(a4.page_height > letter.page_height);
     }
 }

@@ -549,7 +549,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 - [ ] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
       standard for tab. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview
       T7.6). Depends on T7.17.
-  - [ ] T7.19a — **Pagination layout.** Fixed Letter/A4 pages, systems packed per page, margins, and a
+  - [x] T7.19a — **Pagination layout.** Fixed Letter/A4 pages, systems packed per page, margins, and a
         per-page sheet header — layout work, not a serializer. *Tests:* page-break placement
         (systems-per-page) golden cases; multi-page doc emits N pages; one-page doc emits one.
   - [ ] T7.19b — **PDF emission.** Serialize the paginated tree to valid PDF bytes. *Tests:* valid PDF
