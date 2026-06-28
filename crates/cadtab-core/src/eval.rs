@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 
 use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, MarkKind, Program};
-use crate::diagnostics::Diagnostic;
+use crate::diagnostics::{Diagnostic, Severity};
 use crate::instrument::{Instrument, StringDef};
 use crate::model::{
     BarNumbers, Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger, Measure, Note,
@@ -670,6 +670,54 @@ impl Evaluator {
         phrase
     }
 
+    /// A representative sample value for a gallery preview's parameters: a phrase
+    /// of the open melody strings (`GALLERY_SAMPLE_STRINGS`), so `c.0` ascends
+    /// like a chord literal. Strings the instrument lacks are skipped, so the
+    /// sample always validates. Only each note's position is read back (via
+    /// indexing), so the duration/marks here are immaterial.
+    fn sample_phrase(&self) -> Value {
+        let n = self.instrument.string_count();
+        let mut phrase = Phrase::new();
+        for &string in &GALLERY_SAMPLE_STRINGS {
+            if string as usize > n {
+                continue;
+            }
+            phrase.push(Event::new(
+                EventKind::Note(Note {
+                    pos: Position::new(string, 0),
+                    dur: self.default_dur,
+                    right_hand: None,
+                    technique: None,
+                    tie: false,
+                }),
+                Span::new(0, 0),
+            ));
+        }
+        Value::Phrase(phrase)
+    }
+
+    /// Preview one `def` for the gallery: expand it with every parameter bound to
+    /// the sample phrase, then bar the result into 4/4 measures. Returns no
+    /// measures (the signature-card fallback) when the body produces nothing or
+    /// raises an error under the sample arguments. Synthetic diagnostics are
+    /// rolled back so they never reach the user.
+    fn preview_def(&mut self, def: &Def) -> Vec<Measure> {
+        let sample = self.sample_phrase();
+        let args: Vec<Option<Value>> = def.params.iter().map(|_| Some(sample.clone())).collect();
+        let diag_mark = self.diagnostics.len();
+        self.call_depth += 1;
+        let phrase = self.expand_def(def, args);
+        self.call_depth -= 1;
+        let errored = self.diagnostics[diag_mark..]
+            .iter()
+            .any(|d| d.severity == Severity::Error);
+        self.diagnostics.truncate(diag_mark);
+        if phrase.events.is_empty() || errored {
+            return Vec::new();
+        }
+        split_measures(phrase.events, TimeSig::new(4, 4))
+    }
+
     /// Lower a chord literal used as a value into a phrase of its members as
     /// individual notes (the seam later passes index and spread over).
     fn chord_to_phrase(&mut self, chord: &ast::Chord) -> Phrase {
@@ -782,6 +830,74 @@ pub fn eval_program_with_modules(program: &Program, modules: &[Item]) -> (Score,
         },
         diagnostics,
     )
+}
+
+/// One previewed `def` in a library's def-gallery (D49): its signature heading
+/// and the measures a sample invocation rendered to. Empty `measures` is the
+/// signature-card fallback — a def that does not render under sample arguments.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GalleryDef {
+    pub signature: String,
+    pub measures: Vec<Measure>,
+}
+
+/// The open strings a sample phrase voices, lowest-pitched first so `c.0`
+/// ascends like a chord literal. This mirrors the documented roll convention and
+/// the example `g_chord = [3:0 2:0 1:1]`: `c.0` is string 3, `c.1` string 2,
+/// `c.2` string 1 — the three melody strings a banjo roll picks. A def that
+/// indexes past `c.2` falls back to a signature card. Strings absent on the
+/// instrument are skipped, so the sample always validates.
+const GALLERY_SAMPLE_STRINGS: [u8; 3] = [3, 2, 1];
+
+/// The default note duration a gallery preview runs at: eighth notes, so an
+/// eight-note roll fills one 4/4 bar (matching how the stdlib licks are meant to
+/// be called).
+const GALLERY_DEFAULT: Duration = Duration { num: 1, den: 8 };
+
+/// Build the def-gallery preview model for a library program (top-level `def`s
+/// and no `score`): for each `def` declared in `program` itself, synthesize a
+/// minimal invocation — every parameter bound to a representative sample phrase
+/// of open strings — and bar the result into measures. A def whose body does not
+/// render under the sample arguments (e.g. a non-phrase parameter) previews as a
+/// signature-only card (empty `measures`). Imported/stdlib licks are loaded so a
+/// def that calls them resolves, but they are not themselves galleried.
+///
+/// Diagnostics from the synthetic invocation are discarded: they are artifacts of
+/// the sample arguments, not the user's source, which is checked by the normal
+/// `compile` passes. Provisional — the eventual direction is an author-specified
+/// example invocation per def (cf. the stdlib's own "provisional" note).
+pub fn eval_def_gallery(program: &Program, modules: &[Item]) -> (Instrument, Vec<GalleryDef>) {
+    let mut diagnostics = Vec::new();
+    let instrument = resolve_instrument(program, &mut diagnostics);
+
+    let mut ev = Evaluator::new(instrument.clone());
+    ev.load_stdlib();
+    ev.load_items(modules);
+    ev.load(program);
+    ev.set_default(GALLERY_DEFAULT);
+
+    let defs = program
+        .items
+        .iter()
+        .filter_map(|item| match &item.kind {
+            ItemKind::Def(def) => Some(GalleryDef {
+                signature: signature_of(def),
+                measures: ev.preview_def(def),
+            }),
+            _ => None,
+        })
+        .collect();
+    (instrument, defs)
+}
+
+/// A def's gallery heading: `name(p1, p2)`, or just `name` for a nullary def.
+fn signature_of(def: &Def) -> String {
+    if def.params.is_empty() {
+        def.name.name.clone()
+    } else {
+        let params: Vec<&str> = def.params.iter().map(|p| p.name.as_str()).collect();
+        format!("{}({})", def.name.name, params.join(", "))
+    }
 }
 
 /// Resolve the `barnumbers lines|all|off` mode (a later declaration wins),
@@ -2341,5 +2457,120 @@ score {
             })
             .collect();
         insta::assert_debug_snapshot!(shapes);
+    }
+
+    /// Evaluate a library program into its def-gallery model.
+    fn gallery(src: &str) -> Vec<GalleryDef> {
+        let parsed = parse(src);
+        assert!(
+            parsed.diagnostics.is_empty(),
+            "source should parse cleanly: {:?}",
+            parsed.diagnostics
+        );
+        eval_def_gallery(&parsed.program, &[]).1
+    }
+
+    #[test]
+    fn signature_reads_name_with_params() {
+        let g = gallery("def roll(c) { c.0 }\ndef tag() { 3:0 }");
+        let sigs: Vec<&str> = g.iter().map(|d| d.signature.as_str()).collect();
+        assert_eq!(sigs, vec!["roll(c)", "tag"]);
+    }
+
+    #[test]
+    fn gallery_previews_each_declared_def_in_order() {
+        // Two parameterized rolls; both render under the sample chord, each into a
+        // single bar of notes. Imported/stdlib licks are not themselves galleried.
+        let g = gallery("def a(c) { c.0 .t  c.1 .i }\ndef b(c) { c.2 .m  c.0 .t }");
+        assert_eq!(g.len(), 2);
+        assert_eq!(g[0].signature, "a(c)");
+        assert!(
+            !g[0].measures.is_empty(),
+            "a should render under sample args"
+        );
+        assert!(
+            !g[1].measures.is_empty(),
+            "b should render under sample args"
+        );
+    }
+
+    #[test]
+    fn sample_args_index_the_melody_strings_in_order() {
+        // The example `tag` lick: `c.0..c.2` must map to strings 3, 2, 1 (the
+        // documented roll convention / the `g_chord = [3:0 2:0 1:1]` example), so
+        // the index pattern 0 1 2 1 0 1 2 0 renders on strings 3 2 1 2 3 2 1 3.
+        let g = gallery("def tag(c) { c.0  c.1  c.2  c.1  c.0  c.1  c.2  c.0 }");
+        let strings: Vec<u8> = g[0]
+            .measures
+            .iter()
+            .flat_map(|m| &m.events)
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some(n.pos.string),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(strings, vec![3, 2, 1, 2, 3, 2, 1, 3]);
+    }
+
+    #[test]
+    fn a_nullary_def_renders_its_body_directly() {
+        let g = gallery("def lick() { 3:0 2:0 1:0 }");
+        assert_eq!(g.len(), 1);
+        assert_eq!(g[0].signature, "lick");
+        let notes: Vec<u8> = g[0]
+            .measures
+            .iter()
+            .flat_map(|m| &m.events)
+            .filter_map(|e| match &e.kind {
+                EventKind::Note(n) => Some(n.pos.string),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(notes, vec![3, 2, 1]);
+    }
+
+    #[test]
+    fn a_def_that_errors_under_sample_args_falls_back_to_a_card() {
+        // The sample phrase carries four notes, so indexing `c.9` is past its end:
+        // the synthetic invocation errors, the def previews as a signature card
+        // (no measures), and that error never escapes to the user.
+        let parsed = parse("def reach(c) { c.0  c.9 }");
+        let (_, defs) = eval_def_gallery(&parsed.program, &[]);
+        assert_eq!(defs.len(), 1);
+        assert_eq!(defs[0].signature, "reach(c)");
+        assert!(
+            defs[0].measures.is_empty(),
+            "an erroring preview should fall back to a signature card"
+        );
+    }
+
+    #[test]
+    fn gallery_diagnostics_do_not_leak_into_a_normal_compile() {
+        // The erroring preview above must not surface from `compile` — a library's
+        // real diagnostics come from the semantic passes, not the gallery.
+        let result = crate::compile(
+            "def reach(c) { c.0  c.9 }",
+            crate::layout::LayoutConfig { width: 800.0 },
+        );
+        assert!(
+            !result
+                .diagnostics
+                .iter()
+                .any(|d| d.message.contains("past the end")),
+            "synthetic gallery diagnostics must not leak: {:?}",
+            result.diagnostics
+        );
+    }
+
+    #[test]
+    fn the_stdlib_rolls_preview_under_sample_args() {
+        // A library re-declaring the stdlib roll shapes renders all four cards.
+        let src = crate::stdlib::source();
+        let g = gallery(src);
+        assert_eq!(g.len(), 4);
+        assert!(
+            g.iter().all(|d| !d.measures.is_empty()),
+            "every roll should render under the sample chord"
+        );
     }
 }

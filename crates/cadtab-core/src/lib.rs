@@ -21,10 +21,11 @@ pub mod types;
 
 use serde::{Deserialize, Serialize};
 
+use crate::ast::ItemKind;
 use crate::diagnostics::Diagnostic;
-use crate::eval::eval_program_with_modules;
+use crate::eval::{eval_def_gallery, eval_program_with_modules};
 use crate::imports::load_imports;
-use crate::layout::{LayoutConfig, layout};
+use crate::layout::{LayoutConfig, layout, layout_gallery};
 use crate::lexer::lex;
 use crate::parser::parse;
 use crate::provider::{FileProvider, MapProvider};
@@ -88,7 +89,27 @@ pub fn compile_with_provider(
     let type_diagnostics = types::check_with_imports(&parsed.program, &loaded.items).diagnostics;
 
     let (score, eval_diagnostics) = eval_program_with_modules(&parsed.program, &loaded.items);
-    let render_tree = layout(&score, config);
+
+    // Render is contextual (D49): a file with a `score` renders it; a library
+    // (top-level `def`s, no `score`) renders a def-gallery previewing each def.
+    // The semantic passes above still check the library's def bodies, so the
+    // gallery's own (synthetic) diagnostics are discarded.
+    let has_score = parsed
+        .program
+        .items
+        .iter()
+        .any(|i| matches!(i.kind, ItemKind::Score(_)));
+    let has_def = parsed
+        .program
+        .items
+        .iter()
+        .any(|i| matches!(i.kind, ItemKind::Def(_)));
+    let render_tree = if !has_score && has_def {
+        let (instrument, defs) = eval_def_gallery(&parsed.program, &loaded.items);
+        layout_gallery(&instrument, &defs, config)
+    } else {
+        layout(&score, config)
+    };
 
     let mut diagnostics = parsed.diagnostics;
     diagnostics.extend(loaded.diagnostics);
@@ -258,6 +279,62 @@ mod tests {
     #[test]
     fn compile_wire_format() {
         let result = compile("score { 3:0 }", LayoutConfig { width: 800.0 });
+        insta::assert_snapshot!(serde_json::to_string_pretty(&result).unwrap());
+    }
+
+    #[test]
+    fn a_library_renders_a_def_gallery_not_a_score() {
+        // A file of `def`s with no `score` renders contextually as a def-gallery
+        // (D49): the tree carries a signature heading per def and a staff for the
+        // one that renders under sample args.
+        use crate::render::TextRole;
+        let result = compile(
+            "def roll(c) { c.0 .t  c.1 .i }\ndef open() { 3:0 2:0 1:0 }",
+            LayoutConfig { width: 800.0 },
+        );
+        let headings: Vec<&str> = result
+            .render_tree
+            .header
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    content,
+                    role: TextRole::DefHeading,
+                    ..
+                } => Some(content.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(headings, vec!["roll(c)", "open"]);
+        // Both render under the sample chord, so two staves stack.
+        assert_eq!(result.render_tree.systems.len(), 2);
+    }
+
+    #[test]
+    fn a_file_with_an_empty_score_still_renders_as_a_score() {
+        // The presence of a `score` block — even an empty one — keeps the file a
+        // score (header-only render), not a gallery, despite its helper def.
+        use crate::render::TextRole;
+        let result = compile(
+            "def helper() { 3:0 }\nscore { }",
+            LayoutConfig { width: 800.0 },
+        );
+        assert!(result.render_tree.systems.is_empty());
+        assert!(!result.render_tree.header.iter().any(|p| matches!(
+            p,
+            Primitive::Text {
+                role: TextRole::DefHeading,
+                ..
+            }
+        )));
+    }
+
+    #[test]
+    fn def_gallery_wire_format() {
+        let result = compile(
+            "def forward_roll(c) {\n  c.0 .t  c.1 .i  c.2 .m  c.0 .t\n}",
+            LayoutConfig { width: 800.0 },
+        );
         insta::assert_snapshot!(serde_json::to_string_pretty(&result).unwrap());
     }
 

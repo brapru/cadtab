@@ -59,6 +59,12 @@ pub enum TextRole {
     ChordSymbol,
     /// A small measure number above the staff.
     BarNumber,
+    /// A def-gallery card heading: the previewed def's signature (e.g.
+    /// `forward_roll(c)`), left-aligned above its staff.
+    DefHeading,
+    /// A def-gallery card note, e.g. "parameterized — no preview" under the
+    /// heading of a def that does not render under sample arguments.
+    DefNote,
 }
 
 /// A positioned drawing primitive. Span-bearing variants carry the source span

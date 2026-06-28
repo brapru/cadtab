@@ -1,0 +1,466 @@
+---
+source: crates/cadtab-core/src/lib.rs
+expression: "serde_json::to_string_pretty(&result).unwrap()"
+---
+{
+  "renderTree": {
+    "meta": {
+      "width": 800.0,
+      "height": 11.900001
+    },
+    "header": [
+      {
+        "kind": "text",
+        "x": 2.0,
+        "y": 1.3,
+        "content": "forward_roll(c)",
+        "role": "defHeading",
+        "span": null
+      }
+    ],
+    "systems": [
+      {
+        "bounds": {
+          "x": 0.0,
+          "y": 2.1,
+          "w": 800.0,
+          "h": 4.0
+        },
+        "prims": [
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 2.1,
+            "x2": 4.2000003,
+            "y2": 2.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 5.4,
+            "y1": 2.1,
+            "x2": 7.6000004,
+            "y2": 2.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 3.1,
+            "x2": 3.1999998,
+            "y2": 3.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 4.4,
+            "y1": 3.1,
+            "x2": 7.6000004,
+            "y2": 3.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 4.1,
+            "x2": 2.1999998,
+            "y2": 4.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 3.4,
+            "y1": 4.1,
+            "x2": 5.2000003,
+            "y2": 4.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 6.4,
+            "y1": 4.1,
+            "x2": 7.6000004,
+            "y2": 4.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 5.1,
+            "x2": 7.6000004,
+            "y2": 5.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 6.1,
+            "x2": 7.6000004,
+            "y2": 6.1,
+            "weight": 0.06
+          },
+          {
+            "kind": "line",
+            "x1": 2.0,
+            "y1": 2.1,
+            "x2": 2.0,
+            "y2": 6.1,
+            "weight": 0.1
+          },
+          {
+            "kind": "line",
+            "x1": 7.6000004,
+            "y1": 2.1,
+            "x2": 7.6000004,
+            "y2": 6.1,
+            "weight": 0.1
+          }
+        ],
+        "measures": [
+          {
+            "bounds": {
+              "x": 2.0,
+              "y": 2.1,
+              "w": 5.6000004,
+              "h": 4.0
+            },
+            "prims": [
+              {
+                "kind": "text",
+                "x": 2.8,
+                "y": 4.1,
+                "content": "0",
+                "role": "fretNumber",
+                "span": {
+                  "start": 24,
+                  "end": 30
+                }
+              },
+              {
+                "kind": "line",
+                "x1": 2.8,
+                "y1": 4.9,
+                "x2": 2.8,
+                "y2": 7.6,
+                "weight": 0.08
+              },
+              {
+                "kind": "text",
+                "x": 2.8,
+                "y": 8.2,
+                "content": "T",
+                "role": "finger",
+                "span": {
+                  "start": 24,
+                  "end": 30
+                }
+              },
+              {
+                "kind": "text",
+                "x": 3.8,
+                "y": 3.1,
+                "content": "0",
+                "role": "fretNumber",
+                "span": {
+                  "start": 32,
+                  "end": 38
+                }
+              },
+              {
+                "kind": "line",
+                "x1": 3.8,
+                "y1": 3.8999999,
+                "x2": 3.8,
+                "y2": 7.6,
+                "weight": 0.08
+              },
+              {
+                "kind": "text",
+                "x": 3.8,
+                "y": 8.2,
+                "content": "I",
+                "role": "finger",
+                "span": {
+                  "start": 32,
+                  "end": 38
+                }
+              },
+              {
+                "kind": "text",
+                "x": 4.8,
+                "y": 2.1,
+                "content": "0",
+                "role": "fretNumber",
+                "span": {
+                  "start": 40,
+                  "end": 46
+                }
+              },
+              {
+                "kind": "line",
+                "x1": 4.8,
+                "y1": 2.8999999,
+                "x2": 4.8,
+                "y2": 7.6,
+                "weight": 0.08
+              },
+              {
+                "kind": "text",
+                "x": 4.8,
+                "y": 8.2,
+                "content": "M",
+                "role": "finger",
+                "span": {
+                  "start": 40,
+                  "end": 46
+                }
+              },
+              {
+                "kind": "text",
+                "x": 5.8,
+                "y": 4.1,
+                "content": "0",
+                "role": "fretNumber",
+                "span": {
+                  "start": 48,
+                  "end": 54
+                }
+              },
+              {
+                "kind": "line",
+                "x1": 5.8,
+                "y1": 4.9,
+                "x2": 5.8,
+                "y2": 7.6,
+                "weight": 0.08
+              },
+              {
+                "kind": "text",
+                "x": 5.8,
+                "y": 8.2,
+                "content": "T",
+                "role": "finger",
+                "span": {
+                  "start": 48,
+                  "end": 54
+                }
+              },
+              {
+                "kind": "line",
+                "x1": 2.76,
+                "y1": 7.69,
+                "x2": 3.84,
+                "y2": 7.69,
+                "weight": 0.18
+              },
+              {
+                "kind": "line",
+                "x1": 4.76,
+                "y1": 7.69,
+                "x2": 5.84,
+                "y2": 7.69,
+                "weight": 0.18
+              }
+            ],
+            "span": {
+              "start": 24,
+              "end": 54
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "diagnostics": [],
+  "tokens": [
+    {
+      "class": "keyword",
+      "span": {
+        "start": 0,
+        "end": 3
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 4,
+        "end": 16
+      }
+    },
+    {
+      "class": "punctuation",
+      "span": {
+        "start": 16,
+        "end": 17
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 17,
+        "end": 18
+      }
+    },
+    {
+      "class": "punctuation",
+      "span": {
+        "start": 18,
+        "end": 19
+      }
+    },
+    {
+      "class": "punctuation",
+      "span": {
+        "start": 20,
+        "end": 21
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 24,
+        "end": 25
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 25,
+        "end": 26
+      }
+    },
+    {
+      "class": "number",
+      "span": {
+        "start": 26,
+        "end": 27
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 28,
+        "end": 29
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 29,
+        "end": 30
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 32,
+        "end": 33
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 33,
+        "end": 34
+      }
+    },
+    {
+      "class": "number",
+      "span": {
+        "start": 34,
+        "end": 35
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 36,
+        "end": 37
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 37,
+        "end": 38
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 40,
+        "end": 41
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 41,
+        "end": 42
+      }
+    },
+    {
+      "class": "number",
+      "span": {
+        "start": 42,
+        "end": 43
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 44,
+        "end": 45
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 45,
+        "end": 46
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 48,
+        "end": 49
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 49,
+        "end": 50
+      }
+    },
+    {
+      "class": "number",
+      "span": {
+        "start": 50,
+        "end": 51
+      }
+    },
+    {
+      "class": "operator",
+      "span": {
+        "start": 52,
+        "end": 53
+      }
+    },
+    {
+      "class": "ident",
+      "span": {
+        "start": 53,
+        "end": 54
+      }
+    },
+    {
+      "class": "punctuation",
+      "span": {
+        "start": 55,
+        "end": 56
+      }
+    }
+  ]
+}

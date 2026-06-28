@@ -52,7 +52,9 @@ export type TextRole =
   | "rest"
   | "sectionLabel"
   | "chordSymbol"
-  | "barNumber";
+  | "barNumber"
+  | "defHeading"
+  | "defNote";
 
 export type Primitive =
   | {

@@ -11,6 +11,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::beam;
+use crate::eval::GalleryDef;
+use crate::instrument::Instrument;
 use crate::model::{
     BarNumbers, Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique,
     TimeSig,
@@ -50,6 +52,10 @@ const CHORD_SPACE: f32 = 1.3;
 // Vertical room reserved above the staff for measure numbers, when numbering is
 // on. It sits at the very top of the above-staff band.
 const BARNUM_SPACE: f32 = 0.9;
+// Def-gallery (D49) metrics. The signature heading's row height above a def's
+// staff, and the gap between one def's card and the next.
+const GALLERY_HEADING_H: f32 = 1.6;
+const GALLERY_DEF_GAP: f32 = 3.0;
 
 // Horizontal metrics.
 const LEFT_MARGIN: f32 = 2.0;
@@ -230,6 +236,91 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     }
 
     let height = last_bottom + BOTTOM_MARGIN;
+    RenderTree {
+        meta: LayoutMeta { width, height },
+        header,
+        systems,
+    }
+}
+
+/// Lay out a library's def-gallery (D49): each previewed `def` is a card — its
+/// signature heading over the staff its sample invocation rendered to — stacked
+/// down the page. A def with no rendered measures (the signature-card fallback)
+/// shows its heading and a muted note. The page is pinned to `config.width` so
+/// every card's staff lines align. Heading/fallback text lands in `header` and
+/// the staves in `systems`; both are absolute-positioned, so the painter draws
+/// them verbatim like any tree.
+pub fn layout_gallery(
+    instrument: &Instrument,
+    defs: &[GalleryDef],
+    config: LayoutConfig,
+) -> RenderTree {
+    let n_strings = instrument.string_count();
+    let staff_height = ((n_strings.max(1) - 1) as f32) * STRING_SPACING;
+    let width = config.width;
+
+    let mut header: Vec<Primitive> = Vec::new();
+    let mut systems: Vec<System> = Vec::new();
+    let mut cursor = TOP_MARGIN;
+
+    for def in defs {
+        header.push(Primitive::Text {
+            x: LEFT_MARGIN,
+            y: cursor + GALLERY_HEADING_H / 2.0,
+            content: def.signature.clone(),
+            role: TextRole::DefHeading,
+            span: None,
+        });
+        cursor += GALLERY_HEADING_H;
+
+        if def.measures.is_empty() {
+            // Signature card: the heading plus a muted note that this def takes
+            // arguments and so has no sample preview.
+            header.push(Primitive::Text {
+                x: LEFT_MARGIN,
+                y: cursor + META_LINE_H / 2.0,
+                content: "parameterized — no preview".to_string(),
+                role: TextRole::DefNote,
+                span: None,
+            });
+            cursor += META_LINE_H + GALLERY_DEF_GAP;
+            continue;
+        }
+
+        // Lay the def's measures out into stacked systems, reusing the engine.
+        // The gallery shows no time signatures, bar numbers, or above-staff band.
+        let plans: Vec<MeasurePlan> = def.measures.iter().map(|m| plan_measure(m, None)).collect();
+        let groups = pack_systems(&plans, width);
+        let beams: Vec<Vec<beam::BeamGroup>> = def
+            .measures
+            .iter()
+            .map(|m| beam::beam_groups(&m.events, TimeSig::new(4, 4)))
+            .collect();
+        let bar_nums: Vec<Option<u32>> = vec![None; def.measures.len()];
+
+        let mut last_bottom = cursor;
+        for &(start, end) in &groups {
+            let staff_top = cursor;
+            let staff_bottom = staff_top + staff_height;
+            systems.push(build_system(
+                &def.measures[start..end],
+                &plans[start..end],
+                &beams[start..end],
+                &bar_nums[start..end],
+                BarNumbers::Off,
+                width,
+                staff_top,
+                staff_top,
+                staff_height,
+                n_strings,
+            ));
+            last_bottom = staff_bottom;
+            cursor = staff_bottom + SYSTEM_GAP;
+        }
+        cursor = last_bottom + GALLERY_DEF_GAP;
+    }
+
+    let height = cursor + BOTTOM_MARGIN;
     RenderTree {
         meta: LayoutMeta { width, height },
         header,
@@ -2661,5 +2752,78 @@ mod tests {
         ]);
         let tree = layout(&banjo_score(vec![m]), cfg());
         insta::assert_snapshot!(serde_json::to_string_pretty(&tree).unwrap());
+    }
+
+    fn banjo() -> Instrument {
+        Instrument::builtin("banjo").unwrap()
+    }
+
+    fn heading_text(tree: &RenderTree, role: TextRole) -> Vec<&str> {
+        tree.header
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    content, role: r, ..
+                } if *r == role => Some(content.as_str()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn gallery_stacks_a_heading_and_staff_per_rendered_def() {
+        let rendered = GalleryDef {
+            signature: "lick".to_string(),
+            measures: vec![Measure::new(vec![note(3, 0, 0), note(2, 0, 2)])],
+        };
+        let tree = layout_gallery(&banjo(), std::slice::from_ref(&rendered), cfg());
+
+        // One signature heading, and the def's measures became a staff system.
+        assert_eq!(heading_text(&tree, TextRole::DefHeading), vec!["lick"]);
+        assert!(heading_text(&tree, TextRole::DefNote).is_empty());
+        assert_eq!(tree.systems.len(), 1);
+        // The page is pinned to the config width so cards align.
+        assert_eq!(tree.meta.width, 800.0);
+        assert!(tree.systems[0].measures[0].prims.iter().any(|p| matches!(
+            p,
+            Primitive::Text {
+                role: TextRole::FretNumber,
+                ..
+            }
+        )));
+    }
+
+    #[test]
+    fn gallery_falls_back_to_a_signature_card_when_a_def_has_no_preview() {
+        let card = GalleryDef {
+            signature: "roll(c)".to_string(),
+            measures: vec![],
+        };
+        let tree = layout_gallery(&banjo(), std::slice::from_ref(&card), cfg());
+
+        // Heading plus a muted note, and no staff system for an unrendered def.
+        assert_eq!(heading_text(&tree, TextRole::DefHeading), vec!["roll(c)"]);
+        assert_eq!(heading_text(&tree, TextRole::DefNote).len(), 1);
+        assert!(tree.systems.is_empty());
+    }
+
+    #[test]
+    fn gallery_cards_stack_top_to_bottom() {
+        let defs = vec![
+            GalleryDef {
+                signature: "a".to_string(),
+                measures: vec![Measure::new(vec![note(3, 0, 0)])],
+            },
+            GalleryDef {
+                signature: "b".to_string(),
+                measures: vec![Measure::new(vec![note(2, 0, 0)])],
+            },
+        ];
+        let tree = layout_gallery(&banjo(), &defs, cfg());
+        assert_eq!(heading_text(&tree, TextRole::DefHeading), vec!["a", "b"]);
+        // The second card's staff sits below the first's.
+        assert!(tree.systems.len() == 2);
+        assert!(tree.systems[1].bounds.y > tree.systems[0].bounds.y);
+        assert!(tree.meta.height > tree.systems[1].bounds.y);
     }
 }
