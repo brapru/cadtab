@@ -265,7 +265,7 @@
       <div class="tabstrip">
         <div class="tabs" role="tablist">
           {#each g.tabs as tab (tab.id)}
-            <div class="tab-wrap">
+            <div class="tab-wrap" class:active={tab.id === active?.id}>
               <button
                 class="tab"
                 class:active={tab.id === active?.id}
@@ -435,14 +435,15 @@
     /* Pointer-driven drag: keep touch gestures from scrolling mid-drag. */
     touch-action: none;
   }
-  .tab.active {
-    color: var(--fg);
+  /* The active tab is clearly set apart: a stronger tint across the whole cell,
+     an accent bar along its top edge, and full-strength label text (inactive
+     tabs stay muted on transparent). */
+  .tab-wrap.active {
+    background: color-mix(in srgb, var(--fg) 12%, transparent);
+    box-shadow: inset 0 2px 0 var(--accent);
   }
-  /* The active tint covers the tab and its trailing close button so the whole
-     cell reads as one active tab. */
-  .tab.active,
-  .tab.active ~ .tab-close {
-    background: color-mix(in srgb, var(--fg) 6%, transparent);
+  .tab-wrap.active .tab {
+    color: var(--fg);
   }
   .tab.dragging {
     opacity: 0.5;
