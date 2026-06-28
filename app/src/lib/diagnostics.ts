@@ -4,6 +4,23 @@ import type { DecorationSet } from "@codemirror/view";
 import type { Diagnostic, Severity } from "./types";
 import { byteToCharIndex, spanToRange } from "./spans";
 
+// Problem counts by severity, for the bottom bar's diagnostics indicator (info
+// diagnostics don't count as problems). T4.7m opens an exhaustive panel from it.
+export interface DiagnosticCounts {
+  errors: number;
+  warnings: number;
+}
+
+export function diagnosticCounts(diagnostics: Diagnostic[]): DiagnosticCounts {
+  let errors = 0;
+  let warnings = 0;
+  for (const d of diagnostics) {
+    if (d.severity === "error") errors++;
+    else if (d.severity === "warning") warnings++;
+  }
+  return { errors, warnings };
+}
+
 // A diagnostic positioned in CodeMirror (UTF-16) coordinates, ready to underline
 // and to surface in a hover tooltip.
 export interface PlacedDiagnostic {

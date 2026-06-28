@@ -2,6 +2,7 @@
   import Editor from "./lib/Editor.svelte";
   import Tab from "./lib/Tab.svelte";
   import Workspace from "./lib/Workspace.svelte";
+  import BottomBar from "./lib/BottomBar.svelte";
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
@@ -146,6 +147,23 @@ score {
   // T7.4 gives each open `.ctab` its own id so tabs can span files.
   const docId = "doc";
   let workspace = $state<WorkspaceModel>(defaultWorkspace(docId));
+
+  // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B. The dock
+  // panel it reveals lands in T7.2; the bottom bar already owns the control.
+  let dockOpen = $state(false);
+  const toggleDock = () => (dockOpen = !dockOpen);
+
+  // Cmd/Ctrl-B toggles the dock, overriding the browser's default for the key.
+  function onDockKey(e: KeyboardEvent) {
+    if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+    if (e.key.toLowerCase() !== "b") return;
+    toggleDock();
+    e.preventDefault();
+  }
+  $effect(() => {
+    window.addEventListener("keydown", onDockKey);
+    return () => window.removeEventListener("keydown", onDockKey);
+  });
 
   // Visual zoom of the render. Fit returns to 1, which fills the pane width since
   // layout already reflows to it.
@@ -406,6 +424,11 @@ score {
       {/if}
     {/snippet}
   </Workspace>
+  <BottomBar
+    diagnostics={result?.diagnostics ?? []}
+    {dockOpen}
+    onToggleDock={toggleDock}
+  />
 </main>
 
 <style>

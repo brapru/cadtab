@@ -479,6 +479,30 @@ describe("App", () => {
     });
   });
 
+  it("surfaces the compile's diagnostics in the bottom bar", async () => {
+    const { container } = render(App);
+    // The fake compile reports one error, so the bottom bar leaves the clean
+    // state and shows an error count of 1.
+    await vi.waitFor(() => {
+      expect(container.querySelector(".diagnostics.clean")).toBeNull();
+      expect(container.querySelector(".count.error .num")?.textContent).toBe(
+        "1",
+      );
+    });
+  });
+
+  it("toggles the project dock from Cmd/Ctrl-B", async () => {
+    const { container } = render(App);
+    const toggle = container.querySelector(".dock-toggle")!;
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+
+    await fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+
+    await fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("cycles the colour theme onto the document root", async () => {
     const { container } = render(App);
     const toggle = container.querySelector(".theme-toggle")!;

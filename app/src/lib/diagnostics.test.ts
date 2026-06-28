@@ -6,6 +6,7 @@ import {
   diagnosticTooltipDom,
   diagnosticsField,
   setDiagnostics,
+  diagnosticCounts,
   diagnostics as diagnosticsExtension,
 } from "./diagnostics";
 import type { Diagnostic } from "./types";
@@ -19,6 +20,23 @@ function diag(
 ): Diagnostic {
   return { severity, span: { start, end }, message, help };
 }
+
+describe("diagnosticCounts", () => {
+  it("tallies errors and warnings, ignoring info", () => {
+    expect(
+      diagnosticCounts([
+        diag("error", 0, 1),
+        diag("warning", 1, 2),
+        diag("error", 2, 3),
+        diag("info", 3, 4),
+      ]),
+    ).toEqual({ errors: 2, warnings: 1 });
+  });
+
+  it("is zero for no diagnostics", () => {
+    expect(diagnosticCounts([])).toEqual({ errors: 0, warnings: 0 });
+  });
+});
 
 describe("placeDiagnostics", () => {
   it("resolves byte spans and carries severity/message/help", () => {

@@ -383,9 +383,16 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
       showing project structure, toggled by Cmd/Ctrl-B and a bottom-bar button. The file tree comes
       from the project/import model (M5, D38) — a live folder on desktop / Chromium-web, or the
       loaded project bundle on Firefox.
-- [ ] **T7.3 — Bottom status bar (slick, minimal, non-invasive).** *(global-singleton view)* A
+- [x] **T7.3 — Bottom status bar (slick, minimal, non-invasive).** *(global-singleton view)* A
       small bottom bar hosting the dock toggle and the diagnostics button (T4.7m); sets the
       bottom-control styling — small, unobtrusive, out of the way. Pairs with T4.7m and T4.7n.
+  - *Landed:* `BottomBar.svelte` (registered `bottomBar` global-singleton in the view registry),
+    rendered as fixed chrome below the workspace. Left: a dock toggle wired to `dockOpen` +
+    **Cmd/Ctrl-B** (the panel it reveals is T7.2; the control + keybinding live here). Right: a live
+    problem indicator ("No problems" / error+warning counts) from the compile's diagnostics, via a
+    pure `diagnosticCounts` helper. Added shared `--error`/`--warning` theme tokens (light+dark) for
+    cohesion with the diagnostics tooltip/panel (T4.7i/T4.7m). *Deferred:* making the indicator a
+    button that opens the exhaustive panel + jumps to spans is **T4.7m**.
 - [ ] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
       view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
       tab/group mechanics come from T7.1.

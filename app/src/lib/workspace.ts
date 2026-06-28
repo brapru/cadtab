@@ -20,9 +20,10 @@ export interface ViewDef {
   kind: ViewKind;
 }
 
-// The view registry. New tool = new entry here + a branch in the shell's view
-// snippet; the layout never hard-codes a tool, it places these by type. The dock
-// and bottom bar (global singletons) join in T7.2/T7.3.
+// The view registry: every tool the shell knows. Document-bound views are placed
+// into groups as tabs (the shell looks them up here for a title/icon);
+// global-singleton views (the bottom bar, later the project dock) are mounted
+// once as chrome, not tabbed. New tool = new entry here + its mount point.
 export const VIEWS: Record<string, ViewDef> = {
   editor: {
     type: "editor",
@@ -35,6 +36,12 @@ export const VIEWS: Record<string, ViewDef> = {
     title: "Render",
     icon: "♪",
     kind: "document-bound",
+  },
+  bottomBar: {
+    type: "bottomBar",
+    title: "Status Bar",
+    icon: "▭",
+    kind: "global-singleton",
   },
 };
 
