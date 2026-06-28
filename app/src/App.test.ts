@@ -269,6 +269,72 @@ describe("App", () => {
     });
   });
 
+  it("opens a dock file as a new editor tab", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "tune.ctab",
+      ),
+    );
+
+    // Reveal the dock and click the lib: it opens as its own focused editor tab.
+    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    await fireEvent.click(getByText("lib.ctab"));
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "lib.ctab",
+      );
+      expect(container.querySelector(".cm-content")?.textContent).toContain(
+        "def roll()",
+      );
+    });
+  });
+
+  it("makes the active document follow the focused editor tab", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "single",
+      path: "/scores/loaded.ctab",
+      name: "loaded.ctab",
+      content: "score { 1:0 }",
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "loaded.ctab",
+      ),
+    );
+
+    // The editor group now stacks two tabs; activating the first (the default
+    // untitled doc) makes it active again.
+    const editorTab = [...container.querySelectorAll(".tab")].find((t) =>
+      t.textContent?.includes("Editor"),
+    )!;
+    await fireEvent.click(editorTab);
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "untitled",
+      ),
+    );
+  });
+
   it("saves an opened file in place, reusing its path (no re-prompt)", async () => {
     openProjectMock.mockReset();
     saveDocumentMock.mockReset();
@@ -335,8 +401,14 @@ describe("App", () => {
     await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
   });
 
-  it("marks the document dirty on edit and guards an unsaved open", async () => {
+  it("marks the document dirty on edit; opening adds a tab without a discard prompt", async () => {
     openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "single",
+      path: "/x.ctab",
+      name: "x.ctab",
+      content: "score {}",
+    });
     const { container } = render(App);
 
     let content!: Element;
@@ -351,20 +423,22 @@ describe("App", () => {
       expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
     });
 
-    // Declining the discard prompt aborts the open; accepting proceeds.
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-    await fireEvent.keyDown(window, { key: "o", metaKey: true });
-    expect(openProjectMock).not.toHaveBeenCalled();
-
-    confirmSpy.mockReturnValue(true);
-    openProjectMock.mockResolvedValue({
-      kind: "single",
-      path: "/x.ctab",
-      name: "x.ctab",
-      content: "score {}",
-    });
+    // Opening no longer prompts to discard — multi-file open adds a tab. No
+    // confirm dialog is consulted, and the opened file becomes the active doc.
+    const confirmSpy = vi.spyOn(window, "confirm");
     await fireEvent.keyDown(window, { key: "o", metaKey: true });
     await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
+    expect(confirmSpy).not.toHaveBeenCalled();
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "x.ctab",
+      );
+    });
+    // Both documents are open: two editor tabs across the groups.
+    const editorTabs = [...container.querySelectorAll(".tab-title")].filter(
+      (t) => t.textContent === "Editor",
+    );
+    expect(editorTabs).toHaveLength(2);
     confirmSpy.mockRestore();
   });
 
@@ -425,7 +499,7 @@ describe("App", () => {
     expect(blob.type).toBe("image/png");
   });
 
-  it("starts a new document from a template, guarding unsaved edits", async () => {
+  it("opens a new document from a template as its own untitled tab", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() => {
       expect(container.querySelector(".cm-content")).toBeTruthy();
@@ -433,7 +507,7 @@ describe("App", () => {
 
     const select = getByLabelText("New from template") as HTMLSelectElement;
 
-    // A clean document → New loads the chosen template as an untitled doc.
+    // New opens the chosen template as a fresh untitled tab and focuses it.
     await fireEvent.change(select, { target: { value: "guitar" } });
     await vi.waitFor(() => {
       expect(container.querySelector(".cm-content")?.textContent).toContain(
@@ -443,20 +517,12 @@ describe("App", () => {
     expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
       "untitled",
     );
-
-    // Edit, then a declined New keeps the current document.
-    await fireEvent.keyDown(container.querySelector(".cm-content")!, {
-      key: "Tab",
-    });
-    await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
-    });
-    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
-    await fireEvent.change(select, { target: { value: "blank" } });
-    expect(container.querySelector(".cm-content")?.textContent).toContain(
-      "instrument guitar",
+    // The default document is still open alongside it (two editor tabs), with no
+    // discard prompt — New never replaces the current doc.
+    const editorTabs = [...container.querySelectorAll(".tab-title")].filter(
+      (t) => t.textContent === "Editor",
     );
-    confirmSpy.mockRestore();
+    expect(editorTabs).toHaveLength(2);
   });
 
   it("clears dirty when edits are undone back to the saved baseline", async () => {

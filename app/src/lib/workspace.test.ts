@@ -1,6 +1,6 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect } from "vitest";
-import { createRawSnippet } from "svelte";
+import { createRawSnippet, tick } from "svelte";
 import Workspace from "./Workspace.svelte";
 import {
   VIEWS,
@@ -14,6 +14,8 @@ import {
   resizePair,
   moveTab,
   splitTab,
+  groupOfType,
+  addTab,
   type ViewInstance,
 } from "./workspace";
 
@@ -163,6 +165,40 @@ describe("splitTab", () => {
   });
 });
 
+describe("groupOfType", () => {
+  it("finds the group hosting a view type, else null", () => {
+    const ws = defaultWorkspace("doc");
+    expect(groupOfType(ws, "editor")).toBe("g1");
+    expect(groupOfType(ws, "render")).toBe("g2");
+    expect(groupOfType(ws, "preview")).toBeNull();
+  });
+});
+
+describe("addTab", () => {
+  it("appends a second document's editor into the editor group, focused", () => {
+    const ws = defaultWorkspace("a");
+    const next = addTab(ws, instance("editor", "b"), "g1");
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual([
+      "editor:a",
+      "editor:b",
+    ]);
+    expect(next.groups[0].activeId).toBe("editor:b");
+  });
+
+  it("re-focuses an already-open tab instead of duplicating it", () => {
+    const ws = defaultWorkspace("a");
+    const next = addTab(ws, instance("render", "a"), "g1"); // render:a already in g2
+    expect(next.groups[1].activeId).toBe("render:a");
+    // No duplicate landed in g1.
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["editor:a"]);
+  });
+
+  it("is a no-op for a missing target group", () => {
+    const ws = defaultWorkspace("a");
+    expect(addTab(ws, instance("editor", "b"), "nope")).toBe(ws);
+  });
+});
+
 // A minimal stand-in for the parent's view snippet: render the tab's type, so we
 // can assert which view a group shows without pulling in Editor/Tab.
 const stubView = createRawSnippet((instance: () => ViewInstance) => ({
@@ -212,19 +248,47 @@ describe("Workspace chrome", () => {
     ).toEqual(["Editor", "Render"]);
   });
 
-  it("drags the render tab onto the editor group to stack them, then splits back", async () => {
+  // jsdom doesn't deliver clientX on synthetic pointer events, so dispatch a
+  // MouseEvent (which carries clientX) typed as the pointer event; pointerId is
+  // attached for the (guarded) pointer-capture call.
+  function ptr(el: Element, type: string, clientX: number) {
+    const e = new MouseEvent(type, { bubbles: true, button: 0, clientX });
+    Object.defineProperty(e, "pointerId", { value: 1 });
+    el.dispatchEvent(e);
+  }
+  function rect(left: number, right: number) {
+    return () =>
+      ({
+        left,
+        right,
+        top: 0,
+        bottom: 300,
+        width: right - left,
+        height: 300,
+      }) as DOMRect;
+  }
+
+  it("drags the render tab (pointer events) onto the editor group, then splits back", async () => {
     const { container } = mountShell();
+    // Give the two groups distinct horizontal extents so the pointer drag can
+    // hit-test which one it's over (jsdom has no layout of its own).
+    const groups = container.querySelectorAll(".group");
+    (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100); // editor (g1)
+    (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200); // render (g2)
+
     const renderTab = [...container.querySelectorAll(".tab")].find((t) =>
       t.textContent?.includes("Render"),
     )!;
-    const editorGroup = container.querySelectorAll(".group")[0];
 
     // No split control while every group holds a single tab.
     expect(container.querySelector(".split")).toBeNull();
 
-    await fireEvent.dragStart(renderTab);
-    await fireEvent.dragOver(editorGroup);
-    await fireEvent.drop(editorGroup);
+    // Press on the render tab (in g2) and drag left into the editor group (g1).
+    // (Manual dispatch is synchronous, so flush Svelte's update with tick.)
+    ptr(renderTab, "pointerdown", 150);
+    ptr(renderTab, "pointermove", 50);
+    ptr(renderTab, "pointerup", 50);
+    await tick();
 
     // One group now stacks both tabs (render focused), the other is gone.
     expect(container.querySelectorAll(".group")).toHaveLength(1);
@@ -237,5 +301,19 @@ describe("Workspace chrome", () => {
     await fireEvent.click(split);
     expect(container.querySelectorAll(".group")).toHaveLength(2);
     expect(container.querySelectorAll(".gutter")).toHaveLength(1);
+  });
+
+  it("treats a pointer press without movement as a click, not a drag", () => {
+    const { container } = mountShell();
+    const groups = container.querySelectorAll(".group");
+    (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
+    (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
+    const renderTab = [...container.querySelectorAll(".tab")].find((t) =>
+      t.textContent?.includes("Render"),
+    )!;
+    // A press-release in place (no movement) leaves the layout untouched.
+    ptr(renderTab, "pointerdown", 150);
+    ptr(renderTab, "pointerup", 150);
+    expect(container.querySelectorAll(".group")).toHaveLength(2);
   });
 });

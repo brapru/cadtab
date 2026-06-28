@@ -1,6 +1,6 @@
 <script lang="ts">
   import Editor from "./lib/Editor.svelte";
-  import Tab from "./lib/Tab.svelte";
+  import RenderView from "./lib/RenderView.svelte";
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
   import Dock from "./lib/Dock.svelte";
@@ -11,6 +11,9 @@
   import { narrowestSpanAt } from "./lib/mapping";
   import {
     defaultWorkspace,
+    instance as viewInstance,
+    addTab,
+    groupOfType,
     type Workspace as WorkspaceModel,
   } from "./lib/workspace";
   import {
@@ -19,9 +22,11 @@
     activeDoc,
     isDirty,
     putDoc,
-    setActiveContent,
+    setDocContent,
+    setActive,
     markActiveSaved,
     type DocStore,
+    type DocSession,
   } from "./lib/documents";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
@@ -59,104 +64,172 @@ score {
 }
 `;
 
-  let result = $state<CompileResult | null>(null);
-  let error = $state("");
-  let selection = $state<{ from: number; to: number } | null>(null);
-  let activeSpan = $state<Span | null>(null);
-  // Layout width (logical units) and the measured render-pane width that drives
-  // it; reflow re-lays-out when the pane resizes.
-  let layoutWidth = $state(66);
-  let paneWidth = $state(0);
-
-  // The open documents (T7.4). One stable id in this single-document phase; T7.4b
-  // gives each opened/imported file its own id and editor tab. The active doc's
-  // fields drive the topbar name, Save/Export, and the dirty guard.
-  const docId = "doc";
-  let docStore = $state<DocStore>(
-    singleDocStore(newSession(docId, { content: initialDoc })),
+  // Per-document compile output, highlight, and layout width, keyed by doc id, so
+  // several files' editors and renders coexist independently. Reassigned (not
+  // mutated) so Svelte tracks the change.
+  let results = $state<Record<string, CompileResult>>({});
+  let errors = $state<Record<string, string>>({});
+  let selections = $state<Record<string, { from: number; to: number } | null>>(
+    {},
   );
+  let activeSpans = $state<Record<string, Span | null>>({});
+  let layoutWidths = $state<Record<string, number>>({});
+
+  // The open documents (T7.4b): each opened/imported file gets its own id, editor
+  // tab, and render. The active doc drives the topbar name, Save/Export, and the
+  // dirty indicator.
+  const initialId = "doc";
+  let docStore = $state<DocStore>(
+    singleDocStore(newSession(initialId, { content: initialDoc })),
+  );
+  let untitledCount = 0;
   const active = $derived(activeDoc(docStore));
-  // The source the current result was compiled from, so cursor<->span conversions
-  // line up with the spans in that render tree.
+  // The active doc's source, the spans the active result was compiled from, etc.
   const source = $derived(active?.content ?? "");
   const currentName = $derived(active?.name ?? null);
   const currentPath = $derived(active?.path ?? null);
   const dirty = $derived(active ? isDirty(active) : false);
+  const activeResult = $derived(active ? (results[active.id] ?? null) : null);
 
-  // The project's importable libs (path -> contents), backing import resolution
-  // on web; populated when a `.ctabz` bundle is opened. Project-level: shared by
-  // every open document, not part of any one session.
+  // The project context shared by every open document's compile: importable libs
+  // (path -> contents) and the bundle path for "Save Project". A stable project
+  // entry name heads the dock independent of which doc is focused.
   let projectFiles = $state<Record<string, string>>({});
-  // The opened/saved bundle's path (desktop), for in-place "Save Project".
   let bundlePath = $state<string | null>(null);
-  // A versioned signal that pushes opened content into the editor.
-  let loadRequest = $state<{ content: string; token: number } | null>(null);
-  let loadToken = 0;
-
-  const live = createLiveCompiler(
-    compile,
-    (r) => {
-      result = r;
-      error = "";
-    },
-    () => {
-      error = "core unavailable (no backend)";
-    },
+  let projectEntryName = $state("untitled");
+  // The dock path of the active doc, so the dock marks the focused file.
+  const activeDockPath = $derived(
+    active && active.id.startsWith("lib:")
+      ? active.id.slice(4)
+      : (currentName ?? null),
   );
 
-  function recompile(src: string) {
-    // Import context: desktop resolves beside the open file (basePath) and from
-    // the bundle map; web resolves from the bundle map alone.
-    void live.run(
-      src,
-      { width: layoutWidth },
-      { basePath: currentPath, files: projectFiles },
+  function docFor(id: string | null): DocSession | undefined {
+    return id ? docStore.docs.find((d) => d.id === id) : undefined;
+  }
+
+  // One latest-wins compiler per document, so interleaved compiles never clobber
+  // each other's render.
+  const compilers: Record<string, ReturnType<typeof createLiveCompiler>> = {};
+  function compilerFor(id: string) {
+    let lc = compilers[id];
+    if (!lc) {
+      lc = createLiveCompiler(
+        compile,
+        (r) => {
+          results = { ...results, [id]: r };
+          errors = { ...errors, [id]: "" };
+        },
+        () => (errors = { ...errors, [id]: "core unavailable (no backend)" }),
+      );
+      compilers[id] = lc;
+    }
+    return lc;
+  }
+
+  // Compile one document at its own pane width and the shared project context.
+  function compileDoc(id: string) {
+    const doc = docFor(id);
+    if (!doc) return;
+    void compilerFor(id).run(
+      doc.content,
+      { width: layoutWidths[id] ?? 66 },
+      { basePath: doc.path, files: projectFiles },
     );
   }
 
-  // Editing updates the active document's buffer (dirty derives from its
-  // baseline) and recompiles.
-  function handleEdit(value: string) {
-    docStore = setActiveContent(docStore, value);
-    recompile(value);
+  // Editing updates that document's buffer (dirty derives) and recompiles it. A
+  // lib edit also updates the shared project map and recompiles the other open
+  // docs that may import it.
+  function handleEdit(id: string, value: string) {
+    docStore = setDocContent(docStore, id, value);
+    if (id.startsWith("lib:")) {
+      const libPath = id.slice(4);
+      projectFiles = { ...projectFiles, [libPath]: value };
+      for (const d of docStore.docs) if (d.id !== id) compileDoc(d.id);
+    }
+    compileDoc(id);
   }
 
-  const onChange = debounce((value: string) => handleEdit(value), 150);
-
-  // Reflow: when the render pane settles at a new width, re-lay-out the current
-  // source at the matching logical width (debounced per resize tick).
-  const reflow = debounce((px: number) => {
-    layoutWidth = layoutWidthForPx(px);
-    recompile(source);
-  }, 150);
-  $effect(() => {
-    if (paneWidth > 0) reflow(paneWidth);
-  });
-
-  // Render -> source: a clicked primitive selects its source range in the editor.
-  function handlePrimitiveClick(span: Span) {
-    const range = spanToRange(byteToCharIndex(source), span);
-    if (range) selection = range;
+  // Debounced edit handler per document, so each editor keeps a stable callback.
+  const editHandlers: Record<string, (value: string) => void> = {};
+  function onChangeFor(id: string) {
+    let h = editHandlers[id];
+    if (!h) {
+      h = debounce((value: string) => handleEdit(id, value), 150);
+      editHandlers[id] = h;
+    }
+    return h;
   }
 
-  // Source -> render: the cursor lights up the primitive(s) sharing its range.
-  function handleCursor(pos: number) {
-    if (!result) return;
-    const byte = charToByteIndex(source)[pos] ?? 0;
-    activeSpan = narrowestSpanAt(result.renderTree, byte);
+  // A render pane settled at a new width: re-lay-out that doc to fill it.
+  function reflowDoc(id: string, px: number) {
+    layoutWidths = { ...layoutWidths, [id]: layoutWidthForPx(px) };
+    compileDoc(id);
   }
 
-  // Clicking empty render space (or Escape) drops the highlight, mirroring how
-  // clicking off a note in the editor clears it. Primitive clicks stop
-  // propagating, so this only fires for the background.
-  function clearHighlight() {
-    activeSpan = null;
+  // Render -> source: a clicked primitive selects its source range in that doc's
+  // editor. Source -> render: the cursor lights the primitive(s) sharing its span.
+  function handlePrimitiveClick(id: string, span: Span) {
+    const doc = docFor(id);
+    if (!doc) return;
+    const range = spanToRange(byteToCharIndex(doc.content), span);
+    if (range) selections = { ...selections, [id]: range };
+  }
+  function handleCursor(id: string, pos: number) {
+    const r = results[id];
+    const doc = docFor(id);
+    if (!r || !doc) return;
+    const byte = charToByteIndex(doc.content)[pos] ?? 0;
+    activeSpans = { ...activeSpans, [id]: narrowestSpanAt(r.renderTree, byte) };
+  }
+  function clearHighlight(id: string) {
+    activeSpans = { ...activeSpans, [id]: null };
   }
 
-  // The workspace layout (D41): editor and render as two groups, today's split
-  // expressed through the editor-groups model. Keyed by the active doc id; T7.4b
-  // adds a group tab per open file.
-  let workspace = $state<WorkspaceModel>(defaultWorkspace(docId));
+  // Active-follows-focus: focusing an editor or activating a tab makes its doc
+  // the active one (topbar/Save/Export track it).
+  function focusDoc(id: string) {
+    docStore = setActive(docStore, id);
+  }
+
+  // The workspace layout (D41): the active doc's editor|render split. Opening a
+  // file adds its editor and render as tabs next to the existing ones.
+  let workspace = $state<WorkspaceModel>(defaultWorkspace(initialId));
+
+  function addDocTabs(ws: WorkspaceModel, id: string): WorkspaceModel {
+    const eg = groupOfType(ws, "editor") ?? ws.groups[0]?.id;
+    const rg = groupOfType(ws, "render") ?? eg;
+    if (eg) ws = addTab(ws, viewInstance("editor", id), eg);
+    if (rg) ws = addTab(ws, viewInstance("render", id), rg);
+    return ws;
+  }
+
+  // Open or focus a document, adding its tabs the first time and compiling it.
+  // `context`, supplied when opening from disk, replaces the project import
+  // context; dock-opened libs omit it to stay within the current bundle.
+  function openDoc(o: {
+    id: string;
+    name: string | null;
+    path: string | null;
+    content: string;
+    context?: { libs: Record<string, string>; bundlePath: string | null };
+  }) {
+    if (o.context) {
+      projectFiles = o.context.libs;
+      bundlePath = o.context.bundlePath;
+      projectEntryName = o.name ?? "untitled";
+    }
+    if (!docStore.docs.some((d) => d.id === o.id)) {
+      docStore = putDoc(
+        docStore,
+        newSession(o.id, { name: o.name, path: o.path, content: o.content }),
+      );
+      workspace = addDocTabs(workspace, o.id);
+    }
+    focusDoc(o.id);
+    compileDoc(o.id);
+  }
 
   // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B. The dock
   // panel it reveals lands in T7.2; the bottom bar already owns the control.
@@ -207,55 +280,27 @@ score {
     else root.setAttribute("data-theme", theme);
   });
 
-  // Make `content` the open document: reset the dirty baseline, swap the editor
-  // buffer (fresh history), and render. `path`/`bundlePath` track where Save and
-  // Save Project write; `libs` are the importable files for the provider.
-  function loadDocument(opts: {
-    path: string | null;
-    bundlePath: string | null;
-    name: string | null;
-    content: string;
-    libs: Record<string, string>;
-  }) {
-    // Swap the active session in place (fresh baseline → clean), set the project
-    // context, and push the content into the editor.
-    docStore = putDoc(
-      docStore,
-      newSession(docId, {
-        path: opts.path,
-        name: opts.name,
-        content: opts.content,
-      }),
-    );
-    bundlePath = opts.bundlePath;
-    projectFiles = opts.libs;
-    loadRequest = { content: opts.content, token: ++loadToken };
-    recompile(opts.content);
-  }
-
-  // Start a new untitled document from a starter template, guarding unsaved
-  // edits first. The `<select>` resets to its placeholder after each pick.
+  // Start a new untitled document from a starter template as its own tab in the
+  // current project context. The `<select>` resets to its placeholder after each
+  // pick. No discard guard: opening never replaces the edited doc, it adds a tab.
   let newChoice = $state("");
   function onNewSelect() {
     const id = newChoice;
     newChoice = "";
     const template = id ? templateById(id) : undefined;
     if (!template) return;
-    if (dirty && !window.confirm("Discard unsaved changes?")) return;
-    loadDocument({
-      path: null,
-      bundlePath: null,
+    openDoc({
+      id: `untitled-${++untitledCount}`,
       name: null,
+      path: null,
       content: template.source,
-      libs: {},
     });
   }
 
-  // Open a score (`.ctab`) or a whole project bundle (`.ctabz`), guarding unsaved
-  // edits first. A bundle loads its entry into the editor and its other files as
-  // importable libs; a single score loads with no libs.
+  // Open a score (`.ctab`) or a whole project bundle (`.ctabz`) as a new tab (or
+  // focus it if already open). A bundle sets the project context (entry + libs);
+  // a single score opens with its own standalone context.
   async function openFile() {
-    if (dirty && !window.confirm("Discard unsaved changes?")) return;
     let opened;
     try {
       opened = await openProject();
@@ -266,24 +311,36 @@ score {
     if (!opened) return;
 
     if (opened.kind === "single") {
-      loadDocument({
-        path: opened.path,
-        bundlePath: null,
+      openDoc({
+        id: opened.path ?? `web:${opened.name}`,
         name: opened.name,
+        path: opened.path,
         content: opened.content,
-        libs: {},
+        context: { libs: {}, bundlePath: null },
       });
       return;
     }
     const { entry, files } = opened.bundle;
     const libs = { ...files };
     delete libs[entry];
-    loadDocument({
-      path: null,
-      bundlePath: opened.path,
+    openDoc({
+      id: `entry:${entry}`,
       name: entry,
+      path: null,
       content: files[entry],
-      libs,
+      context: { libs, bundlePath: opened.path },
+    });
+  }
+
+  // Open (or focus) a file clicked in the project dock. The entry row is the
+  // active project document already; a lib row opens from the project map.
+  function openDockFile(path: string, isEntry: boolean) {
+    if (isEntry) return;
+    openDoc({
+      id: `lib:${path}`,
+      name: basename(path),
+      path: null,
+      content: projectFiles[path] ?? "",
     });
   }
 
@@ -321,13 +378,13 @@ score {
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
   // derived artifacts, so they always prompt for a destination (path: null).
   async function exportSvg() {
-    if (!result) return;
-    const svg = renderTreeToSvg(result.renderTree);
+    if (!activeResult) return;
+    const svg = renderTreeToSvg(activeResult.renderTree);
     await saveSvg(svg, { path: null, suggestedName: exportName() });
   }
   async function exportPng() {
-    if (!result) return;
-    const blob = await svgToPngBlob(renderTreeToSvg(result.renderTree));
+    if (!activeResult) return;
+    const blob = await svgToPngBlob(renderTreeToSvg(activeResult.renderTree));
     await savePng(blob, { path: null, suggestedName: exportName() });
   }
   // The base name to seed an export with; `saveSvg`/`savePng` swap the extension.
@@ -349,7 +406,7 @@ score {
     return () => window.removeEventListener("keydown", onIOKey);
   });
 
-  recompile(initialDoc);
+  compileDoc(initialId);
 </script>
 
 <main>
@@ -402,58 +459,62 @@ score {
   <div class="body">
     {#if dockOpen}
       <Dock
-        entryName={currentName ?? "untitled"}
+        entryName={projectEntryName}
         libs={projectFiles}
         projectName={bundlePath ? basename(bundlePath) : "Project"}
+        activePath={activeDockPath}
+        onOpenFile={openDockFile}
       />
     {/if}
-    <Workspace bind:workspace>
+    <Workspace
+      bind:workspace
+      onActivateView={(inst) => inst.docId && focusDoc(inst.docId)}
+    >
       {#snippet view(instance)}
-        {#if instance.type === "editor"}
-          <div class="editor-pane">
-            <Editor
-              doc={initialDoc}
-              {onChange}
-              onCursor={handleCursor}
-              {selection}
-              {loadRequest}
-              tokens={result?.tokens ?? []}
-              diagnostics={result?.diagnostics ?? []}
-            />
-          </div>
-        {:else if instance.type === "render"}
-          <div class="render-side">
-            <div class="render-toolbar">
-              <button onclick={zoomOut} aria-label="Zoom out">−</button>
-              <span class="zoom-level">{Math.round(zoom * 100)}%</span>
-              <button onclick={zoomIn} aria-label="Zoom in">+</button>
-              <button onclick={zoomFit} aria-label="Fit to width">Fit</button>
-            </div>
+        <!-- Key by instance so switching a group to a different document's tab
+             mounts a fresh editor/render for that file (the editor seeds its
+             buffer from `doc` only at mount). -->
+        {#key instance.id}
+          {#if instance.type === "editor"}
+            <!-- Pointerdown (not just CodeMirror's focus event) makes the doc
+                 active, so active-follows-focus is reliable in WKWebView. -->
             <!-- svelte-ignore a11y_no_static_element_interactions -->
             <div
-              class="render-pane"
-              bind:clientWidth={paneWidth}
-              onclick={clearHighlight}
-              onkeydown={(e) => e.key === "Escape" && clearHighlight()}
+              class="editor-pane"
+              onpointerdown={() => instance.docId && focusDoc(instance.docId)}
             >
-              {#if result}
-                <Tab
-                  tree={result.renderTree}
-                  {zoom}
-                  {activeSpan}
-                  onPrimitiveClick={handlePrimitiveClick}
-                />
-              {:else if error}
-                <p class="error">{error}</p>
-              {/if}
+              <Editor
+                doc={docFor(instance.docId)?.content ?? ""}
+                onChange={onChangeFor(instance.docId ?? "")}
+                onCursor={(pos) => handleCursor(instance.docId ?? "", pos)}
+                onFocus={() => instance.docId && focusDoc(instance.docId)}
+                selection={selections[instance.docId ?? ""] ?? null}
+                tokens={results[instance.docId ?? ""]?.tokens ?? []}
+                diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
+              />
             </div>
-          </div>
-        {/if}
+          {:else if instance.type === "render"}
+            <RenderView
+              result={results[instance.docId ?? ""] ?? null}
+              error={errors[instance.docId ?? ""] ?? ""}
+              {zoom}
+              activeSpan={activeSpans[instance.docId ?? ""] ?? null}
+              onPrimitiveClick={(span) =>
+                handlePrimitiveClick(instance.docId ?? "", span)}
+              onClearHighlight={() => clearHighlight(instance.docId ?? "")}
+              onReflow={(px) => reflowDoc(instance.docId ?? "", px)}
+              onActivate={() => instance.docId && focusDoc(instance.docId)}
+              onZoomIn={zoomIn}
+              onZoomOut={zoomOut}
+              onZoomFit={zoomFit}
+            />
+          {/if}
+        {/key}
       {/snippet}
     </Workspace>
   </div>
   <BottomBar
-    diagnostics={result?.diagnostics ?? []}
+    diagnostics={activeResult?.diagnostics ?? []}
     {dockOpen}
     onToggleDock={toggleDock}
   />
@@ -544,43 +605,5 @@ score {
     min-width: 0;
     display: flex;
     flex-direction: column;
-  }
-  .render-side {
-    flex: 1;
-    min-height: 0;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-  }
-  .render-toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem 0.5rem;
-    border-bottom: 1px solid var(--border);
-  }
-  .render-toolbar button {
-    min-width: 1.8rem;
-    padding: 0.1rem 0.4rem;
-    cursor: pointer;
-    border: 1px solid var(--border);
-    background: transparent;
-    color: inherit;
-    border-radius: 0.25rem;
-  }
-  .zoom-level {
-    min-width: 3rem;
-    text-align: center;
-    font-variant-numeric: tabular-nums;
-    font-size: 0.85rem;
-  }
-  .render-pane {
-    flex: 1;
-    padding: 1rem;
-    overflow: auto;
-    min-width: 0;
-  }
-  .error {
-    opacity: 0.7;
   }
 </style>

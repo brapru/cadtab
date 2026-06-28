@@ -63,6 +63,26 @@ export function setActiveContent(store: DocStore, content: string): DocStore {
   return mapDoc(store, store.activeId, (d) => ({ ...d, content }));
 }
 
+// Update a specific document's buffer — the multi-document form, since an edit
+// belongs to whichever editor tab fired it, not necessarily the active one.
+export function setDocContent(
+  store: DocStore,
+  id: string,
+  content: string,
+): DocStore {
+  return mapDoc(store, id, (d) => ({ ...d, content }));
+}
+
+// Focus a document (active-follows-focus). Idempotent — returns the same store
+// when the id is already active or isn't open — so focus events don't churn
+// reactive state.
+export function setActive(store: DocStore, id: string): DocStore {
+  if (store.activeId === id || !store.docs.some((d) => d.id === id)) {
+    return store;
+  }
+  return { ...store, activeId: id };
+}
+
 // Mark the active document saved: its current content becomes the new baseline,
 // adopting the path/name it was written to.
 export function markActiveSaved(

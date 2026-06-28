@@ -6,6 +6,8 @@ import {
   activeDoc,
   putDoc,
   setActiveContent,
+  setDocContent,
+  setActive,
   markActiveSaved,
 } from "./documents";
 
@@ -67,6 +69,28 @@ describe("setActiveContent", () => {
     expect(doc.content).toBe("ab");
     expect(doc.savedContent).toBe("a");
     expect(isDirty(doc)).toBe(true);
+  });
+});
+
+describe("setDocContent / setActive", () => {
+  it("edits a specific document, not just the active one", () => {
+    let store = putDoc(
+      singleDocStore(newSession("a", { content: "1" })),
+      newSession("b", { content: "2" }),
+    );
+    // active is "b"; edit "a" by id.
+    store = setDocContent(store, "a", "1!");
+    expect(store.docs.find((d) => d.id === "a")?.content).toBe("1!");
+    expect(store.activeId).toBe("b");
+  });
+
+  it("focuses an open document and ignores an unknown id", () => {
+    const store = putDoc(
+      singleDocStore(newSession("a", { content: "1" })),
+      newSession("b", { content: "2" }),
+    );
+    expect(setActive(store, "a").activeId).toBe("a");
+    expect(setActive(store, "ghost")).toBe(store);
   });
 });
 

@@ -26,6 +26,7 @@
     doc = "",
     onChange,
     onCursor,
+    onFocus,
     tokens = [],
     diagnostics = [],
     selection = null,
@@ -34,6 +35,7 @@
     doc?: string;
     onChange?: (value: string) => void;
     onCursor?: (pos: number) => void;
+    onFocus?: () => void;
     tokens?: Token[];
     diagnostics?: Diagnostic[];
     selection?: { from: number; to: number } | null;
@@ -89,6 +91,9 @@
             onCursor?.(update.state.selection.main.head);
           }
         }),
+        // Focusing an editor makes its document active (active-follows-focus),
+        // so the topbar name, Save, and Export track the focused file.
+        EditorView.domEventHandlers({ focus: () => onFocus?.() }),
       ],
     });
   }
@@ -121,12 +126,16 @@
   });
 
   // Apply a selection requested from outside (a clicked render primitive),
-  // clamped to the document, and bring it into view.
+  // clamped to the document, and bring it into view. Idempotent: skip the
+  // dispatch when the cursor is already there, so the resulting cursor->render
+  // highlight update doesn't bounce back into a re-dispatch loop.
   $effect(() => {
     if (!view || !selection) return;
     const len = view.state.doc.length;
     const from = Math.min(selection.from, len);
     const to = Math.min(selection.to, len);
+    const cur = view.state.selection.main;
+    if (cur.from === from && cur.to === to) return;
     view.dispatch({
       selection: EditorSelection.single(from, to),
       scrollIntoView: true,

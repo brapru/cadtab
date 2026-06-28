@@ -20,10 +20,17 @@
   let {
     workspace = $bindable(),
     view,
+    onActivateView,
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
+    onActivateView?: (instance: ViewInstance) => void;
   } = $props();
+
+  function activate(groupId: string, tab: ViewInstance) {
+    workspace = activateTab(workspace, groupId, tab.id);
+    onActivateView?.(tab);
+  }
 
   // When a group is maximized only it shows; otherwise the whole row, with
   // gutters between adjacent groups. Indices then line up with `workspace.groups`
@@ -72,33 +79,69 @@
     else if (e.key === "ArrowRight") nudge(i, 0.02);
   }
 
-  // Tab drag-and-drop between groups (D41 "move a tab between groups"): a tab can
-  // be dragged onto any group to restack there; the split button gives a
-  // keyboard-reachable way to pop the active tab back into its own group.
+  // Tab drag between groups (D41 "move a tab between groups"), built on pointer
+  // events — not HTML5 drag-and-drop — so it works in WKWebView (the desktop
+  // webview), where in-page HTML5 DnD is intercepted/unreliable. The gutter uses
+  // the same approach; the split button is the keyboard-reachable counterpart.
+  const DRAG_THRESHOLD = 5;
+  let pressId: string | null = null;
+  let pressX = 0;
+  let didDrag = false;
   let draggingId = $state<string | null>(null);
   let dragOverId = $state<string | null>(null);
 
-  function onTabDragStart(id: string, e: DragEvent) {
-    draggingId = id;
-    e.dataTransfer?.setData("text/plain", id);
-    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  // Pointer capture keeps move/up coming to the tab even over other groups;
+  // guarded since it can throw if the pointer isn't actively down.
+  function capture(e: PointerEvent, on: boolean) {
+    const el = e.currentTarget as HTMLElement;
+    try {
+      if (on) el.setPointerCapture?.(e.pointerId);
+      else el.releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* no active pointer — ignore */
+    }
   }
-  function onTabDragEnd() {
+
+  function onTabPointerDown(id: string, e: PointerEvent) {
+    if (e.button !== 0) return;
+    pressId = id;
+    pressX = e.clientX;
+    didDrag = false;
+    capture(e, true);
+  }
+  function onTabPointerMove(e: PointerEvent) {
+    if (pressId === null) return;
+    if (draggingId === null) {
+      if (Math.abs(e.clientX - pressX) < DRAG_THRESHOLD) return;
+      draggingId = pressId; // crossed the threshold — this is a drag, not a click
+      didDrag = true;
+    }
+    dragOverId = groupAtX(e.clientX);
+  }
+  function onTabPointerUp(e: PointerEvent) {
+    capture(e, false);
+    if (draggingId && dragOverId) {
+      workspace = moveTab(workspace, draggingId, dragOverId);
+    }
+    pressId = null;
     draggingId = null;
     dragOverId = null;
   }
-  function onGroupDragOver(id: string, e: DragEvent) {
-    if (draggingId === null) return; // don't hijack non-tab drags (e.g. editor text)
-    e.preventDefault();
-    dragOverId = id;
-    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+  // The group whose horizontal extent contains x (groups span the full height).
+  function groupAtX(x: number): string | null {
+    for (let i = 0; i < visible.length; i++) {
+      const r = groupEls[i]?.getBoundingClientRect();
+      if (r && x >= r.left && x <= r.right) return visible[i].id;
+    }
+    return null;
   }
-  function onGroupDrop(id: string, e: DragEvent) {
-    if (draggingId === null) return;
-    e.preventDefault();
-    workspace = moveTab(workspace, draggingId, id);
-    draggingId = null;
-    dragOverId = null;
+  // A tab press activates it on click, unless the press turned into a drag.
+  function onTabClick(groupId: string, tab: ViewInstance) {
+    if (didDrag) {
+      didDrag = false;
+      return;
+    }
+    activate(groupId, tab);
   }
 </script>
 
@@ -111,8 +154,6 @@
       bind:this={groupEls[i]}
       style="flex: {g.weight}"
       role="group"
-      ondragover={(e) => onGroupDragOver(g.id, e)}
-      ondrop={(e) => onGroupDrop(g.id, e)}
     >
       <div class="tabstrip">
         <div class="tabs" role="tablist">
@@ -120,12 +161,13 @@
             <button
               class="tab"
               class:active={tab.id === active?.id}
+              class:dragging={draggingId === tab.id}
               role="tab"
               aria-selected={tab.id === active?.id}
-              draggable="true"
-              ondragstart={(e) => onTabDragStart(tab.id, e)}
-              ondragend={onTabDragEnd}
-              onclick={() => (workspace = activateTab(workspace, g.id, tab.id))}
+              onpointerdown={(e) => onTabPointerDown(tab.id, e)}
+              onpointermove={onTabPointerMove}
+              onpointerup={onTabPointerUp}
+              onclick={() => onTabClick(g.id, tab)}
             >
               <span class="tab-icon" aria-hidden="true"
                 >{viewDef(tab.type)?.icon}</span
@@ -222,10 +264,15 @@
     cursor: pointer;
     font-size: 0.8rem;
     line-height: 1;
+    /* Pointer-driven drag: keep touch gestures from scrolling mid-drag. */
+    touch-action: none;
   }
   .tab.active {
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 6%, transparent);
+  }
+  .tab.dragging {
+    opacity: 0.5;
   }
   .tab-icon {
     font-size: 0.85rem;

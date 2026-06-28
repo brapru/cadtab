@@ -187,6 +187,41 @@ export function moveTab(
   return { groups, maximizedId };
 }
 
+// The id of the first group holding a tab of `type` (any document), or null —
+// used to route a newly opened file's editor/render tabs next to the existing
+// ones.
+export function groupOfType(ws: Workspace, type: string): string | null {
+  return ws.groups.find((g) => g.tabs.some((t) => t.type === type))?.id ?? null;
+}
+
+// Add a tab to `toGroupId` and focus it. Idempotent: if the instance is already
+// open in any group, that group just focuses it (no duplicate) — so re-opening a
+// file activates its existing tab. No-op if the target group is gone.
+export function addTab(
+  ws: Workspace,
+  inst: ViewInstance,
+  toGroupId: string,
+): Workspace {
+  const existing = ws.groups.find((g) => g.tabs.some((t) => t.id === inst.id));
+  if (existing) {
+    return {
+      ...ws,
+      groups: ws.groups.map((g) =>
+        g.id === existing.id ? { ...g, activeId: inst.id } : g,
+      ),
+    };
+  }
+  if (!ws.groups.some((g) => g.id === toGroupId)) return ws;
+  return {
+    ...ws,
+    groups: ws.groups.map((g) =>
+      g.id === toGroupId
+        ? { ...g, tabs: [...g.tabs, inst], activeId: inst.id }
+        : g,
+    ),
+  };
+}
+
 // Pop a group's active tab into a fresh group inserted just after it — the
 // "split" verb, halving the source's width for the new pane. No-op unless the
 // group has more than one tab (a lone tab has nothing to split off).

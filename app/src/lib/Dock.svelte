@@ -3,16 +3,21 @@
 
   // The left project dock (D41 global singleton): a collapsible panel showing the
   // open project's structure — the entry document plus its importable libs (D38).
-  // Toggled from the bottom bar / Cmd-B (App owns `dockOpen`). Display-only for
-  // now; opening a file as an editor tab arrives with multi-file editing (T7.4).
+  // Toggled from the bottom bar / Cmd-B (App owns `dockOpen`). Clicking a file
+  // opens (or focuses) it as an editor tab (T7.4b); `activePath` marks the file
+  // the focused tab is showing.
   let {
     entryName,
     libs = {},
     projectName = "Project",
+    activePath = null,
+    onOpenFile,
   }: {
     entryName: string;
     libs?: Record<string, string>;
     projectName?: string;
+    activePath?: string | null;
+    onOpenFile?: (path: string, isEntry: boolean) => void;
   } = $props();
 
   const files = $derived(projectFileList(entryName, libs));
@@ -22,9 +27,16 @@
   <div class="dock-header">{projectName}</div>
   <ul class="file-list">
     {#each files as f (f.path)}
-      <li class="file" class:active={f.isEntry} title={f.path}>
-        <span class="file-icon" aria-hidden="true">♪</span>
-        <span class="file-name">{f.name}</span>
+      <li>
+        <button
+          class="file"
+          class:active={activePath === f.path}
+          title={f.path}
+          onclick={() => onOpenFile?.(f.path, f.isEntry)}
+        >
+          <span class="file-icon" aria-hidden="true">♪</span>
+          <span class="file-name">{f.name}</span>
+        </button>
       </li>
     {/each}
   </ul>
@@ -63,11 +75,20 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    width: 100%;
     padding: 0.2rem 0.7rem;
+    border: none;
+    background: transparent;
+    font: inherit;
     font-size: 0.82rem;
+    text-align: left;
     color: var(--muted);
     white-space: nowrap;
     overflow: hidden;
+    cursor: pointer;
+  }
+  .file:hover {
+    color: var(--fg);
   }
   .file.active {
     color: var(--fg);

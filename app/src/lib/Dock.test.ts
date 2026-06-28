@@ -1,5 +1,5 @@
-import { render } from "@testing-library/svelte";
-import { describe, it, expect } from "vitest";
+import { render, fireEvent } from "@testing-library/svelte";
+import { describe, it, expect, vi } from "vitest";
 import Dock from "./Dock.svelte";
 
 describe("Dock", () => {
@@ -18,15 +18,29 @@ describe("Dock", () => {
     expect(names).toEqual(["lib.ctab", "tune.ctab"]);
   });
 
-  it("marks only the entry document as active", () => {
+  it("marks the file matching activePath as active", () => {
     const { container } = render(Dock, {
       entryName: "tune.ctab",
       libs: { "lib.ctab": "" },
+      activePath: "lib.ctab",
     });
     const active = [
       ...container.querySelectorAll(".file.active .file-name"),
     ].map((n) => n.textContent);
-    expect(active).toEqual(["tune.ctab"]);
+    expect(active).toEqual(["lib.ctab"]);
+  });
+
+  it("fires onOpenFile with the path and entry flag on click", async () => {
+    const onOpenFile = vi.fn();
+    const { getByText } = render(Dock, {
+      entryName: "tune.ctab",
+      libs: { "lib.ctab": "" },
+      onOpenFile,
+    });
+    await fireEvent.click(getByText("lib.ctab"));
+    expect(onOpenFile).toHaveBeenCalledWith("lib.ctab", false);
+    await fireEvent.click(getByText("tune.ctab"));
+    expect(onOpenFile).toHaveBeenCalledWith("tune.ctab", true);
   });
 
   it("defaults the header to 'Project'", () => {

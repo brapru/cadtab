@@ -401,7 +401,7 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     pure `diagnosticCounts` helper. Added shared `--error`/`--warning` theme tokens (light+dark) for
     cohesion with the diagnostics tooltip/panel (T4.7i/T4.7m). *Deferred:* making the indicator a
     button that opens the exhaustive panel + jumps to spans is **T4.7m**.
-- [ ] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
+- [x] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
       view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
       tab/group mechanics come from T7.1. *Decomposed into T7.4a (model refactor) + T7.4b (multi-file
       UX) to separate the risky model change from the new behavior.*
@@ -412,10 +412,19 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     open/new/save/edit through it. One session in this phase, so no visible change — green against
     the existing 25 App tests (no regression). Compile-result/selection/zoom stay global; T7.4b makes
     them per-doc.
-  - [ ] **T7.4b — Open files as editor tabs + dock wiring.** Give each opened/imported file its own
-    `docId` + editor tab across the groups; the dock's files open on click (the T7.2 deferral);
-    active-doc-follows-focus drives the topbar/Save/Export; per-doc compile so two files' renders
-    coexist on the T7.5 mechanism.
+  - [x] **T7.4b — Open files as editor tabs + dock wiring.** Each opened/imported file gets its own
+    `docId`, editor tab, and render. Per-doc compile output/highlight/layout-width keyed by id (one
+    latest-wins compiler each) so two files' renders coexist on the T7.5 mechanism. Open/New/dock add
+    (or focus) a tab instead of replacing — so the discard-on-open guard is gone (opening never loses
+    work). Active-follows-focus (editor focus + tab activation, via Editor `onFocus` + Workspace
+    `onActivateView`) drives the topbar/Save/Export. Dock files open on click (`onOpenFile`); editing
+    a lib syncs the project map + recompiles dependents. New `RenderView.svelte` owns each render's
+    pane width + reflow; views keyed by instance so a doc switch mounts a fresh editor. *Deferred
+    (documented):* **closing tabs**; **keep-alive** across stacked-tab switches (a switch remounts, so
+    in-editor undo/scroll reset — side-by-side groups keep both mounted, so the common case is fine);
+    **multi-project import isolation** (`projectFiles` is the current project context, replaced on
+    Open); **per-doc zoom** (zoom stays global). *Fixed en route:* an `Editor` selection-effect
+    re-dispatch loop (now idempotent) surfaced by the per-doc highlight wiring.
 - [x] **T7.5 — Render as a document-bound view.** Make the render a document-bound view placeable
       in any group, so "file + its render" sits side by side and file A's / file B's renders can
       coexist. Resize/reposition come from the group layout (T7.1) — no bespoke docking.
