@@ -3,6 +3,7 @@
   import Tab from "./lib/Tab.svelte";
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
+  import Dock from "./lib/Dock.svelte";
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
@@ -21,6 +22,7 @@
     saveSvg,
     savePng,
     defaultDocName,
+    basename,
   } from "./lib/io";
   import { renderTreeToSvg } from "./lib/svg";
   import { svgToPngBlob } from "./lib/png";
@@ -380,50 +382,59 @@ score {
       >
     </div>
   </header>
-  <Workspace bind:workspace>
-    {#snippet view(instance)}
-      {#if instance.type === "editor"}
-        <div class="editor-pane">
-          <Editor
-            doc={initialDoc}
-            {onChange}
-            onCursor={handleCursor}
-            {selection}
-            {loadRequest}
-            tokens={result?.tokens ?? []}
-            diagnostics={result?.diagnostics ?? []}
-          />
-        </div>
-      {:else if instance.type === "render"}
-        <div class="render-side">
-          <div class="render-toolbar">
-            <button onclick={zoomOut} aria-label="Zoom out">−</button>
-            <span class="zoom-level">{Math.round(zoom * 100)}%</span>
-            <button onclick={zoomIn} aria-label="Zoom in">+</button>
-            <button onclick={zoomFit} aria-label="Fit to width">Fit</button>
+  <div class="body">
+    {#if dockOpen}
+      <Dock
+        entryName={currentName ?? "untitled"}
+        libs={projectFiles}
+        projectName={bundlePath ? basename(bundlePath) : "Project"}
+      />
+    {/if}
+    <Workspace bind:workspace>
+      {#snippet view(instance)}
+        {#if instance.type === "editor"}
+          <div class="editor-pane">
+            <Editor
+              doc={initialDoc}
+              {onChange}
+              onCursor={handleCursor}
+              {selection}
+              {loadRequest}
+              tokens={result?.tokens ?? []}
+              diagnostics={result?.diagnostics ?? []}
+            />
           </div>
-          <!-- svelte-ignore a11y_no_static_element_interactions -->
-          <div
-            class="render-pane"
-            bind:clientWidth={paneWidth}
-            onclick={clearHighlight}
-            onkeydown={(e) => e.key === "Escape" && clearHighlight()}
-          >
-            {#if result}
-              <Tab
-                tree={result.renderTree}
-                {zoom}
-                {activeSpan}
-                onPrimitiveClick={handlePrimitiveClick}
-              />
-            {:else if error}
-              <p class="error">{error}</p>
-            {/if}
+        {:else if instance.type === "render"}
+          <div class="render-side">
+            <div class="render-toolbar">
+              <button onclick={zoomOut} aria-label="Zoom out">−</button>
+              <span class="zoom-level">{Math.round(zoom * 100)}%</span>
+              <button onclick={zoomIn} aria-label="Zoom in">+</button>
+              <button onclick={zoomFit} aria-label="Fit to width">Fit</button>
+            </div>
+            <!-- svelte-ignore a11y_no_static_element_interactions -->
+            <div
+              class="render-pane"
+              bind:clientWidth={paneWidth}
+              onclick={clearHighlight}
+              onkeydown={(e) => e.key === "Escape" && clearHighlight()}
+            >
+              {#if result}
+                <Tab
+                  tree={result.renderTree}
+                  {zoom}
+                  {activeSpan}
+                  onPrimitiveClick={handlePrimitiveClick}
+                />
+              {:else if error}
+                <p class="error">{error}</p>
+              {/if}
+            </div>
           </div>
-        </div>
-      {/if}
-    {/snippet}
-  </Workspace>
+        {/if}
+      {/snippet}
+    </Workspace>
+  </div>
   <BottomBar
     diagnostics={result?.diagnostics ?? []}
     {dockOpen}
@@ -504,6 +515,11 @@ score {
     cursor: pointer;
     font-size: 1rem;
     line-height: 1;
+  }
+  .body {
+    display: flex;
+    flex: 1;
+    min-height: 0;
   }
   .editor-pane {
     flex: 1;

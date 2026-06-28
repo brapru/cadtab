@@ -379,10 +379,18 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     resize gutters, per-group maximize) mounting each active view via a Svelte snippet. `App.svelte`
     now drives the editor|render split through this model. **Deferred to when a second tab exists
     (T7.4/T7.5):** adding groups (split), moving a tab between groups, and layout serialization.
-- [ ] **T7.2 — Left project dock + Cmd/Ctrl-B.** *(global-singleton view)* Collapsible left dock
+- [x] **T7.2 — Left project dock + Cmd/Ctrl-B.** *(global-singleton view)* Collapsible left dock
       showing project structure, toggled by Cmd/Ctrl-B and a bottom-bar button. The file tree comes
       from the project/import model (M5, D38) — a live folder on desktop / Chromium-web, or the
       loaded project bundle on Firefox.
+  - *Landed:* `Dock.svelte` (global singleton), mounted left of the workspace in a new `.body` row,
+    shown/hidden by the `dockOpen` seam (Cmd/Ctrl-B + bottom-bar toggle from T7.3). Lists the open
+    project's files — entry document + bundle libs — via pure `project.ts` `projectFileList`
+    (sorted, entry flagged active), headed by the bundle name. *Display-only:* opening a file as an
+    editor tab is **T7.4** (needs the per-file/multi-doc machinery T7.1 deferred). *Note:* the tree
+    currently sources from the loaded bundle map; the **live-folder (FSA) source isn't built yet**
+    (D38) — `openProject` picks one score or one `.ctabz`, so flat lists today; hierarchical folder
+    rendering + live-folder watching are later refinements.
 - [x] **T7.3 — Bottom status bar (slick, minimal, non-invasive).** *(global-singleton view)* A
       small bottom bar hosting the dock toggle and the diagnostics button (T4.7m); sets the
       bottom-control styling — small, unobtrusive, out of the way. Pairs with T4.7m and T4.7n.

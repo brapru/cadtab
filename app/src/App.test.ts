@@ -57,6 +57,7 @@ vi.mock("./lib/io", () => ({
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
   savePng: (...args: unknown[]) => savePngMock(...args),
   defaultDocName: () => "untitled.ctab",
+  basename: (p: string) => p.split(/[\\/]/).pop() || p,
 }));
 
 const svgToPngBlobMock = vi.fn(
@@ -495,12 +496,54 @@ describe("App", () => {
     const { container } = render(App);
     const toggle = container.querySelector(".dock-toggle")!;
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    // The dock is collapsed by default, then revealed on the shortcut.
+    expect(container.querySelector(".dock")).toBeNull();
 
     await fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector(".dock")).not.toBeNull();
 
     await fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(container.querySelector(".dock")).toBeNull();
+  });
+
+  it("lists an opened bundle's files in the project dock", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
+    });
+    const { container, getByText } = render(App);
+
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "tune.ctab",
+      );
+    });
+
+    // Reveal the dock: it shows the entry (active) and the sibling lib, headed
+    // by the bundle name.
+    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    expect(container.querySelector(".dock-header")?.textContent).toBe(
+      "proj.ctabz",
+    );
+    const names = [...container.querySelectorAll(".file-name")].map(
+      (n) => n.textContent,
+    );
+    expect(names).toEqual(["lib.ctab", "tune.ctab"]);
+    expect(
+      container.querySelector(".file.active .file-name")?.textContent,
+    ).toBe("tune.ctab");
   });
 
   it("cycles the colour theme onto the document root", async () => {
