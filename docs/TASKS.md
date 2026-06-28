@@ -543,9 +543,9 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         are added. (The def-gallery already pins; prerequisite for justifying.)
   - [x] T7.17b — **Justify systems.** Stretch measures/events to fill each system's width within the
         pinned page, so a line holding one (or a few) measures no longer renders short.
-- [ ] **T7.18 — Even out intra-measure spacing.** A bar's last note gets trailing space equal to its
-      full duration, reading as more room on its right than the small leading pad. Spacing pass: revisit
-      trailing-space vs leading-pad symmetry / even distribution. Pairs with T7.17.
+- [x] **T7.18 — Even out intra-measure spacing.** Reviewed the trailing-space vs leading-pad asymmetry
+      and **kept the onset-based model as-is by decision** (it's standard engraving — a long note earns
+      space after it). No code change; see DESIGN changelog for the options weighed.
 - [ ] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
       standard for tab. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview
       T7.6). Depends on T7.17.
