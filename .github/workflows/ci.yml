@@ -51,6 +51,11 @@ jobs:
         working-directory: app
         run: npm ci
 
+      # The frontend type-checks against the generated wasm bindings
+      # (app/src/wasm-gen, gitignored), so they must exist before `check-ts`.
+      - name: Build wasm bindings
+        run: just wasm
+
       - name: Quality gate
         run: just check
 
