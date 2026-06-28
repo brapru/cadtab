@@ -38,7 +38,12 @@
     type DocStore,
     type DocSession,
   } from "./lib/documents";
-  import { fileEntries, type DockEntry } from "./lib/project";
+  import {
+    fileEntries,
+    type DockEntry,
+    type DockTarget,
+    type PendingEdit,
+  } from "./lib/project";
   import { reconcileScan, type FolderScan } from "./lib/watch";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeIcon, type Theme } from "./lib/theme";
@@ -123,6 +128,11 @@ score {
   let filePaths = $state<Record<string, string>>({});
   let projectRoot = $state<string | null>(null);
   let projectName = $state("Project");
+
+  // An in-progress inline name edit in the dock (New File/Folder or Rename),
+  // driven by the dock's right-click menu. Set on a menu pick, cleared on
+  // commit/cancel. The actual fs ops land in later sub-chunks (T7.36 2.3/2.4).
+  let pendingEdit = $state<PendingEdit | null>(null);
 
   // Per-doc reload requests pushed into a live editor when a watched file
   // changes on disk: bumping the token swaps the CodeMirror state to the disk
@@ -695,6 +705,57 @@ score {
     else focusDoc(entry.key);
   }
 
+  // A right-click menu pick in the dock. New File/Folder open an inline input in
+  // the target folder (or project root); Rename opens it over the row; Delete
+  // confirms first. The fs ops themselves land in T7.36 sub-chunks 2.3/2.4 —
+  // this chunk wires the menu → inline-edit interaction with stubbed commits.
+  function onDockContext(action: string, target: DockTarget) {
+    if (action === "new-file" || action === "new-folder") {
+      const parentPath = target.kind === "folder" ? target.path : "";
+      pendingEdit = { kind: action, parentPath, initial: "" };
+    } else if (action === "rename" && target.kind === "folder") {
+      pendingEdit = {
+        kind: "rename",
+        targetKey: target.path,
+        isFolder: true,
+        initial: basename(target.path),
+      };
+    } else if (action === "rename" && target.kind === "file") {
+      pendingEdit = {
+        kind: "rename",
+        targetKey: target.key,
+        isFolder: false,
+        initial: basename(target.path),
+      };
+    } else if (action === "delete" && target.kind !== "root") {
+      void deleteEntry(target);
+    }
+  }
+
+  function commitDockEdit(name: string) {
+    const edit = pendingEdit;
+    pendingEdit = null;
+    if (!edit) return;
+    // STUB (T7.36 2.1): the fs ops (create/rename) land in 2.3/2.4.
+    console.log("dock edit", edit, "->", name);
+  }
+
+  function cancelDockEdit() {
+    pendingEdit = null;
+  }
+
+  async function deleteEntry(target: Exclude<DockTarget, { kind: "root" }>) {
+    const name = basename(target.kind === "folder" ? target.path : target.path);
+    const ok = await askConfirm({
+      message: `Delete “${name}”?`,
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
+    // STUB (T7.36 2.1): the fs remove + tab cleanup land in 2.3.
+    console.log("dock delete", target);
+  }
+
   // Save the current score. Overwrites the known path in place; for a never-
   // saved doc, prompts a dialog seeded from the open file's name or the title.
   async function saveFile() {
@@ -878,8 +939,13 @@ score {
         entries={dockEntries}
         {projectName}
         {activeKey}
+        canManage={projectRoot !== null}
+        {pendingEdit}
         onOpen={onOpenEntry}
         onOpenFolder={desktop ? openFolderFlow : undefined}
+        onContext={onDockContext}
+        onCommitEdit={commitDockEdit}
+        onCancelEdit={cancelDockEdit}
       />
     {/if}
     <Workspace

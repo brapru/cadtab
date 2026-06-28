@@ -29,6 +29,22 @@ export interface TreeFolderNode {
 
 export type TreeNode = TreeFileNode | TreeFolderNode;
 
+// The dock element a right-click acted on, reported to the host so it can decide
+// where a New File/Folder lands (in a folder, else project root) and what a
+// Rename/Delete targets. A draft (path-null) row reports as `root`.
+export type DockTarget =
+  | { kind: "folder"; path: string }
+  | { kind: "file"; key: string; path: string }
+  | { kind: "root" };
+
+// An in-progress inline name edit in the dock tree: a phantom new row inside
+// `parentPath` (empty string = project root), or a rename swapping a row's label
+// for an input. Folder renames key by path; file renames by the entry key.
+export type PendingEdit =
+  | { kind: "new-file"; parentPath: string; initial: string }
+  | { kind: "new-folder"; parentPath: string; initial: string }
+  | { kind: "rename"; targetKey: string; isFolder: boolean; initial: string };
+
 // Fold dock entries into a folder hierarchy by splitting each path on `/` (or
 // `\`): every segment but the last is a nested folder, the last is the file
 // leaf. Path-null entries (unsaved drafts) become root leaves named by `name`.

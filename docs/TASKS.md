@@ -651,7 +651,24 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       desktop). On desktop these hit the real live folder; the watcher re-scans and reconciles the dock,
       and the new file opens as a tab. Needs: empty-folder scan support (dirs in the tree), an in-app
       naming input (not `window.prompt`), new fs ops behind the io.ts seam + `fs:allow-remove/mkdir/rename`
-      capabilities, and a reusable context-menu component. *Decomposed into confirmed sub-chunks.*
+      capabilities, and a reusable context-menu component. **Decisions (user):** **desktop live-folder
+      only** (menu shown when `projectRoot` is set — absent on web / lone-file / draft projects; web joins
+      with Chunk D); **inline tree input** for naming (not a modal). **Sub-chunks (confirmed):** *2.1*
+      context menu + inline-edit plumbing (ops stubbed); *2.2* empty-folder scan support (dirs through
+      scan→reconcile→tree); *2.3* New File/Folder/Delete + `fs:allow-mkdir/remove`; *2.4* Rename +
+      `fs:allow-rename` (open-file-follows-rename).
+      **2.1 done:** reusable `ContextMenu.svelte` (fixed-positioned at the pointer so the dock's `overflow`
+      can't clip it; dismiss on outside-pointer/Escape; destructive item styling + separators — modeled on
+      the New "+" popover). `Dock.svelte` gained `canManage`/`pendingEdit`/`onContext`/`onCommitEdit`/
+      `onCancelEdit`: right-click a row or empty space opens the menu (New File/Folder always; Rename/Delete
+      only off a real file/folder — a draft acts on root), and a `pendingEdit` drives an **inline input
+      rendered in the tree** (a phantom row inside the target folder/root for New, swapping a row's label
+      for Rename; auto-expands a collapsed target; Enter commits with a non-empty/no-separator guard,
+      Escape/blur cancels). Shared `DockTarget`/`PendingEdit` types in `project.ts`. App owns `pendingEdit`
+      + `onDockContext`/`commitDockEdit`/`cancelDockEdit`/`deleteEntry` (Delete confirms via `ConfirmDialog`);
+      the actual fs create/rename/remove are **stubbed (console)** until 2.2–2.4. Tests in
+      `ContextMenu.test.ts` + `Dock.test.ts` (menu gating/items/target, inline commit/reject/cancel, rename
+      row-swap). *Frontend-only (Vite HMR).*
 
 *Render content & labels:*
 

@@ -110,6 +110,110 @@ describe("Dock", () => {
     expect(queryByLabelText("Open Folder")).toBeNull();
   });
 
+  it("opens a context menu on right-click only when canManage is set", async () => {
+    const closed = render(Dock, { entries: [file("tune.ctab")] });
+    await fireEvent.contextMenu(closed.getByText("tune.ctab"));
+    expect(closed.queryByText("New File")).toBeNull();
+    closed.unmount();
+
+    const open = render(Dock, {
+      entries: [file("tune.ctab")],
+      canManage: true,
+    });
+    await fireEvent.contextMenu(open.getByText("tune.ctab"));
+    const items = [...open.container.querySelectorAll(".item")].map((i) =>
+      i.textContent?.trim(),
+    );
+    expect(items).toEqual(["New File", "New Folder", "Rename", "Delete"]);
+  });
+
+  it("omits Rename/Delete when right-clicking empty space (root target)", async () => {
+    const { container, getByLabelText } = render(Dock, {
+      entries: [file("tune.ctab")],
+      canManage: true,
+    });
+    await fireEvent.contextMenu(getByLabelText("Project files"));
+    const items = [...container.querySelectorAll(".item")].map((i) =>
+      i.textContent?.trim(),
+    );
+    expect(items).toEqual(["New File", "New Folder"]);
+  });
+
+  it("fires onContext with the action and the file target", async () => {
+    const onContext = vi.fn();
+    const { getByText } = render(Dock, {
+      entries: [file("licks/roll.ctab")],
+      canManage: true,
+      onContext,
+    });
+    await fireEvent.contextMenu(getByText("roll.ctab"));
+    await fireEvent.click(getByText("Rename"));
+    expect(onContext).toHaveBeenCalledWith("rename", {
+      kind: "file",
+      key: "licks/roll.ctab",
+      path: "licks/roll.ctab",
+    });
+  });
+
+  it("renders an inline input for a pending new file and commits on Enter", async () => {
+    const onCommitEdit = vi.fn();
+    const { getByLabelText } = render(Dock, {
+      entries: [file("tune.ctab")],
+      canManage: true,
+      pendingEdit: { kind: "new-file", parentPath: "", initial: "" },
+      onCommitEdit,
+    });
+    const input = getByLabelText("Name") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "  roll.ctab " } });
+    await fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCommitEdit).toHaveBeenCalledWith("roll.ctab");
+  });
+
+  it("rejects empty or separator-bearing names on commit", async () => {
+    const onCommitEdit = vi.fn();
+    const { getByLabelText } = render(Dock, {
+      entries: [file("tune.ctab")],
+      canManage: true,
+      pendingEdit: { kind: "new-folder", parentPath: "", initial: "" },
+      onCommitEdit,
+    });
+    const input = getByLabelText("Name") as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: "a/b" } });
+    await fireEvent.keyDown(input, { key: "Enter" });
+    await fireEvent.input(input, { target: { value: "   " } });
+    await fireEvent.keyDown(input, { key: "Enter" });
+    expect(onCommitEdit).not.toHaveBeenCalled();
+  });
+
+  it("cancels the inline input on Escape", async () => {
+    const onCancelEdit = vi.fn();
+    const { getByLabelText } = render(Dock, {
+      entries: [file("tune.ctab")],
+      canManage: true,
+      pendingEdit: { kind: "new-file", parentPath: "", initial: "" },
+      onCancelEdit,
+    });
+    await fireEvent.keyDown(getByLabelText("Name"), { key: "Escape" });
+    expect(onCancelEdit).toHaveBeenCalled();
+  });
+
+  it("swaps a renamed file's row for an input seeded with its name", () => {
+    const { getByLabelText, queryByText } = render(Dock, {
+      entries: [file("tune.ctab"), file("lib.ctab")],
+      canManage: true,
+      pendingEdit: {
+        kind: "rename",
+        targetKey: "lib.ctab",
+        isFolder: false,
+        initial: "lib.ctab",
+      },
+    });
+    expect((getByLabelText("Name") as HTMLInputElement).value).toBe("lib.ctab");
+    // the renamed row is replaced by the input; the other file stays a button
+    expect(queryByText("lib.ctab")).toBeNull();
+    expect(queryByText("tune.ctab")).toBeTruthy();
+  });
+
   it("shows unsaved drafts as root leaves with a dirty dot", () => {
     const { container } = render(Dock, {
       entries: [file("tune.ctab"), draft("draft:1", "untitled-1")],
