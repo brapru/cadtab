@@ -79,6 +79,26 @@ export function removeDoc(store: DocStore, id: string): DocStore {
   return { docs, activeId };
 }
 
+// Re-key a session (its backing file was renamed/moved): change its `id` and
+// relabel its `name`/`path`, preserving the buffer, baseline, and flags so a
+// rename never loses unsaved edits. The active pointer follows. A no-op if
+// `oldId` isn't open.
+export function renameDoc(
+  store: DocStore,
+  oldId: string,
+  newId: string,
+  patch: { name: string | null; path: string | null },
+): DocStore {
+  if (!store.docs.some((d) => d.id === oldId)) return store;
+  const docs = store.docs.map((d) =>
+    d.id === oldId
+      ? { ...d, id: newId, name: patch.name, path: patch.path }
+      : d,
+  );
+  const activeId = store.activeId === oldId ? newId : store.activeId;
+  return { docs, activeId };
+}
+
 // Update the active document's editor buffer (dirty derives from the baseline).
 export function setActiveContent(store: DocStore, content: string): DocStore {
   return mapDoc(store, store.activeId, (d) => ({ ...d, content }));

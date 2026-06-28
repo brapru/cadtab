@@ -256,6 +256,14 @@ export async function removePath(
   await remove(path, { recursive });
 }
 
+/// Move/rename a path — the dock's Rename (a file or a whole folder). Desktop-
+/// only; a no-op off-desktop.
+export async function renamePath(from: string, to: string): Promise<void> {
+  if (!isTauri()) return;
+  const { rename } = await import("@tauri-apps/plugin-fs");
+  await rename(from, to);
+}
+
 /// Save a single score to `target`. Overwrites a known path silently (desktop),
 /// else prompts a Save dialog (desktop) or downloads (web). Null if cancelled.
 export function saveDocument(

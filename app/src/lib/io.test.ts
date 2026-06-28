@@ -9,6 +9,7 @@ const readDirMock = vi.fn();
 const watchImmediateMock = vi.fn();
 const mkdirMock = vi.fn();
 const removeMock = vi.fn();
+const renameMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: (...args: unknown[]) => openMock(...args),
   save: (...args: unknown[]) => saveMock(...args),
@@ -21,6 +22,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   watchImmediate: (...args: unknown[]) => watchImmediateMock(...args),
   mkdir: (...args: unknown[]) => mkdirMock(...args),
   remove: (...args: unknown[]) => removeMock(...args),
+  rename: (...args: unknown[]) => renameMock(...args),
 }));
 
 import {
@@ -37,6 +39,7 @@ import {
   createFile,
   createDir,
   removePath,
+  renamePath,
   openProject,
   saveDocument,
   saveBundle,
@@ -106,11 +109,12 @@ describe("io path/name helpers", () => {
 });
 
 describe("io fs ops off-desktop (web)", () => {
-  it("createFile / createDir / removePath are no-ops without Tauri", async () => {
+  it("createFile / createDir / removePath / renamePath are no-ops without Tauri", async () => {
     // No __TAURI_INTERNALS__ → web; the ops resolve without touching the plugin.
     await expect(createFile("/x.ctab")).resolves.toBeUndefined();
     await expect(createDir("/x")).resolves.toBeUndefined();
     await expect(removePath("/x", true)).resolves.toBeUndefined();
+    await expect(renamePath("/x", "/y")).resolves.toBeUndefined();
   });
 });
 
@@ -222,6 +226,7 @@ describe("io desktop (Tauri) backend", () => {
     readDirMock.mockReset();
     mkdirMock.mockReset();
     removeMock.mockReset();
+    renameMock.mockReset();
     setTauri(true);
   });
   afterEach(() => setTauri(false));
@@ -242,6 +247,14 @@ describe("io desktop (Tauri) backend", () => {
     });
     await removePath("/proj/licks", true);
     expect(removeMock).toHaveBeenCalledWith("/proj/licks", { recursive: true });
+  });
+
+  it("renamePath moves from the old path to the new", async () => {
+    await renamePath("/proj/roll.ctab", "/proj/roll2.ctab");
+    expect(renameMock).toHaveBeenCalledWith(
+      "/proj/roll.ctab",
+      "/proj/roll2.ctab",
+    );
   });
 
   it("opens a single score via the dialog and reads the picked path", async () => {

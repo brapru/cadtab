@@ -51,6 +51,7 @@ const rescanFolderMock = vi.fn();
 const createFileMock = vi.fn();
 const createDirMock = vi.fn();
 const removePathMock = vi.fn();
+const renamePathMock = vi.fn();
 const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
 const saveSvgMock = vi.fn();
@@ -69,6 +70,7 @@ vi.mock("./lib/io", () => ({
   createFile: (...args: unknown[]) => createFileMock(...args),
   createDir: (...args: unknown[]) => createDirMock(...args),
   removePath: (...args: unknown[]) => removePathMock(...args),
+  renamePath: (...args: unknown[]) => renamePathMock(...args),
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
@@ -1241,6 +1243,67 @@ describe("App", () => {
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeNull();
         expect(container.querySelector(".cm-content")).toBeNull();
+      });
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: Rename moves the file and its open tab follows", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      renamePathMock.mockReset();
+      renamePathMock.mockResolvedValue(undefined);
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score { 3:0 }" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+        dirs: [],
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeTruthy();
+      });
+      await fireEvent.click(container.querySelector(".dock .file")!);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "3:0",
+        );
+      });
+
+      // Right-click the file → Rename → the inline input is seeded with the name.
+      await fireEvent.contextMenu(container.querySelector(".dock .file")!);
+      await fireEvent.click(screen.getByText("Rename"));
+      const input = screen.getByLabelText("Name") as HTMLInputElement;
+      expect(input.value).toBe("tune.ctab");
+      await fireEvent.input(input, { target: { value: "renamed" } });
+      await fireEvent.keyDown(input, { key: "Enter" });
+
+      // The file is moved on disk, the dock row relabels, and the open tab follows
+      // (still showing the same buffer).
+      await vi.waitFor(() =>
+        expect(renamePathMock).toHaveBeenCalledWith(
+          "/proj/tune.ctab",
+          "/proj/renamed.ctab",
+        ),
+      );
+      await vi.waitFor(() => {
+        expect(
+          [...container.querySelectorAll(".dock .file-name")].map(
+            (n) => n.textContent,
+          ),
+        ).toEqual(["renamed.ctab"]);
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "3:0",
+        );
       });
     } finally {
       setDesktop(false);

@@ -15,6 +15,7 @@ import {
   moveTab,
   splitTab,
   closeTab,
+  renameDoc,
   docIdsWithViews,
   groupOfType,
   addTab,
@@ -247,6 +248,25 @@ describe("closeTab", () => {
   it("is a no-op for an unknown instance", () => {
     const ws = defaultWorkspace("doc");
     expect(closeTab(ws, "nope")).toBe(ws);
+  });
+});
+
+describe("renameDoc", () => {
+  it("re-points every view of a doc and follows the active tab", () => {
+    // The default layout has editor:a and render:a in two groups, both active.
+    const ws = renameDoc(defaultWorkspace("a"), "a", "b");
+    expect(docIdsWithViews(ws)).toEqual(new Set(["b"]));
+    expect(ws.groups[0].tabs[0]).toEqual(instance("editor", "b"));
+    expect(ws.groups[0].activeId).toBe("editor:b");
+    expect(ws.groups[1].tabs[0]).toEqual(instance("render", "b"));
+    expect(ws.groups[1].activeId).toBe("render:b");
+  });
+
+  it("leaves other docs' tabs untouched", () => {
+    let ws = defaultWorkspace("a");
+    ws = addTab(ws, instance("editor", "keep"), "g1");
+    ws = renameDoc(ws, "a", "b");
+    expect(docIdsWithViews(ws)).toEqual(new Set(["b", "keep"]));
   });
 });
 

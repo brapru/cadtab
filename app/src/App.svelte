@@ -17,6 +17,7 @@
     instance as viewInstance,
     addTab,
     closeTab,
+    renameDoc as renameDocWorkspace,
     docIdsWithViews,
     groupOfType,
     activeTab,
@@ -30,6 +31,7 @@
     isDirty,
     putDoc,
     removeDoc,
+    renameDoc as renameDocSession,
     setDocContent,
     setActive,
     markActiveSaved,
@@ -63,6 +65,7 @@
     createFile,
     createDir,
     removePath,
+    renamePath,
   } from "./lib/io";
   import { renderTreeToSvg } from "./lib/svg";
   import { svgToPngBlob } from "./lib/png";
@@ -751,8 +754,7 @@ score {
     const root = projectRoot;
     if (!edit || !root) return;
     if (edit.kind === "rename") {
-      // STUB (T7.36 2.4): rename + open-file-follows.
-      console.log("dock rename ->", name);
+      await renameEntry(edit.targetKey, edit.isFolder, name, root);
       return;
     }
     const leaf = edit.kind === "new-file" ? withCtabExtension(name) : name;
@@ -846,6 +848,103 @@ score {
     return Object.fromEntries(
       Object.entries(map).filter(([k]) => !drop.has(k)),
     );
+  }
+
+  // A key is `base` itself or a descendant of it (`base/...`).
+  const isUnder = (key: string, base: string) =>
+    key === base || key.startsWith(base + "/");
+  // Swap the `oldBase` prefix of `key` for `newBase` (the rename re-key).
+  const reprefix = (key: string, oldBase: string, newBase: string) =>
+    key === oldBase ? newBase : newBase + key.slice(oldBase.length);
+
+  // Rename a dock file or folder on the live folder, then re-key the project map,
+  // paths, and dirs (a folder carries its whole subtree along) and migrate any
+  // open file so its tab follows — buffer and dirty state preserved. The watcher
+  // re-scan converges on the same keys.
+  async function renameEntry(
+    oldKey: string,
+    isFolder: boolean,
+    name: string,
+    root: string,
+  ) {
+    const leaf = isFolder ? name : withCtabExtension(name);
+    const slash = oldKey.lastIndexOf("/");
+    const newKey = slash >= 0 ? oldKey.slice(0, slash + 1) + leaf : leaf;
+    if (newKey === oldKey) return;
+    // Don't clobber an existing sibling file/folder.
+    if (newKey in projectFiles || projectDirs.includes(newKey)) {
+      window.alert(`“${leaf}” already exists.`);
+      return;
+    }
+    const oldAbs =
+      (!isFolder ? filePaths[oldKey] : null) ?? resolvePath(root, oldKey);
+    try {
+      await renamePath(oldAbs, resolvePath(root, newKey));
+    } catch (e) {
+      console.error("dock rename failed:", e);
+      window.alert(`Could not rename to “${leaf}”: ${(e as Error).message}`);
+      return;
+    }
+    // Migrate every open file under the renamed key so its tab follows.
+    const affected = Object.keys(projectFiles).filter((k) =>
+      isUnder(k, oldKey),
+    );
+    for (const k of affected) {
+      const nk = reprefix(k, oldKey, newKey);
+      renameOpenDoc(k, nk, resolvePath(root, nk));
+    }
+    // Re-key the import map, paths (values become the new abs), and dirs.
+    projectFiles = Object.fromEntries(
+      Object.entries(projectFiles).map(([k, v]) =>
+        isUnder(k, oldKey) ? [reprefix(k, oldKey, newKey), v] : [k, v],
+      ),
+    );
+    filePaths = Object.fromEntries(
+      Object.entries(filePaths).map(([k, v]) => {
+        if (!isUnder(k, oldKey)) return [k, v];
+        const nk = reprefix(k, oldKey, newKey);
+        return [nk, resolvePath(root, nk)];
+      }),
+    );
+    projectDirs = projectDirs.map((d) =>
+      isUnder(d, oldKey) ? reprefix(d, oldKey, newKey) : d,
+    );
+  }
+
+  // Move an open file's session + views from `file:<oldKey>` to `file:<newKey>`.
+  // The reactive per-doc maps carry over; the live-compiler/edit-handler closures
+  // (which captured the old id) are dropped so they recreate under the new id,
+  // then the doc recompiles. A no-op if the file isn't open.
+  function renameOpenDoc(oldKey: string, newKey: string, newAbs: string) {
+    const oldId = `file:${oldKey}`;
+    const newId = `file:${newKey}`;
+    if (!docFor(oldId)) return;
+    results = renameKey(results, oldId, newId);
+    errors = renameKey(errors, oldId, newId);
+    selections = renameKey(selections, oldId, newId);
+    activeSpans = renameKey(activeSpans, oldId, newId);
+    layoutWidths = renameKey(layoutWidths, oldId, newId);
+    loadRequests = renameKey(loadRequests, oldId, newId);
+    delete compilers[oldId];
+    delete editHandlers[oldId];
+    docStore = renameDocSession(docStore, oldId, newId, {
+      name: basename(newKey),
+      path: newAbs,
+    });
+    workspace = renameDocWorkspace(workspace, oldId, newId);
+    compileDoc(newId);
+  }
+
+  // A shallow copy of `map` with one key renamed (value preserved); unchanged if
+  // `oldK` is absent.
+  function renameKey<T>(
+    map: Record<string, T>,
+    oldK: string,
+    newK: string,
+  ): Record<string, T> {
+    if (!(oldK in map)) return map;
+    const { [oldK]: value, ...rest } = map;
+    return { ...rest, [newK]: value };
   }
 
   // Save the current score. Overwrites the known path in place; for a never-

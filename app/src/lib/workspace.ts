@@ -229,6 +229,28 @@ export function docIdsWithViews(ws: Workspace): Set<string> {
   return ids;
 }
 
+// Re-point every view of `oldDocId` at `newDocId` (its backing file was
+// renamed): each such tab gets a fresh instance (its id derives from the doc id,
+// so it changes too), and any group whose active tab was one of them follows to
+// the new id. Other tabs and the maximize state are untouched.
+export function renameDoc(
+  ws: Workspace,
+  oldDocId: string,
+  newDocId: string,
+): Workspace {
+  const groups = ws.groups.map((g) => {
+    let activeId = g.activeId;
+    const tabs = g.tabs.map((t) => {
+      if (t.docId !== oldDocId) return t;
+      const next = instance(t.type, newDocId);
+      if (g.activeId === t.id) activeId = next.id;
+      return next;
+    });
+    return { ...g, tabs, activeId };
+  });
+  return { ...ws, groups };
+}
+
 // The id of the first group holding a tab of `type` (any document), or null —
 // used to route a newly opened file's editor/render tabs next to the existing
 // ones.

@@ -10,6 +10,7 @@ import {
   setActive,
   markActiveSaved,
   removeDoc,
+  renameDoc,
   reloadDoc,
   markMissingOnDisk,
 } from "./documents";
@@ -217,5 +218,36 @@ describe("markMissingOnDisk", () => {
     expect(store.docs[0].missingOnDisk).toBe(true);
     store = markMissingOnDisk(store, () => false);
     expect(store.docs[0].missingOnDisk).toBe(false);
+  });
+});
+
+describe("renameDoc", () => {
+  it("re-keys a session's id/name/path, preserving the buffer and dirty state", () => {
+    let store = singleDocStore(
+      newSession("file:roll.ctab", {
+        name: "roll.ctab",
+        path: "/proj/roll.ctab",
+        content: "x",
+      }),
+    );
+    store = setDocContent(store, "file:roll.ctab", "x edited"); // make it dirty
+    store = renameDoc(store, "file:roll.ctab", "file:roll2.ctab", {
+      name: "roll2.ctab",
+      path: "/proj/roll2.ctab",
+    });
+    const d = store.docs[0];
+    expect(d.id).toBe("file:roll2.ctab");
+    expect(d.name).toBe("roll2.ctab");
+    expect(d.path).toBe("/proj/roll2.ctab");
+    expect(d.content).toBe("x edited");
+    expect(isDirty(d)).toBe(true); // unsaved edits survive the rename
+    expect(store.activeId).toBe("file:roll2.ctab"); // active follows
+  });
+
+  it("is a no-op when the old id isn't open", () => {
+    const store = singleDocStore(newSession("file:a.ctab", { content: "x" }));
+    expect(
+      renameDoc(store, "file:gone", "file:new", { name: "n", path: null }),
+    ).toBe(store);
   });
 });
