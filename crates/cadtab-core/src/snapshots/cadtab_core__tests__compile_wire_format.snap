@@ -71,7 +71,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "kind": "line",
             "x1": 2.0,
             "y1": 6.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 6.4,
             "weight": 0.06
           },
@@ -79,7 +79,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "kind": "line",
             "x1": 2.0,
             "y1": 7.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 7.4,
             "weight": 0.06
           },
@@ -87,15 +87,15 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "kind": "line",
             "x1": 2.0,
             "y1": 8.4,
-            "x2": 3.8000002,
+            "x2": 369.24615,
             "y2": 8.4,
             "weight": 0.06
           },
           {
             "kind": "line",
-            "x1": 5.0,
+            "x1": 370.44617,
             "y1": 8.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 8.4,
             "weight": 0.06
           },
@@ -103,7 +103,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "kind": "line",
             "x1": 2.0,
             "y1": 9.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 9.4,
             "weight": 0.06
           },
@@ -111,7 +111,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "kind": "line",
             "x1": 2.0,
             "y1": 10.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 10.4,
             "weight": 0.06
           },
@@ -125,9 +125,9 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
           },
           {
             "kind": "line",
-            "x1": 7.2000003,
+            "x1": 799.0,
             "y1": 6.4,
-            "x2": 7.2000003,
+            "x2": 799.0,
             "y2": 10.4,
             "weight": 0.1
           },
@@ -145,7 +145,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
             "bounds": {
               "x": 2.0,
               "y": 6.4,
-              "w": 5.2000003,
+              "w": 797.0,
               "h": 4.0
             },
             "prims": [
@@ -167,7 +167,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               },
               {
                 "kind": "text",
-                "x": 4.4,
+                "x": 369.84616,
                 "y": 8.4,
                 "content": "0",
                 "role": "fretNumber",
@@ -178,9 +178,9 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               },
               {
                 "kind": "line",
-                "x1": 4.4,
+                "x1": 369.84616,
                 "y1": 9.2,
-                "x2": 4.4,
+                "x2": 369.84616,
                 "y2": 11.9,
                 "weight": 0.08
               }

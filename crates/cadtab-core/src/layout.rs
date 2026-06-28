@@ -232,6 +232,7 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
             &bar_nums[start..end],
             score.bar_numbers,
             width,
+            true,
             band_top,
             staff_top,
             staff_height,
@@ -298,7 +299,9 @@ pub fn layout_gallery(
         cursor += GALLERY_HEADING_GAP;
 
         // Lay the def's measures out into stacked systems, reusing the engine.
-        // The gallery shows no time signatures, bar numbers, or above-staff band.
+        // The gallery shows no time signatures, bar numbers, or above-staff band,
+        // and is not justified — a short sample lick hugs the left at its natural
+        // width rather than smearing across the full page.
         let plans: Vec<MeasurePlan> = def.measures.iter().map(|m| plan_measure(m, None)).collect();
         let groups = pack_systems(&plans, width);
         let beams: Vec<Vec<beam::BeamGroup>> = def
@@ -319,6 +322,7 @@ pub fn layout_gallery(
                 &bar_nums[start..end],
                 BarNumbers::Off,
                 width,
+                false,
                 staff_top,
                 staff_top,
                 staff_height,
@@ -405,7 +409,9 @@ fn overall_width(groups: &[(usize, usize)], plans: &[MeasurePlan]) -> f32 {
 }
 
 /// Build one system: its measure boxes (fret numbers) plus the system-spanning
-/// furniture (string lines, barlines, volta brackets).
+/// furniture (string lines, barlines, volta brackets). When `justify` is set the
+/// measures are stretched to fill the page (see the `scale` below); otherwise
+/// they sit at their natural widths, left-aligned.
 #[allow(clippy::too_many_arguments)]
 fn build_system(
     measures: &[Measure],
@@ -414,6 +420,7 @@ fn build_system(
     bar_nums: &[Option<u32>],
     bar_mode: BarNumbers,
     width: f32,
+    justify: bool,
     band_top: f32,
     staff_top: f32,
     staff_height: f32,
@@ -422,6 +429,20 @@ fn build_system(
     let staff_bottom = staff_top + staff_height;
     let beam_y = staff_bottom + BEAM_DROP;
     let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
+
+    // Justify: stretch the measures to fill the page width. The natural content
+    // (sum of measure widths) is scaled up uniformly so the last measure's right
+    // edge meets `width - RIGHT_MARGIN`. Only base positions — measure widths and
+    // event onsets — scale; glyph-relative offsets (augmentation dots, ties, beam
+    // overhang, the time-signature column) stay fixed so notes don't smear. Never
+    // compress (scale >= 1): a system already at or past the target keeps its
+    // spacing, so the widest system (which pins the page) is left untouched.
+    let content_w: f32 = plans.iter().map(|p| p.width).sum();
+    let scale = if justify && content_w > 0.0 {
+        ((width - LEFT_MARGIN - RIGHT_MARGIN) / content_w).max(1.0)
+    } else {
+        1.0
+    };
 
     // The above-staff band rows, top → staff: section, chord, bar number.
     let has_section = measures.iter().any(|m| m.section.is_some());
@@ -436,7 +457,8 @@ fn build_system(
     let mut ranges: Vec<(f32, f32)> = Vec::with_capacity(plans.len());
     let mut mx0 = LEFT_MARGIN;
     for ((plan, measure), mbeams) in plans.iter().zip(measures).zip(beams) {
-        let mx1 = mx0 + plan.width;
+        let mwidth = plan.width * scale;
+        let mx1 = mx0 + mwidth;
         let mut prims = Vec::new();
         if let Some(meter) = plan.meter_mark {
             // Centre the glyph in its reserved column so it clears the left
@@ -447,7 +469,7 @@ fn build_system(
             prims.extend(time_signature(meter, tsx, staff_top, staff_height));
         }
         for (j, (placed, event)) in plan.events.iter().zip(&measure.events).enumerate() {
-            let x = mx0 + placed.rel_x;
+            let x = mx0 + placed.rel_x * scale;
             // A chord symbol landing on this onset sits above the staff at its x.
             if let Some(sym) = &event.chord {
                 prims.push(Primitive::Text {
@@ -501,7 +523,7 @@ fn build_system(
                 let stem_top = (low_y + STEM_NOTE_GAP).min(beam_y - STEM_MIN);
                 prims.push(stem(x, stem_top, beam_y));
             }
-            let next_x = plan.events.get(j + 1).map(|p| mx0 + p.rel_x);
+            let next_x = plan.events.get(j + 1).map(|p| mx0 + p.rel_x * scale);
             prims.extend(marks_for(event, x, next_x, staff_top, staff_bottom));
         }
         // A group of two or more shares one flat beam across its stem ends; a
@@ -517,7 +539,7 @@ fn build_system(
                 let xs: Vec<f32> = g
                     .members
                     .iter()
-                    .map(|&m| mx0 + plan.events[m].rel_x)
+                    .map(|&m| mx0 + plan.events[m].rel_x * scale)
                     .collect();
                 let flag_counts: Vec<u8> = g
                     .members
@@ -526,7 +548,7 @@ fn build_system(
                     .collect();
                 prims.extend(group_beams(&xs, &flag_counts, beam_render_y, beam_overhang));
             } else if let Some(&idx) = g.members.first() {
-                let x = mx0 + plan.events[idx].rel_x;
+                let x = mx0 + plan.events[idx].rel_x * scale;
                 let count = beam::flag_count(measure.events[idx].duration());
                 prims.extend(flags(x, beam_render_y, count));
             }
@@ -535,7 +557,7 @@ fn build_system(
             bounds: Rect {
                 x: mx0,
                 y: staff_top,
-                w: plan.width,
+                w: mwidth,
                 h: staff_height.max(STRING_SPACING),
             },
             prims,
@@ -1175,6 +1197,15 @@ mod tests {
         LayoutConfig { width: 800.0 }
     }
 
+    /// A target so narrow any real measure overflows it, so the page pins to the
+    /// content's own width and justification is a no-op (scale = 1). Tests that
+    /// assert *natural* intra-measure spacing use this, both to read the
+    /// unstretched geometry and to keep coordinates small (large justified x's
+    /// lose float precision in `x2 - x1` reconstructions).
+    fn cfg_natural() -> LayoutConfig {
+        LayoutConfig { width: 1.0 }
+    }
+
     fn note_dur(string: u8, fret: u8, start: u32, dur: Duration) -> Event {
         Event::new(
             EventKind::Note(Note {
@@ -1303,7 +1334,7 @@ mod tests {
             note_dur(2, 1, 4, Duration::from_denominator(2)),
             note_dur(1, 2, 8, Duration::from_denominator(4)),
         ]);
-        let tree = layout(&banjo_score(vec![m]), cfg());
+        let tree = layout(&banjo_score(vec![m]), cfg_natural());
         let nums = fret_numbers(&tree);
         let xs: Vec<f32> = nums.iter().map(|p| x_of(p)).collect();
         // A quarter advances 1/4 * 8 = 2.0; a half advances 4.0.
@@ -1495,7 +1526,10 @@ mod tests {
 
     #[test]
     fn the_first_note_clears_the_time_signature() {
-        let tree = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        let tree = layout(
+            &banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]),
+            cfg_natural(),
+        );
         let box0 = &tree.systems[0].measures[0];
         let mx0 = box0.bounds.x;
         let glyph_x = box0
@@ -1511,27 +1545,24 @@ mod tests {
             })
             .unwrap();
         let note_x = x_of(fret_numbers(&tree)[0]);
-        // The glyph is centred in its reserved column, and the first note sits a
-        // full leading pad past it — so neither the barline nor the note crowds
-        // the time signature.
+        // The glyph is centred in its reserved column (a fixed offset, unscaled by
+        // justification), and the first note sits at least a full leading pad past
+        // it — so neither the barline nor the note crowds the time signature. The
+        // page stretch only ever pushes the note further right, never nearer.
         assert!((glyph_x - mx0 - (MEASURE_PAD + TIMESIG_WIDTH) / 2.0).abs() < 1e-3);
-        assert!((note_x - mx0 - (MEASURE_PAD + TIMESIG_WIDTH)).abs() < 1e-3);
+        assert!(note_x - mx0 >= (MEASURE_PAD + TIMESIG_WIDTH) - 1e-3);
         // The note clears the glyph's centre by more than the bare leading pad.
         assert!(note_x - glyph_x > MEASURE_PAD);
     }
 
     #[test]
     fn a_time_signature_reserves_leading_width() {
-        // First measure (shows the default), a plain middle measure (no time
-        // signature), then a meter change. The changed box is wider than the
-        // plain one by exactly the reserved time-signature column.
-        let first = Measure::new(vec![note(3, 0, 0)]);
-        let plain = Measure::new(vec![note(3, 0, 0)]);
-        let mut changed = Measure::new(vec![note(3, 0, 0)]);
-        changed.meter = Some(TimeSig::new(3, 4));
-        let tree = layout(&banjo_score(vec![first, plain, changed]), cfg());
-        let plain_w = tree.systems[0].measures[1].bounds.w;
-        let marked_w = tree.systems[0].measures[2].bounds.w;
+        // A meter mark widens the measure plan by exactly the reserved
+        // time-signature column. Tested on `plan_measure` directly: the planned
+        // width is pre-justification, so it isn't perturbed by the page stretch.
+        let m = Measure::new(vec![note(3, 0, 0)]);
+        let plain_w = plan_measure(&m, None).width;
+        let marked_w = plan_measure(&m, Some(TimeSig::new(3, 4))).width;
         assert!((marked_w - plain_w - TIMESIG_WIDTH).abs() < 1e-3);
     }
 
@@ -1940,12 +1971,12 @@ mod tests {
 
     #[test]
     fn meter_changes_do_not_affect_proportional_placement() {
-        // Layout spaces by event onsets, not the meter stamp.
+        // Spacing follows event onsets, not the meter stamp. Tested on the plan so
+        // the page-justify stretch (which scales every gap equally) can't mask it.
         let mut m = Measure::new(vec![note(3, 0, 0), note(2, 0, 4)]);
         m.meter = Some(TimeSig::new(3, 4));
-        let tree = layout(&banjo_score(vec![m]), cfg());
-        let nums = fret_numbers(&tree);
-        assert!((x_of(nums[1]) - x_of(nums[0]) - 2.0).abs() < 1e-5);
+        let plan = plan_measure(&m, Some(TimeSig::new(3, 4)));
+        assert!((plan.events[1].rel_x - plan.events[0].rel_x - 2.0).abs() < 1e-5);
     }
 
     /// Stems are the vertical line segments inside measure boxes (barlines live
@@ -2252,19 +2283,21 @@ mod tests {
             note_dur(2, 0, 4, d16),
             note_dur(1, 0, 8, d16),
         ]);
-        let tree = layout(&banjo_score(vec![sixteenths]), cfg());
-        let nums = fret_numbers(&tree);
+        // Tested on the plan, before the page-justify stretch scales the gaps.
+        let plan = plan_measure(&sixteenths, None);
         // Time-proportionally 16ths are 0.5 apart; the floor lifts each gap to
         // MIN_EVENT_GAP so the fret numbers do not overlap.
-        assert!((x_of(nums[1]) - x_of(nums[0]) - MIN_EVENT_GAP).abs() < 1e-5);
-        assert!((x_of(nums[2]) - x_of(nums[1]) - MIN_EVENT_GAP).abs() < 1e-5);
+        assert!((plan.events[1].rel_x - plan.events[0].rel_x - MIN_EVENT_GAP).abs() < 1e-5);
+        assert!((plan.events[2].rel_x - plan.events[1].rel_x - MIN_EVENT_GAP).abs() < 1e-5);
 
         // Eighths are wider than the floor, so they keep proportional spacing.
         let eighths = Measure::new(vec![eighth(3, 0, 0), eighth(2, 0, 4)]);
-        let tree = layout(&banjo_score(vec![eighths]), cfg());
-        let nums = fret_numbers(&tree);
+        let plan = plan_measure(&eighths, None);
         assert!(
-            (x_of(nums[1]) - x_of(nums[0]) - span_width(Duration::from_denominator(8))).abs()
+            (plan.events[1].rel_x
+                - plan.events[0].rel_x
+                - span_width(Duration::from_denominator(8)))
+            .abs()
                 < 1e-5
         );
     }
@@ -2406,7 +2439,7 @@ mod tests {
         // Eighth, eighth-rest, eighth in one beat: the rest splits the eighths so
         // neither pair beams — both eighths stand alone (flags), no beam.
         let m = Measure::new(vec![eighth(3, 0, 0), rest(4, 8), eighth(2, 0, 8)]);
-        let tree = layout(&banjo_score(vec![m]), cfg());
+        let tree = layout(&banjo_score(vec![m]), cfg_natural());
         assert!(beams(&tree).is_empty());
         assert_eq!(rests(&tree).len(), 1);
     }
@@ -2799,6 +2832,51 @@ mod tests {
         let narrow = LayoutConfig { width: 10.0 };
         let tree = layout(&banjo_score(vec![Measure::new(events)]), narrow);
         assert!(tree.meta.width > 10.0);
+    }
+
+    #[test]
+    fn a_short_system_justifies_to_fill_the_page() {
+        // One small measure on an 800-unit page: justification stretches it so the
+        // final barline lands at the page's right edge (width - RIGHT_MARGIN).
+        let m = Measure::new(vec![note(3, 0, 0), note(2, 0, 4)]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let last_barline = vertical_lines(&tree)
+            .iter()
+            .map(|p| x_of_line(p))
+            .fold(f32::MIN, f32::max);
+        assert!((last_barline - (800.0 - RIGHT_MARGIN)).abs() < 1e-3);
+    }
+
+    #[test]
+    fn justification_preserves_time_proportional_spacing() {
+        // quarter, half, quarter: a half advances twice a quarter. Stretching the
+        // system scales every gap uniformly, so that 2:1 ratio survives.
+        let m = Measure::new(vec![
+            note_dur(3, 0, 0, Duration::from_denominator(4)),
+            note_dur(2, 1, 4, Duration::from_denominator(2)),
+            note_dur(1, 2, 8, Duration::from_denominator(4)),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        let xs: Vec<f32> = fret_numbers(&tree).iter().map(|p| x_of(p)).collect();
+        let first = xs[1] - xs[0];
+        let second = xs[2] - xs[1];
+        assert!((second / first - 2.0).abs() < 1e-4);
+        // And the spacing is genuinely stretched past its natural (unjustified) gap.
+        assert!(first > 2.0);
+    }
+
+    #[test]
+    fn the_widest_system_is_not_stretched() {
+        // A measure wide enough to pin the page (a tiny target) sits at scale 1:
+        // its first two onsets keep their natural 2.0-unit quarter-note advance.
+        let events: Vec<Event> = (0..12)
+            .map(|i| note_dur(3, 0, i * 2, Duration::from_denominator(8)))
+            .collect();
+        let narrow = LayoutConfig { width: 10.0 };
+        let tree = layout(&banjo_score(vec![Measure::new(events)]), narrow);
+        let xs: Vec<f32> = fret_numbers(&tree).iter().map(|p| x_of(p)).collect();
+        // Eighth notes advance 1/8 * 8 = 1.0 at natural scale, unchanged here.
+        assert!((xs[1] - xs[0] - 1.0).abs() < 1e-4);
     }
 
     #[test]
