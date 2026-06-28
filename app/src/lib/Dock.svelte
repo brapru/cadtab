@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { projectFileList } from "./project";
+  import { projectFileList, projectTree, type TreeNode } from "./project";
   import { tooltip } from "./tooltip";
+  import Icon from "./Icon.svelte";
 
-  // The left project dock: a collapsible panel showing the
-  // open project's structure — the entry document plus its importable libs.
+  // The left project dock: a collapsible panel showing the open project's
+  // structure as a folder tree — nested folders over their `.ctab` files.
   // Toggled from the bottom bar / Cmd-B (App owns `dockOpen`). Clicking a file
-  // opens (or focuses) it as an editor tab; `activePath` marks the file
-  // the focused tab is showing.
+  // opens (or focuses) it as an editor tab; `activePath` marks the file the
+  // focused tab is showing. Clicking a folder expands/collapses it.
   let {
     entryName,
     libs = {},
@@ -21,24 +22,60 @@
     onOpenFile?: (path: string, isEntry: boolean) => void;
   } = $props();
 
-  const files = $derived(projectFileList(entryName, libs));
+  const tree = $derived(projectTree(projectFileList(entryName, libs)));
+
+  // Folders are expanded by default; this holds the ones collapsed by the user,
+  // keyed by folder path so the state survives tree rebuilds.
+  let collapsed = $state<Record<string, true>>({});
+  function toggle(path: string) {
+    const { [path]: was, ...rest } = collapsed;
+    collapsed = was ? rest : { ...collapsed, [path]: true };
+  }
 </script>
+
+{#snippet row(node: TreeNode, depth: number)}
+  {#if node.kind === "folder"}
+    {@const open = !collapsed[node.path]}
+    <li>
+      <button
+        class="row folder"
+        style="--depth: {depth}"
+        aria-expanded={open}
+        use:tooltip={node.path}
+        onclick={() => toggle(node.path)}
+      >
+        <Icon name={open ? "folder_open" : "folder"} size={15} />
+        <span class="file-name">{node.name}</span>
+      </button>
+      {#if open}
+        <ul class="file-list nested">
+          {#each node.children as child (child.kind === "folder" ? "d:" + child.path : "f:" + child.file.path)}
+            {@render row(child, depth + 1)}
+          {/each}
+        </ul>
+      {/if}
+    </li>
+  {:else}
+    <li>
+      <button
+        class="row file"
+        class:active={activePath === node.file.path}
+        style="--depth: {depth}"
+        use:tooltip={node.file.path}
+        onclick={() => onOpenFile?.(node.file.path, node.file.isEntry)}
+      >
+        <Icon name="music_note" size={15} />
+        <span class="file-name">{node.name}</span>
+      </button>
+    </li>
+  {/if}
+{/snippet}
 
 <aside class="dock" aria-label="Project files">
   <div class="dock-header">{projectName}</div>
   <ul class="file-list">
-    {#each files as f (f.path)}
-      <li>
-        <button
-          class="file"
-          class:active={activePath === f.path}
-          use:tooltip={f.path}
-          onclick={() => onOpenFile?.(f.path, f.isEntry)}
-        >
-          <span class="file-icon" aria-hidden="true">♪</span>
-          <span class="file-name">{f.name}</span>
-        </button>
-      </li>
+    {#each tree as node (node.kind === "folder" ? "d:" + node.path : "f:" + node.file.path)}
+      {@render row(node, 0)}
     {/each}
   </ul>
 </aside>
@@ -72,12 +109,17 @@
     overflow: auto;
     min-height: 0;
   }
-  .file {
+  .file-list.nested {
+    padding: 0;
+    overflow: visible;
+  }
+  .row {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     width: 100%;
-    padding: 0.2rem 0.7rem;
+    /* indent grows with tree depth; the base pad keeps the first level off the edge */
+    padding: 0.2rem 0.7rem 0.2rem calc(0.7rem + var(--depth) * 0.85rem);
     border: none;
     background: transparent;
     font: inherit;
@@ -88,16 +130,16 @@
     overflow: hidden;
     cursor: pointer;
   }
-  .file:hover {
+  .row :global(.material-symbols-outlined) {
+    flex: 0 0 auto;
+    opacity: 0.75;
+  }
+  .row:hover {
     color: var(--fg);
   }
   .file.active {
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 6%, transparent);
-  }
-  .file-icon {
-    font-size: 0.75rem;
-    opacity: 0.7;
   }
   .file-name {
     overflow: hidden;

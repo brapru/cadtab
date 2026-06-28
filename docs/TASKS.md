@@ -571,6 +571,16 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       just a single score or `.ctabz` bundle: a live folder on desktop (Tauri fs) / Chromium-web (File
       System Access API); the dock then shows the real folder tree (hierarchical) and imports resolve
       against it. The live-folder source flagged unbuilt in T7.2. Pairs with T7.8. *(NOTES #16.)*
+      **Sub-chunk plan (confirmed 2026-06-28):** *(A)* pure folder-tree model + hierarchical dock
+      (cross-platform; drives bundles *and* folders); *(B)* desktop Tauri open-folder + write-back,
+      full IDE-tree dock (no privileged entry), folds in T7.15b; *(C)* desktop fs-watching (tree +
+      clean-file sync, dirty-buffer notice never a clobber); *(D, optional)* web FSA dir open + Refresh.
+      **Desktop/web line:** true fs-watching is desktop-only (Tauri notify); web FSA has no
+      change-notification API, so web folders are snapshot + manual Refresh — bundles stay the
+      browser-agnostic baseline (D38). **Chunk A done:** `projectTree(files)` folds `/`-split paths into
+      a folder hierarchy (folders before files, alphabetical, folders keyed by full prefix);
+      `Dock.svelte` renders it recursively with per-folder expand/collapse (folder/folder_open glyph
+      toggles, no chevron; `music_note` on files). Tests in `project.test.ts`, `Dock.test.ts`.
 - [ ] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
       create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
       in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two

@@ -49,4 +49,34 @@ describe("Dock", () => {
       "Project",
     );
   });
+
+  it("renders nested paths as folders over their files", () => {
+    const { container } = render(Dock, {
+      entryName: "tune.ctab",
+      libs: { "licks/roll.ctab": "", "licks/pinch.ctab": "" },
+    });
+    const folders = [...container.querySelectorAll(".folder .file-name")].map(
+      (n) => n.textContent,
+    );
+    expect(folders).toEqual(["licks"]);
+    const files = [...container.querySelectorAll(".file .file-name")].map(
+      (n) => n.textContent,
+    );
+    expect(files).toEqual(["pinch.ctab", "roll.ctab", "tune.ctab"]);
+  });
+
+  it("collapses a folder's files when its row is clicked", async () => {
+    const { container, getByText, queryByText } = render(Dock, {
+      entryName: "tune.ctab",
+      libs: { "licks/roll.ctab": "" },
+    });
+    expect(getByText("roll.ctab")).toBeTruthy();
+    const folder = container.querySelector(".folder") as HTMLElement;
+    expect(folder.getAttribute("aria-expanded")).toBe("true");
+    await fireEvent.click(folder);
+    expect(folder.getAttribute("aria-expanded")).toBe("false");
+    expect(queryByText("roll.ctab")).toBeNull();
+    // the root entry stays visible — only the folder's contents hide
+    expect(getByText("tune.ctab")).toBeTruthy();
+  });
 });
