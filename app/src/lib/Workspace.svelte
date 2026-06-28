@@ -22,6 +22,7 @@
   let {
     workspace = $bindable(),
     view,
+    missingDocIds = [],
     onActivateView,
     onCloseTab,
     onOpenRender,
@@ -31,6 +32,9 @@
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
+    // Doc ids whose backing file was deleted/moved on disk; their tabs render
+    // struck-through until the doc is saved back.
+    missingDocIds?: readonly string[];
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
     onOpenRender?: (docId: string) => void;
@@ -281,7 +285,13 @@
                 <span class="tab-icon">
                   <Icon name={viewDef(tab.type)?.icon ?? ""} size={16} />
                 </span>
-                <span class="tab-title">{viewDef(tab.type)?.title}</span>
+                <span
+                  class="tab-title"
+                  class:missing={tab.docId !== null &&
+                    missingDocIds.includes(tab.docId)}
+                >
+                  {viewDef(tab.type)?.title}
+                </span>
               </button>
               <button
                 class="tab-close"
@@ -463,6 +473,12 @@
   .tab-icon {
     display: flex;
     align-items: center;
+  }
+  /* A tab whose backing file was deleted/moved on disk: struck through, dimmed —
+     the buffer is still editable and a Save rewrites the file. */
+  .tab-title.missing {
+    text-decoration: line-through;
+    opacity: 0.6;
   }
   .tab-close {
     display: flex;

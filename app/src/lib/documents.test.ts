@@ -11,6 +11,7 @@ import {
   markActiveSaved,
   removeDoc,
   reloadDoc,
+  markMissingOnDisk,
 } from "./documents";
 
 describe("newSession", () => {
@@ -23,6 +24,7 @@ describe("newSession", () => {
       content: "score {}",
       savedContent: "score {}",
       everSaved: true,
+      missingOnDisk: false,
     });
     expect(isDirty(d)).toBe(false);
   });
@@ -184,5 +186,36 @@ describe("reloadDoc", () => {
   it("is a no-op for an id that isn't open", () => {
     const store = singleDocStore(newSession("file:a.ctab", { content: "a" }));
     expect(reloadDoc(store, "file:ghost.ctab", "x")).toEqual(store);
+  });
+});
+
+describe("markMissingOnDisk", () => {
+  it("flags file docs whose key the scan dropped, leaving drafts alone", () => {
+    let store = putDoc(
+      singleDocStore(newSession("file:tune.ctab", { content: "a" })),
+      newSession("draft:1", { content: "b", everSaved: false }),
+    );
+    const present = new Set(["other.ctab"]); // tune.ctab is gone
+    store = markMissingOnDisk(store, (key) => !present.has(key));
+    expect(
+      store.docs.find((d) => d.id === "file:tune.ctab")?.missingOnDisk,
+    ).toBe(true);
+    // Drafts have no on-disk identity, so they're untouched.
+    expect(store.docs.find((d) => d.id === "draft:1")?.missingOnDisk).toBe(
+      false,
+    );
+  });
+
+  it("clears the flag when the file reappears, and keeps unchanged docs by reference", () => {
+    let store = singleDocStore(newSession("file:tune.ctab", { content: "a" }));
+    const before = store.docs[0];
+    // Still present → no change → same object reference (no reactive churn).
+    store = markMissingOnDisk(store, () => false);
+    expect(store.docs[0]).toBe(before);
+    // Now missing, then present again.
+    store = markMissingOnDisk(store, () => true);
+    expect(store.docs[0].missingOnDisk).toBe(true);
+    store = markMissingOnDisk(store, () => false);
+    expect(store.docs[0].missingOnDisk).toBe(false);
   });
 });

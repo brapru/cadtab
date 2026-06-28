@@ -1149,6 +1149,71 @@ describe("App", () => {
     }
   });
 
+  it("desktop: strikes an open file's tab when it's deleted on disk, and saves it back", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      rescanFolderMock.mockReset();
+      saveDocumentMock.mockReset();
+      saveDocumentMock.mockResolvedValue({
+        path: "/proj/tune.ctab",
+        name: "tune.ctab",
+      });
+      watchCallback = null;
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score { 3:0 }" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeTruthy();
+      });
+      await fireEvent.click(container.querySelector(".dock .file")!);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "3:0",
+        );
+      });
+      expect(container.querySelector(".tab-title.missing")).toBeNull();
+
+      // Delete it on disk: the re-scan no longer lists it.
+      expect(watchCallback).toBeTypeOf("function");
+      rescanFolderMock.mockResolvedValue({ files: {}, filePaths: {} });
+      watchCallback!();
+
+      // The tab strikes through and the dock row drops, but the buffer stays.
+      await vi.waitFor(() => {
+        expect(container.querySelector(".tab-title.missing")).not.toBeNull();
+      });
+      expect(container.querySelector(".dock .file")).toBeNull();
+      expect(container.querySelector(".cm-content")?.textContent).toContain(
+        "3:0",
+      );
+
+      // Saving rewrites it to its original path and clears the strike.
+      await fireEvent.click(screen.getByLabelText("Save"));
+      await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
+      const [, target] = saveDocumentMock.mock.calls[0] as [
+        string,
+        { path: string | null; suggestedName: string },
+      ];
+      expect(target.path).toBe("/proj/tune.ctab");
+      await vi.waitFor(() => {
+        expect(container.querySelector(".tab-title.missing")).toBeNull();
+      });
+    } finally {
+      setDesktop(false);
+    }
+  });
+
   it("cycles the colour theme onto the document root", async () => {
     const { container } = render(App);
     const toggle = container.querySelector(".theme-toggle")!;

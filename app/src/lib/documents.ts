@@ -11,6 +11,7 @@ export interface DocSession {
   content: string; // current editor buffer
   savedContent: string; // the text Save last wrote — what dirty compares against
   everSaved: boolean; // false = a never-saved draft, dirty until its first save
+  missingOnDisk: boolean; // a project file deleted/moved out from under an open tab
 }
 
 // The open documents, in tab order, and which one has focus.
@@ -35,6 +36,7 @@ export function newSession(
     content: init.content,
     savedContent: init.content,
     everSaved: init.everSaved ?? true,
+    missingOnDisk: false,
   };
 }
 
@@ -114,6 +116,8 @@ export function markActiveSaved(
     name: saved.name,
     savedContent: d.content,
     everSaved: true,
+    // The save (re)wrote the file, so it's back on disk.
+    missingOnDisk: false,
   }));
 }
 
@@ -130,7 +134,26 @@ export function reloadDoc(
     content,
     savedContent: content,
     everSaved: true,
+    missingOnDisk: false,
   }));
+}
+
+// Flag each open project file (`file:` doc) missing-on-disk per `isMissing(key)`
+// — set when a folder scan no longer lists it (deleted/moved out from under an
+// open tab), cleared when it reappears. Unchanged docs keep their reference so
+// the reactive graph doesn't churn on every watch event.
+export function markMissingOnDisk(
+  store: DocStore,
+  isMissing: (key: string) => boolean,
+): DocStore {
+  return {
+    ...store,
+    docs: store.docs.map((d) => {
+      if (!d.id.startsWith("file:")) return d;
+      const missing = isMissing(d.id.slice(5));
+      return missing === d.missingOnDisk ? d : { ...d, missingOnDisk: missing };
+    }),
+  };
 }
 
 function mapDoc(

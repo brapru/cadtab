@@ -34,6 +34,7 @@
     setActive,
     markActiveSaved,
     reloadDoc,
+    markMissingOnDisk,
     type DocStore,
     type DocSession,
   } from "./lib/documents";
@@ -157,6 +158,11 @@ score {
   const activeKey = $derived(
     active?.id.startsWith("file:") ? active.id.slice(5) : (active?.id ?? null),
   );
+  // Docs whose backing file was deleted/moved out from under their tab; the
+  // workspace strikes their tab labels.
+  const missingDocIds = $derived(
+    docStore.docs.filter((d) => d.missingOnDisk).map((d) => d.id),
+  );
 
   function docFor(id: string | null): DocSession | undefined {
     return id ? docStore.docs.find((d) => d.id === id) : undefined;
@@ -199,8 +205,13 @@ score {
     docStore = setDocContent(docStore, id, value);
     if (id.startsWith("file:")) {
       const key = id.slice(5);
-      projectFiles = { ...projectFiles, [key]: value };
-      for (const d of docStore.docs) if (d.id !== id) compileDoc(d.id);
+      // Only sync into the import map / dock while the file is actually in the
+      // project; editing a doc whose file was deleted/moved (missing-on-disk)
+      // mustn't resurrect a phantom dock row until it's saved back.
+      if (key in projectFiles) {
+        projectFiles = { ...projectFiles, [key]: value };
+        for (const d of docStore.docs) if (d.id !== id) compileDoc(d.id);
+      }
     }
     compileDoc(id);
   }
@@ -669,6 +680,10 @@ score {
         [id]: { content, token: ++loadToken },
       };
     }
+    // Strike through any open file whose key the scan dropped (deleted/moved);
+    // its buffer stays editable and a Save rewrites it to disk.
+    const present = new Set(Object.keys(scan.files));
+    docStore = markMissingOnDisk(docStore, (key) => !present.has(key));
     for (const d of docStore.docs)
       if (d.id.startsWith("file:")) compileDoc(d.id);
   }
@@ -869,6 +884,7 @@ score {
     {/if}
     <Workspace
       bind:workspace
+      {missingDocIds}
       onActivateView={focusView}
       onCloseTab={closeView}
       onOpenRender={openRender}
