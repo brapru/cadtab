@@ -33,15 +33,19 @@
     setDocContent,
     setActive,
     markActiveSaved,
+    reloadDoc,
     type DocStore,
     type DocSession,
   } from "./lib/documents";
   import { fileEntries, type DockEntry } from "./lib/project";
+  import { reconcileScan, type FolderScan } from "./lib/watch";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
   import { nextTheme, themeIcon, type Theme } from "./lib/theme";
   import {
     openProject,
     openFolder,
+    rescanFolder,
+    watchFolder,
     saveDocument,
     saveBundle,
     saveSvg,
@@ -112,10 +116,20 @@ score {
 
   // The open project: every file in it (key -> latest contents — the import map
   // shared by every compile), the fs path each key maps to (desktop write-back /
-  // import base; empty for bundle/web), and the dock header name.
+  // import base; empty for bundle/web), the live-folder root that gets watched
+  // (desktop folders only; null for bundle/single/web), and the dock header name.
   let projectFiles = $state<Record<string, string>>({});
   let filePaths = $state<Record<string, string>>({});
+  let projectRoot = $state<string | null>(null);
   let projectName = $state("Project");
+
+  // Per-doc reload requests pushed into a live editor when a watched file
+  // changes on disk: bumping the token swaps the CodeMirror state to the disk
+  // content (resetting undo) without echoing back through onChange.
+  let loadRequests = $state<Record<string, { content: string; token: number }>>(
+    {},
+  );
+  let loadToken = 0;
 
   // The dock's rows: every project file (dirty iff its open doc has unsaved
   // edits) plus every open unsaved draft as a root leaf.
@@ -263,6 +277,7 @@ score {
     selections = {};
     activeSpans = {};
     layoutWidths = {};
+    loadRequests = {};
     for (const k in compilers) delete compilers[k];
     for (const k in editHandlers) delete editHandlers[k];
   }
@@ -304,9 +319,11 @@ score {
     filePaths?: Record<string, string>;
     openKey: string | null;
     projectName: string;
+    root?: string | null;
   }) {
     projectFiles = opts.files;
     filePaths = opts.filePaths ?? {};
+    projectRoot = opts.root ?? null;
     projectName = opts.projectName;
     resetDocState();
     // A folder opens with no file in the editor (`openKey` null): the dock shows
@@ -582,6 +599,9 @@ score {
     try {
       folder = await openFolder();
     } catch (e) {
+      // `window.alert` no-ops in WKWebView, so log too — a denied fs capability
+      // would otherwise fail the open invisibly on desktop.
+      console.error("open folder failed:", e);
       window.alert(`Could not open folder: ${(e as Error).message}`);
       return;
     }
@@ -591,7 +611,66 @@ score {
       filePaths: folder.filePaths,
       openKey: null,
       projectName: folder.name,
+      root: folder.root,
     });
+  }
+
+  // Live folder (desktop): watch the open project's root and reconcile every
+  // change. Re-runs when the root changes — opening another project tears down
+  // the previous watch — and stops on unmount.
+  $effect(() => {
+    const root = projectRoot;
+    if (!desktop || !root) return;
+    let unwatch: (() => void) | undefined;
+    let stopped = false;
+    // `watchImmediate` fires per raw event (a single save can emit several), so
+    // coalesce the re-scans here.
+    const onChange = debounce(() => void onFolderChanged(root), 150);
+    watchFolder(root, onChange)
+      .then((u) => {
+        if (stopped) u();
+        else unwatch = u;
+      })
+      // Surface a denied/failed watch instead of silently not watching (e.g. a
+      // missing fs capability) — the dock just won't live-update.
+      .catch((e) => console.error("folder watch failed:", e));
+    return () => {
+      stopped = true;
+      unwatch?.();
+    };
+  });
+
+  // A watched file changed: re-scan the folder and reconcile (always-reload —
+  // disk wins). Guarded against a project swap mid-scan.
+  async function onFolderChanged(root: string) {
+    let scan: FolderScan;
+    try {
+      scan = await rescanFolder(root);
+    } catch (e) {
+      console.error("folder re-scan failed:", e);
+      return;
+    }
+    if (projectRoot !== root) return;
+    applyScan(scan);
+  }
+
+  // Adopt a fresh folder scan: the project map becomes the scan (added files
+  // appear, deleted drop), open files whose disk content diverged reload into
+  // their tab, and every open project file recompiles (imports may have moved).
+  function applyScan(scan: FolderScan) {
+    const recon = reconcileScan(scan, (key) => docFor(`file:${key}`)?.content);
+    projectFiles = recon.files;
+    filePaths = recon.filePaths;
+    for (const { key, content } of recon.reloads) {
+      const id = `file:${key}`;
+      docStore = reloadDoc(docStore, id, content);
+      loadRequests = {
+        ...loadRequests,
+        [id]: { content, token: ++loadToken },
+      };
+    }
+    for (const d of docStore.docs)
+      if (d.id.startsWith("file:")) compileDoc(d.id);
   }
 
   // Open (or focus) an entry clicked in the project dock: a saved file opens
@@ -814,6 +893,7 @@ score {
                 onFocus={() => focusView(instance)}
                 zoom={editorZoom}
                 selection={selections[instance.docId ?? ""] ?? null}
+                loadRequest={loadRequests[instance.docId ?? ""] ?? null}
                 tokens={results[instance.docId ?? ""]?.tokens ?? []}
                 diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
               />

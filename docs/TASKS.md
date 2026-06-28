@@ -606,8 +606,22 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       prompt for drafts) and the bundle reads honestly as a portable export. Tests in `io.test.ts`
       (path helpers, `collectCtabFiles`, mocked `openFolder`), `Dock.test.ts` (Open Folder control),
       `App.test.ts` (desktop mode via `__TAURI_INTERNALS__` + mocked `invoke`: Open hidden, dock
-      folder-open into the tree, write-back to real path, bundle-via-Export). **Chunk C next:** desktop
-      fs-watching (tree + clean-file sync, dirty-buffer notice). Chunk D (web FSA) optional/deferred.
+      folder-open into the tree, write-back to real path, bundle-via-Export).
+      **Chunk C done (desktop fs-watching):** `io.ts` gained `rescanFolder(root)` (re-reads the tree,
+      reuses `collectCtabFiles`) and `watchFolder(root, onChange)` (wraps Tauri `watch`, recursive +
+      debounced; no-op off-desktop). Pure `watch.ts` `reconcileScan(scan, openContent)` adopts the
+      scan as the project map (added files appear, deleted drop) and queues reloads for open files
+      whose disk content diverged. App reintroduces `projectRoot`, watches it via an `$effect`
+      (tears down on project swap/unmount), and on any event re-scans → reconciles → updates
+      `projectFiles`/`filePaths`, reloads diverged tabs, recompiles. Reloads push into the **live
+      CodeMirror** via the Editor's existing `loadRequest={{content,token}}` prop (swaps state, resets
+      undo, no `onChange` echo). **Decision (user): always auto-reload, NO notice UI** — disk is the
+      source of truth; an external change reloads straight into the tab **even over unsaved edits**
+      (the earlier never-clobber/notice plan was overridden). `documents.ts` gained `reloadDoc`. Tests:
+      `watch.test.ts`, `documents.test.ts` (`reloadDoc`), `io.test.ts` (`rescanFolder`/`watchFolder`),
+      `App.test.ts` (desktop: an open file live-reloads to disk content on a synthetic watch event).
+      **Only Chunk D remains (web FSA directory open + manual Refresh) — optional/deferred** per D38
+      (FSA is a Chromium-only enhancement, not the dependency); the desktop live folder is complete.
 - [x] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
       create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
       in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two

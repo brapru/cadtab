@@ -117,6 +117,22 @@ export function markActiveSaved(
   }));
 }
 
+// Reload a document's buffer from disk (a live-folder watch event): replace its
+// content and rebaseline to it, so the reloaded text is clean and becomes the
+// new undo baseline. No-op when the id isn't open.
+export function reloadDoc(
+  store: DocStore,
+  id: string,
+  content: string,
+): DocStore {
+  return mapDoc(store, id, (d) => ({
+    ...d,
+    content,
+    savedContent: content,
+    everSaved: true,
+  }));
+}
+
 function mapDoc(
   store: DocStore,
   id: string | null,

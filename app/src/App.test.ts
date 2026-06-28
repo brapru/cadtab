@@ -47,13 +47,22 @@ vi.mock("./lib/wasm", () => ({
 
 const openProjectMock = vi.fn();
 const openFolderMock = vi.fn();
+const rescanFolderMock = vi.fn();
 const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
 const saveSvgMock = vi.fn();
 const savePngMock = vi.fn();
+// Capture the watch callback so a test can fire a synthetic fs change.
+let watchCallback: (() => void) | null = null;
+const unwatchMock = vi.fn();
 vi.mock("./lib/io", () => ({
   openProject: (...args: unknown[]) => openProjectMock(...args),
   openFolder: (...args: unknown[]) => openFolderMock(...args),
+  rescanFolder: (...args: unknown[]) => rescanFolderMock(...args),
+  watchFolder: async (_root: string, cb: () => void) => {
+    watchCallback = cb;
+    return unwatchMock;
+  },
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
@@ -1086,6 +1095,55 @@ describe("App", () => {
         { path: string | null; suggestedName: string },
       ];
       expect(target.path).toBe("/proj/tune.ctab");
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: live-reloads an open file when it changes on disk", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      rescanFolderMock.mockReset();
+      watchCallback = null;
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score { 3:0 }" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      // Open the folder, then its file, so it's live in an editor tab.
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeTruthy();
+      });
+      await fireEvent.click(container.querySelector(".dock .file")!);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "3:0",
+        );
+      });
+
+      // The folder is watched; a change landing on disk re-scans and the open
+      // tab live-reloads to the disk content.
+      expect(watchCallback).toBeTypeOf("function");
+      rescanFolderMock.mockResolvedValue({
+        files: { "tune.ctab": "score { 5:7 }" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+      });
+      watchCallback!();
+
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")?.textContent).toContain(
+          "5:7",
+        );
+      });
     } finally {
       setDesktop(false);
     }

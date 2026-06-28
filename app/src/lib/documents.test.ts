@@ -10,6 +10,7 @@ import {
   setActive,
   markActiveSaved,
   removeDoc,
+  reloadDoc,
 } from "./documents";
 
 describe("newSession", () => {
@@ -163,5 +164,25 @@ describe("markActiveSaved", () => {
     expect(isDirty(activeDoc(store)!)).toBe(true);
     store = markActiveSaved(store, { path: null, name: "a.ctab" });
     expect(isDirty(activeDoc(store)!)).toBe(false);
+  });
+});
+
+describe("reloadDoc", () => {
+  it("replaces a doc's buffer from disk and rebaselines it clean", () => {
+    let store = singleDocStore(
+      newSession("file:tune.ctab", { content: "OLD" }),
+    );
+    store = setActiveContent(store, "edited"); // dirty
+    expect(isDirty(activeDoc(store)!)).toBe(true);
+    store = reloadDoc(store, "file:tune.ctab", "DISK");
+    const doc = activeDoc(store)!;
+    expect(doc.content).toBe("DISK");
+    expect(doc.savedContent).toBe("DISK");
+    expect(isDirty(doc)).toBe(false);
+  });
+
+  it("is a no-op for an id that isn't open", () => {
+    const store = singleDocStore(newSession("file:a.ctab", { content: "a" }));
+    expect(reloadDoc(store, "file:ghost.ctab", "x")).toEqual(store);
   });
 });

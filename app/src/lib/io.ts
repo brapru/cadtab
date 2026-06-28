@@ -144,7 +144,17 @@ export async function collectCtabFiles(
         if (!entry.name.startsWith(".")) await walk(child);
       } else if (entry.isFile && entry.name.toLowerCase().endsWith(CTAB_EXT)) {
         const key = toRelative(root, child);
-        files[key] = await readFile(child);
+        // Read tolerantly: a file listed by readDir can vanish before we read it
+        // (a concurrent delete during a watch re-scan), or be unreadable. Skip it
+        // rather than aborting the whole scan — otherwise one removed file would
+        // strand the entire tree on its stale snapshot.
+        let content: string;
+        try {
+          content = await readFile(child);
+        } catch {
+          continue;
+        }
+        files[key] = content;
         filePaths[key] = child;
       }
     }
@@ -168,6 +178,37 @@ export async function openFolder(): Promise<OpenedFolder | null> {
     readTextFile,
   );
   return { root, name: basename(root), files, filePaths };
+}
+
+/// Re-read a folder's `.ctab` tree (desktop) — the fresh snapshot a watch event
+/// reconciles against. Returns the same `{ files, filePaths }` shape `openFolder`
+/// builds.
+export async function rescanFolder(root: string): Promise<{
+  files: Record<string, string>;
+  filePaths: Record<string, string>;
+}> {
+  const { readDir, readTextFile } = await import("@tauri-apps/plugin-fs");
+  return collectCtabFiles(
+    root,
+    (dir) => readDir(dir) as Promise<DirEntry[]>,
+    readTextFile,
+  );
+}
+
+/// Watch a folder for changes (desktop), recursively. Any event fires
+/// `onChange` — the caller re-scans and reconciles, rather than decoding the
+/// platform-specific event payload. Uses `watchImmediate` (raw notify), not the
+/// debounced `watch`: the latter's notify-debouncer-full drops file-removal
+/// events on macOS/FSEvents, so deletes never reached the dock — the caller
+/// debounces re-scans instead. Resolves a function that stops watching; a no-op
+/// off-desktop.
+export async function watchFolder(
+  root: string,
+  onChange: () => void,
+): Promise<() => void> {
+  if (!isTauri()) return () => {};
+  const { watchImmediate } = await import("@tauri-apps/plugin-fs");
+  return watchImmediate(root, () => onChange(), { recursive: true });
 }
 
 /// Save a single score to `target`. Overwrites a known path silently (desktop),

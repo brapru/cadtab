@@ -6,6 +6,7 @@ const readTextFileMock = vi.fn();
 const writeTextFileMock = vi.fn();
 const writeFileMock = vi.fn();
 const readDirMock = vi.fn();
+const watchImmediateMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: (...args: unknown[]) => openMock(...args),
   save: (...args: unknown[]) => saveMock(...args),
@@ -15,6 +16,7 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   writeTextFile: (...args: unknown[]) => writeTextFileMock(...args),
   writeFile: (...args: unknown[]) => writeFileMock(...args),
   readDir: (...args: unknown[]) => readDirMock(...args),
+  watchImmediate: (...args: unknown[]) => watchImmediateMock(...args),
 }));
 
 import {
@@ -25,6 +27,8 @@ import {
   defaultDocName,
   collectCtabFiles,
   openFolder,
+  rescanFolder,
+  watchFolder,
   openProject,
   saveDocument,
   saveBundle,
@@ -129,6 +133,22 @@ describe("collectCtabFiles", () => {
     });
     // Non-.ctab files are skipped; abs paths map back for write-back.
     expect(filePaths["licks/roll.ctab"]).toBe("/proj/licks/roll.ctab");
+  });
+
+  it("skips a listed file that vanishes (errors) on read, keeping the rest", async () => {
+    const { readDir } = fakeFs(
+      {
+        "/proj": [file("gone.ctab"), file("tune.ctab")],
+      },
+      { "/proj/tune.ctab": "score {}" },
+    );
+    // gone.ctab is listed but throws on read (deleted mid-scan).
+    const readFile = (path: string) =>
+      path === "/proj/gone.ctab"
+        ? Promise.reject(new Error("ENOENT"))
+        : Promise.resolve("score {}");
+    const { files } = await collectCtabFiles("/proj", readDir, readFile);
+    expect(Object.keys(files)).toEqual(["tune.ctab"]);
   });
 
   it("skips dot-directories", async () => {
@@ -330,6 +350,43 @@ describe("io desktop (Tauri) backend", () => {
     expect(await openFolder()).toBeNull();
     expect(readDirMock).not.toHaveBeenCalled();
   });
+
+  it("rescanFolder re-reads the tree without a picker", async () => {
+    readDirMock.mockResolvedValue([
+      { name: "tune.ctab", isDirectory: false, isFile: true },
+    ]);
+    readTextFileMock.mockResolvedValue("score { 5:7 }");
+
+    const scan = await rescanFolder("/proj");
+
+    expect(openMock).not.toHaveBeenCalled();
+    expect(scan).toEqual({
+      files: { "tune.ctab": "score { 5:7 }" },
+      filePaths: { "tune.ctab": "/proj/tune.ctab" },
+    });
+  });
+
+  it("watchFolder wires a recursive immediate watch and returns the unwatch", async () => {
+    const unwatch = vi.fn();
+    watchImmediateMock.mockResolvedValue(unwatch);
+    const onChange = vi.fn();
+
+    const stop = await watchFolder("/proj", onChange);
+
+    // Uses watchImmediate (raw notify), not the debounced watch, so file removals
+    // reach the callback on macOS.
+    const [path, cb, options] = watchImmediateMock.mock.calls[0] as [
+      string,
+      () => void,
+      { recursive: boolean },
+    ];
+    expect(path).toBe("/proj");
+    expect(options).toMatchObject({ recursive: true });
+    // The watch callback funnels through to onChange.
+    cb();
+    expect(onChange).toHaveBeenCalled();
+    expect(stop).toBe(unwatch);
+  });
 });
 
 describe("io web backend", () => {
@@ -338,6 +395,12 @@ describe("io web backend", () => {
 
   it("openFolder is a no-op (null) off-desktop", async () => {
     expect(await openFolder()).toBeNull();
+  });
+
+  it("watchFolder is a no-op off-desktop, returning a usable unwatch", async () => {
+    const stop = await watchFolder("/proj", () => {});
+    expect(watchImmediateMock).not.toHaveBeenCalled();
+    expect(() => stop()).not.toThrow();
   });
 
   type FakeInput = {

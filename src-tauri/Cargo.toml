@@ -22,4 +22,6 @@ log = "0.4"
 tauri = { version = "2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2.7.1"
-tauri-plugin-fs = "2.5.1"
+# `watch` feature pulls in the notify-based file watcher (the `watch`/`unwatch`
+# commands are `#[cfg(feature = "watch")]`-gated) for live-folder syncing.
+tauri-plugin-fs = { version = "2.5.1", features = ["watch"] }
