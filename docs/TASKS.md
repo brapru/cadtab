@@ -720,13 +720,31 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Render content & labels:*
 
-- [ ] **T7.16 — Contextual render (def-gallery) + filename tab labels (D49).** Render/preview is
+- [x] **T7.16 — Contextual render (def-gallery) + filename tab labels (D49).** Render/preview is
       **contextual**: a file with a `score{}` renders its score; a **lib** (defs only) renders a
       **gallery** previewing each `def` on its own page. Needs **core** support to render an individual
       `def` (e.g. synthesize a minimal score per def). Tab labels become the **filename**, with the
       icon distinguishing view type (editor / render / preview). *Open sub-decision (resolve here):* how
       to render a parameterized `def` — representative/default args, nullary-only, or a placeholder.
-      *(NOTES #12, #13.)*
+      *(NOTES #12, #13.)* **Done in three sub-chunks. (1) Filename tab labels:** `Workspace.svelte`
+      labels each tab by the doc's filename (via an App `docName` resolver; untitled drafts → "untitled"),
+      the icon carries the view type, and the missing-on-disk strike rides the filename. Tab close became
+      a uniform "Close tab" wired to **Cmd/Ctrl-W** (closes the focused tab; `preventDefault` so the
+      desktop webview keeps its window). **(2) Core def-gallery:** `compile` branches `!has_score &&
+      has_def` → `eval_def_gallery` (eval.rs) + `layout_gallery` (layout.rs). Each declared def previews
+      by binding every param to a **representative sample chord** (open melody strings 3-2-1, `c.0`
+      lowest — matching the roll convention / `g_chord` example) at default 1/8; an erroring/empty preview
+      falls back to a **signature card**; synthetic diagnostics are discarded (real ones still come from
+      the resolve/type passes). Each card is a `DefHeading` signature over its staff, page pinned to
+      `config.width`, no time-sigs/bar-numbers. `CompileResult` shape unchanged → no wasm/TS binding
+      churn. **(3) App wiring:** the live painter (`Tab.svelte`) start-anchors/mutes the new `defHeading`
+      /`defNote` roles (matching `svg.ts`/export); `examples/licks.ctab` added as a standalone library to
+      open. Decision logged as the parameterized-def resolution (representative args + fallback,
+      **provisional** — eventual: author-specified examples). Tests: `workspace.test.ts`/`App.test.ts`
+      (labels, Cmd/Ctrl-W, icon-discriminated tabs), `svg.test.ts`/`Tab.test.ts` (gallery role styling),
+      and core eval/layout/lib (sample mapping, fallback, no-leak, gallery branch, example, insta
+      `def_gallery_wire_format`). **Verify on real desktop** (lib render shows the gallery; ⌘W closes the
+      focused tab without closing the window).
 
 *Render-layout → export track:*
 
@@ -812,6 +830,16 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       gutter, panels, the dock / tabs / bottom bar, the **iconified controls + tooltips (T7.10/T7.14)**,
       and the open/save/export controls so the whole UI reads as one design. Umbrella for T7.31, T7.27,
       T7.32 and the shell chrome.
+- [ ] **T7.37 — Unify the render painter's role styling (kill the Tab.svelte/tabStyle drift).** The
+      single-source-of-truth `tabStyle.ts` (`TEXT_STYLE` + `START_ANCHORED`/`MUTED_ROLES`, used by the
+      export painter `svg.ts`) is *not* used for anchor/mute by the live painter `Tab.svelte`, which
+      re-implements both as CSS `data-role` selectors — and the two lists have drifted: `sectionLabel`
+      and `barNumber` are start-anchored (and `barNumber` muted) in `tabStyle` but not in `Tab.svelte`'s
+      CSS, so a role added to one is silently mis-drawn in the other (surfaced adding `defHeading`
+      /`defNote` in T7.16). Make `Tab.svelte` consume `textAnchor()`/`isMuted()` (e.g. bind
+      `text-anchor`/`fill` from the shared sets) so screen and export never drift again, then audit
+      `sectionLabel`/`barNumber` for any resulting visual change. Pairs with the cohesion pass (T7.34).
+      Render-painter cleanup surfaced by T7.16.
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
 + web; justified systems with a fixed page; **paginated PDF export (T7.19)** behind a unified export

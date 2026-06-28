@@ -63,6 +63,23 @@ describe("renderTreeToSvg", () => {
     expect(svg).toContain('fill="#6b6b6b"');
   });
 
+  it("draws a def-gallery card: a bold start-anchored heading over a muted note", () => {
+    const svg = renderTreeToSvg(
+      tree([
+        text({ content: "forward_roll(c)", role: "defHeading" }),
+        text({ content: "parameterized — no preview", role: "defNote" }),
+      ]),
+    );
+    // The signature heading: bold, full ink, left-aligned.
+    expect(svg).toContain(">forward_roll(c)</text>");
+    expect(svg).toContain('font-weight="700"');
+    // The fallback note: muted and italic.
+    expect(svg).toContain('fill="#6b6b6b"');
+    expect(svg).toContain('font-style="italic"');
+    // Both anchor at their start x rather than centring.
+    expect(svg).toContain('text-anchor="start"');
+  });
+
   it("italicizes techniques and bolds the title", () => {
     const svg = renderTreeToSvg(
       tree([

@@ -52,9 +52,11 @@ const CHORD_SPACE: f32 = 1.3;
 // Vertical room reserved above the staff for measure numbers, when numbering is
 // on. It sits at the very top of the above-staff band.
 const BARNUM_SPACE: f32 = 0.9;
-// Def-gallery (D49) metrics. The signature heading's row height above a def's
-// staff, and the gap between one def's card and the next.
+// Def-gallery (D49) metrics. The signature heading's row height, the gap from
+// the heading down to the staff it labels, and the gap between one card and the
+// next.
 const GALLERY_HEADING_H: f32 = 1.6;
+const GALLERY_HEADING_GAP: f32 = 1.0;
 const GALLERY_DEF_GAP: f32 = 3.0;
 
 // Horizontal metrics.
@@ -286,6 +288,10 @@ pub fn layout_gallery(
             cursor += META_LINE_H + GALLERY_DEF_GAP;
             continue;
         }
+
+        // Breathing room between the heading and the staff it labels, so the
+        // signature doesn't crowd the top string line.
+        cursor += GALLERY_HEADING_GAP;
 
         // Lay the def's measures out into stacked systems, reusing the engine.
         // The gallery shows no time signatures, bar numbers, or above-staff band.

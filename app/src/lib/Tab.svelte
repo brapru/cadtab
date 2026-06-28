@@ -143,22 +143,27 @@
     /* Engraved-sheet look: serif across all rendered text. */
     font-family: Georgia, "Times New Roman", serif;
   }
-  /* The left-aligned header block (tuning name, string grid, capo) anchors at
-     its start x rather than centring like the title and in-staff text. */
+  /* The left-aligned header block (tuning name, string grid, capo) and the
+     def-gallery card text anchor at their start x rather than centring like the
+     title and in-staff text. */
   .tab text[data-role="tuningName"],
   .tab text[data-role="tuningString"],
-  .tab text[data-role="capo"] {
+  .tab text[data-role="capo"],
+  .tab text[data-role="defHeading"],
+  .tab text[data-role="defNote"] {
     text-anchor: start;
   }
   /* Hand/technique annotations read as secondary to the fret numbers; the
-     header tuning block reads as secondary to the title/composer. */
+     header tuning block and the def-gallery "no preview" note read as
+     secondary to the primary text. */
   .tab text[data-role="finger"],
   .tab text[data-role="technique"],
   .tab text[data-role="strum"],
   .tab text[data-role="ending"],
   .tab text[data-role="tuningName"],
   .tab text[data-role="tuningString"],
-  .tab text[data-role="capo"] {
+  .tab text[data-role="capo"],
+  .tab text[data-role="defNote"] {
     fill: var(--tab-muted);
   }
   /* Span-bearing primitives are interactive: clickable, and accented while the

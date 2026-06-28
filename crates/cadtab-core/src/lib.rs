@@ -393,6 +393,37 @@ mod tests {
     }
 
     #[test]
+    fn standalone_lib_example_renders_a_clean_gallery() {
+        // The shipped library example must stay valid and render as a def-gallery
+        // (a card per def), not a score.
+        use crate::render::TextRole;
+        let src = include_str!("../../../examples/licks.ctab");
+        let result = compile(src, LayoutConfig { width: 800.0 });
+        assert!(
+            result.diagnostics.is_empty(),
+            "examples/licks.ctab should compile cleanly, got {:?}",
+            result.diagnostics
+        );
+        let headings: Vec<&str> = result
+            .render_tree
+            .header
+            .iter()
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    content,
+                    role: TextRole::DefHeading,
+                    ..
+                } => Some(content.as_str()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            headings,
+            vec!["g_chord", "forward_roll(c)", "backward_roll(c)", "tag(c)"]
+        );
+    }
+
+    #[test]
     fn standalone_example_compiles_cleanly() {
         // The shipped single-file example must stay valid (and warning-free).
         let src = include_str!("../../../examples/cripple-creek.ctab");

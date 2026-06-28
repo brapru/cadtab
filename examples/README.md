@@ -14,6 +14,13 @@ A syntax reference: metadata, tunings, pickup, musical repeats with 1st/2nd
 endings, ties, rests, chords/pinches, techniques, and both loop forms. Open it to
 see most of the language on one page.
 
+### `licks.ctab` — a library (def-gallery)
+A file of `def`s with no `score`. Render is **contextual** (D49): a library has
+no song to render, so it previews each `def` on its own card — a nullary lick
+renders its body directly, and a parameterized roll renders over a sample chord
+(the open melody strings 3-2-1, `c.0` lowest). Open it and look at the render to
+see the gallery. Kept compiling by `standalone_lib_example_renders_a_clean_gallery`.
+
 ### `cripple-creek.ctab` — single-file persistence
 A complete standalone score with no imports.
 

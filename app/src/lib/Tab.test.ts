@@ -90,6 +90,38 @@ describe("Tab painter", () => {
     );
   });
 
+  it("paints def-gallery card text by role (bold heading, italic note)", () => {
+    const galleryTree: RenderTree = {
+      meta: { width: 12, height: 8 },
+      header: [
+        {
+          kind: "text",
+          x: 2,
+          y: 1,
+          content: "forward_roll(c)",
+          role: "defHeading",
+          span: null,
+        },
+        {
+          kind: "text",
+          x: 2,
+          y: 2,
+          content: "parameterized — no preview",
+          role: "defNote",
+          span: null,
+        },
+      ],
+      systems: [],
+    };
+    const { container } = render(Tab, { props: { tree: galleryTree } });
+    const heading = container.querySelector('text[data-role="defHeading"]');
+    expect(heading?.textContent).toBe("forward_roll(c)");
+    expect(heading?.getAttribute("font-weight")).toBe("700");
+    const note = container.querySelector('text[data-role="defNote"]');
+    expect(note?.textContent).toBe("parameterized — no preview");
+    expect(note?.getAttribute("font-style")).toBe("italic");
+  });
+
   // Path primitives stroke their geometry without a fill.
   it("paints paths as unfilled stroked curves", () => {
     const { container } = render(Tab, { props: { tree } });

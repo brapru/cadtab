@@ -1,0 +1,28 @@
+// A small banjo lick library — only `def`s, no `score`. Open it to see the
+// def-gallery (D49): render is contextual, so a library previews each def on its
+// own card. Parameterized rolls are previewed over a sample chord (the open
+// melody strings 3-2-1, where `c.0` is the lowest); a def whose body needs
+// something else previews as a signature-only card.
+
+instrument banjo
+tuning     openG
+
+// A nullary lick renders its body directly.
+def g_chord() {
+  3:0  2:0  1:0
+}
+
+// Rolls are parameterized by a chord `c` (c.0 lowest, indices ascend). Eight
+// notes fill one 4/4 bar at the 1/8 the gallery previews them at.
+def forward_roll(c) {
+  c.0 .t  c.1 .i  c.2 .m  c.0 .t  c.1 .i  c.2 .m  c.0 .t  c.2 .m
+}
+
+def backward_roll(c) {
+  c.2 .m  c.1 .i  c.0 .t  c.2 .m  c.1 .i  c.0 .t  c.2 .m  c.0 .t
+}
+
+// A closing tag lick.
+def tag(c) {
+  c.0  c.1  c.2  c.1  c.0  c.1  c.2  c.0
+}
