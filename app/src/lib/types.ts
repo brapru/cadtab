@@ -51,7 +51,8 @@ export type TextRole =
   | "ending"
   | "rest"
   | "sectionLabel"
-  | "chordSymbol";
+  | "chordSymbol"
+  | "barNumber";
 
 export type Primitive =
   | {

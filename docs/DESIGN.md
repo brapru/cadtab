@@ -464,6 +464,17 @@ user-defined tunings. Decisions are captured here as each task lands.
   symbols occupy a row below section labels and above voltas, each a span-tagged `Text` of new role
   `ChordSymbol`, centered over its note's column. Flows to export via `tabStyle.ts` (D30).
 
+- **D45 — Bar numbering (`barnumbers lines|all|off`).** A top-level render directive (like `tempo`)
+  setting a score-wide mode on `Score.bar_numbers` (`BarNumbers`, default `Lines`); an unknown mode
+  diagnoses and keeps the default. Numbering is 1-based over the full bars — pickups (anacruses) are
+  not numbered. Layout: `off` draws none; `lines` numbers the first numbered measure of each system;
+  `all` numbers every measure. Numbers occupy the row **closest to the staff** (just above any
+  volta), so the band stacks top → staff as section → chord → bar-number → volta; each a span-less
+  `Text` of new role `BarNumber`, left-anchored at the measure start. The band's row baselines are
+  computed once (`band_rows`) and each present row pushes the rows below it down, so absent rows
+  cost no space.
+  This completes M6's above-staff machinery; the role flows to export via `tabStyle.ts` (D30).
+
 ## 12. Phase 3 — MVP task order
 
 Authored separately in **`docs/TASKS.md`** (per request) — a walking-skeleton-first,
@@ -487,4 +498,5 @@ dependency-ordered build plan.
 - *2026-06-27* — Custom tunings resolved: D42 (see §11e). Inline `tuning { … }` per-string spec (scientific-notation pitches, optional name) extends D35 additively; header caption now optional. Completes T6.4.
 - *2026-06-27* — Section labels resolved: D43 (see §11e). `section "A"` marker → `Measure.section`; layout gains a reusable above-staff band (section over volta). Completes T6.1; T6.2/T6.3 reuse the band.
 - *2026-06-27* — Chord symbols resolved: D44 (see §11e). `chord "G"` contextual-keyword marker → `Event.chord` (attaches to next onset); above-staff band gains a chord row (under section, over volta). Completes T6.2.
+- *2026-06-27* — Bar numbering resolved: D45 (see §11e). `barnumbers lines|all|off` directive → `Score.bar_numbers` (default `lines`); band gains a top bar-number row. Completes T6.3 — **M6 done** (D42–D45).
 - *2026-06-27* — M5 (persistence & export) shipped: open/save `.ctab`, file-provider imports, project bundle, SVG/PNG export, new-from-template. **PDF confirmed an MVP deliverable, sequenced post-M6** (refined D30; tracked as T7.9): it's the distribution standard for tab, but it's paginated-layout work (not a serializer), so it lands after M6 settles above-staff layout and builds on M7's pinned page (T4.7t) — sequencing it later avoids building pagination twice, *not* dropping it from MVP.

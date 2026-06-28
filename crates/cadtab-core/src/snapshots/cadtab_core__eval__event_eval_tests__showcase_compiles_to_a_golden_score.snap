@@ -55,6 +55,7 @@ Score {
     capo: [
         "5th string @ 2",
     ],
+    bar_numbers: All,
     measures: [
         Measure {
             events: [
@@ -79,8 +80,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 215,
-                        end: 220,
+                        start: 298,
+                        end: 303,
                     },
                     chord: None,
                 },
@@ -105,8 +106,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 221,
-                        end: 226,
+                        start: 304,
+                        end: 309,
                     },
                     chord: None,
                 },
@@ -146,15 +147,15 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 478,
-                        end: 483,
+                        start: 561,
+                        end: 566,
                     },
                     chord: Some(
                         ChordSymbol {
                             text: "G",
                             span: Span {
-                                start: 411,
-                                end: 414,
+                                start: 494,
+                                end: 497,
                             },
                         },
                     ),
@@ -180,8 +181,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 485,
-                        end: 490,
+                        start: 568,
+                        end: 573,
                     },
                     chord: None,
                 },
@@ -206,8 +207,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 492,
-                        end: 497,
+                        start: 575,
+                        end: 580,
                     },
                     chord: None,
                 },
@@ -232,8 +233,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 500,
-                        end: 505,
+                        start: 583,
+                        end: 588,
                     },
                     chord: None,
                 },
@@ -258,8 +259,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 507,
-                        end: 512,
+                        start: 590,
+                        end: 595,
                     },
                     chord: None,
                 },
@@ -284,8 +285,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 514,
-                        end: 519,
+                        start: 597,
+                        end: 602,
                     },
                     chord: None,
                 },
@@ -323,15 +324,15 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 561,
-                        end: 576,
+                        start: 644,
+                        end: 659,
                     },
                     chord: Some(
                         ChordSymbol {
                             text: "C",
                             span: Span {
-                                start: 553,
-                                end: 556,
+                                start: 636,
+                                end: 639,
                             },
                         },
                     ),
@@ -346,8 +347,8 @@ Score {
                 SectionLabel {
                     text: "A",
                     span: Span {
-                        start: 270,
-                        end: 273,
+                        start: 353,
+                        end: 356,
                     },
                 },
             ),
@@ -362,8 +363,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 657,
-                        end: 660,
+                        start: 740,
+                        end: 743,
                     },
                     chord: None,
                 },
@@ -384,8 +385,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 662,
-                        end: 665,
+                        start: 745,
+                        end: 748,
                     },
                     chord: None,
                 },
@@ -406,8 +407,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 668,
-                        end: 671,
+                        start: 751,
+                        end: 754,
                     },
                     chord: None,
                 },
@@ -444,8 +445,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 721,
-                        end: 726,
+                        start: 804,
+                        end: 809,
                     },
                     chord: None,
                 },
@@ -470,8 +471,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 727,
-                        end: 732,
+                        start: 810,
+                        end: 815,
                     },
                     chord: None,
                 },
@@ -504,8 +505,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 886,
-                        end: 889,
+                        start: 969,
+                        end: 972,
                     },
                     chord: None,
                 },
@@ -526,8 +527,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 890,
-                        end: 893,
+                        start: 973,
+                        end: 976,
                     },
                     chord: None,
                 },
@@ -548,8 +549,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 886,
-                        end: 889,
+                        start: 969,
+                        end: 972,
                     },
                     chord: None,
                 },
@@ -570,8 +571,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 890,
-                        end: 893,
+                        start: 973,
+                        end: 976,
                     },
                     chord: None,
                 },
@@ -585,8 +586,8 @@ Score {
                 SectionLabel {
                     text: "B",
                     span: Span {
-                        start: 767,
-                        end: 770,
+                        start: 850,
+                        end: 853,
                     },
                 },
             ),
@@ -610,8 +611,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 1019,
-                        end: 1035,
+                        start: 1102,
+                        end: 1118,
                     },
                     chord: None,
                 },
@@ -634,8 +635,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 1019,
-                        end: 1035,
+                        start: 1102,
+                        end: 1118,
                     },
                     chord: None,
                 },
@@ -658,8 +659,8 @@ Score {
                         },
                     ),
                     span: Span {
-                        start: 1074,
-                        end: 1083,
+                        start: 1157,
+                        end: 1166,
                     },
                     chord: None,
                 },

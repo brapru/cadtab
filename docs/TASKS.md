@@ -336,10 +336,11 @@ re-ordering decision so M5 ships first and export later covers these.)*
       within a bar so the progression sits above the tab. Language: a chord-annotation construct
       positioned at a beat. Layout: text above the staff aligned to that beat; span-tagged. *(Done —
       D44: `chord "G"` contextual-keyword marker → `Event.chord`; chord row in the above-staff band.)*
-- [ ] **T6.3 — Bar numbering.** Number measures above the staff. Default: number only the first
+- [x] **T6.3 — Bar numbering.** Number measures above the staff. Default: number only the first
       bar of each system line. Options: number every bar; turn all numbering off. Language: a
       directive to set the mode (e.g. `barnumbers lines|all|off`). Layout: a small number above
-      the chosen measures.
+      the chosen measures. *(Done — D45: `barnumbers lines|all|off` → `Score.bar_numbers` (default
+      `lines`); top bar-number row in the above-staff band; pickups unnumbered.)*
 - [x] **T6.4 — Custom (user-defined) tunings.** Beyond the builtin named tunings, let a user
       define their own per-string tuning and have it drive pitch derivation and the header tuning
       grid. Extends T2.1/T2.7 tuning resolution; needs a display name (or "Custom") for the
@@ -347,7 +348,8 @@ re-ordering decision so M5 ships first and export later covers these.)*
       `tuning [NAME] { pitch* }` with scientific-notation pitches; unnamed ⇒ no header caption.)*
 
 **DoD M6:** section labels, chord symbols, bar numbering, and a custom tuning all parse, render
-above/within the staff, and round-trip; golden snapshots + error corpora green.
+above/within the staff, and round-trip; golden snapshots + error corpora green. ✅ **Met** (D42–D45;
+T6.1–T6.4 all landed, green-gated).
 
 ---
 

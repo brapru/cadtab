@@ -146,6 +146,8 @@ pub enum ItemKind {
     Tempo(IntLit),
     Instrument(Ident),
     Tuning(TuningRef),
+    /// `barnumbers lines|all|off` — the bar-numbering mode.
+    BarNumbers(Ident),
     Def(Def),
     Let(Let),
     Score(Score),

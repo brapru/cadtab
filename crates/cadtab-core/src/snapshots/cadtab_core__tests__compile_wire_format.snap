@@ -6,7 +6,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
   "renderTree": {
     "meta": {
       "width": 11.0,
-      "height": 12.3
+      "height": 13.2
     },
     "header": [
       {
@@ -62,7 +62,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
       {
         "bounds": {
           "x": 0.0,
-          "y": 5.5,
+          "y": 6.4,
           "w": 11.0,
           "h": 4.0
         },
@@ -70,73 +70,81 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 5.5,
+            "y1": 6.4,
             "x2": 7.2000003,
-            "y2": 5.5,
+            "y2": 6.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 6.5,
+            "y1": 7.4,
             "x2": 7.2000003,
-            "y2": 6.5,
+            "y2": 7.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 7.5,
+            "y1": 8.4,
             "x2": 3.8000002,
-            "y2": 7.5,
+            "y2": 8.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 5.0,
-            "y1": 7.5,
+            "y1": 8.4,
             "x2": 7.2000003,
-            "y2": 7.5,
+            "y2": 8.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 8.5,
+            "y1": 9.4,
             "x2": 7.2000003,
-            "y2": 8.5,
+            "y2": 9.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 9.5,
+            "y1": 10.4,
             "x2": 7.2000003,
-            "y2": 9.5,
+            "y2": 10.4,
             "weight": 0.06
           },
           {
             "kind": "line",
             "x1": 2.0,
-            "y1": 5.5,
+            "y1": 6.4,
             "x2": 2.0,
-            "y2": 9.5,
+            "y2": 10.4,
             "weight": 0.1
           },
           {
             "kind": "line",
             "x1": 7.2000003,
-            "y1": 5.5,
+            "y1": 6.4,
             "x2": 7.2000003,
-            "y2": 9.5,
+            "y2": 10.4,
             "weight": 0.1
+          },
+          {
+            "kind": "text",
+            "x": 2.0,
+            "y": 5.95,
+            "content": "1",
+            "role": "barNumber",
+            "span": null
           }
         ],
         "measures": [
           {
             "bounds": {
               "x": 2.0,
-              "y": 5.5,
+              "y": 6.4,
               "w": 5.2000003,
               "h": 4.0
             },
@@ -144,7 +152,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               {
                 "kind": "text",
                 "x": 3.2,
-                "y": 7.0,
+                "y": 7.8999996,
                 "content": "4",
                 "role": "timeSig",
                 "span": null
@@ -152,7 +160,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               {
                 "kind": "text",
                 "x": 3.2,
-                "y": 8.0,
+                "y": 8.9,
                 "content": "4",
                 "role": "timeSig",
                 "span": null
@@ -160,7 +168,7 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               {
                 "kind": "text",
                 "x": 4.4,
-                "y": 7.5,
+                "y": 8.4,
                 "content": "0",
                 "role": "fretNumber",
                 "span": {
@@ -171,9 +179,9 @@ expression: "serde_json::to_string_pretty(&result).unwrap()"
               {
                 "kind": "line",
                 "x1": 4.4,
-                "y1": 8.3,
+                "y1": 9.2,
                 "x2": 4.4,
-                "y2": 11.0,
+                "y2": 11.9,
                 "weight": 0.08
               }
             ],

@@ -10,8 +10,8 @@ use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, Mar
 use crate::diagnostics::Diagnostic;
 use crate::instrument::{Instrument, StringDef};
 use crate::model::{
-    Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger, Measure, Note, Phrase,
-    Pitch, Position, RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig,
+    BarNumbers, Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger, Measure, Note,
+    Phrase, Pitch, Position, RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig,
     split_measures,
 };
 use crate::span::Span;
@@ -753,6 +753,8 @@ pub fn eval_program_with_modules(program: &Program, modules: &[Item]) -> (Score,
         })
         .collect();
 
+    let bar_numbers = eval_bar_numbers(program, &mut diagnostics);
+
     let mut ev = Evaluator::new(instrument.clone());
     ev.load_stdlib();
     ev.load_items(modules);
@@ -775,10 +777,31 @@ pub fn eval_program_with_modules(program: &Program, modules: &[Item]) -> (Score,
             meta,
             instrument,
             capo,
+            bar_numbers,
             measures,
         },
         diagnostics,
     )
+}
+
+/// Resolve the `barnumbers lines|all|off` mode (a later declaration wins),
+/// defaulting to `lines`. An unknown mode diagnoses and keeps the default.
+fn eval_bar_numbers(program: &Program, diagnostics: &mut Vec<Diagnostic>) -> BarNumbers {
+    let mut mode = BarNumbers::default();
+    for item in &program.items {
+        if let ItemKind::BarNumbers(ident) = &item.kind {
+            match ident.name.as_str() {
+                "lines" => mode = BarNumbers::Lines,
+                "all" => mode = BarNumbers::All,
+                "off" => mode = BarNumbers::Off,
+                other => diagnostics.push(
+                    Diagnostic::error(ident.span, format!("unknown bar-number mode `{other}`"))
+                        .with_help("use `lines`, `all`, or `off`"),
+                ),
+            }
+        }
+    }
+    mode
 }
 
 /// Resolve the instrument from the `instrument` declaration (defaulting to
@@ -2096,6 +2119,37 @@ score {
     fn capo_labels_are_collected() {
         let (score, _) = program_score("capo \"5th string @ 2\"\ninstrument banjo\nscore {}");
         assert_eq!(score.capo, vec!["5th string @ 2".to_string()]);
+    }
+
+    #[test]
+    fn bar_numbering_defaults_to_lines() {
+        let (score, _) = program_score("score {}");
+        assert_eq!(score.bar_numbers, crate::model::BarNumbers::Lines);
+    }
+
+    #[test]
+    fn bar_numbering_mode_is_resolved() {
+        use crate::model::BarNumbers;
+        for (src, want) in [
+            ("barnumbers all\nscore {}", BarNumbers::All),
+            ("barnumbers off\nscore {}", BarNumbers::Off),
+            ("barnumbers lines\nscore {}", BarNumbers::Lines),
+        ] {
+            let (score, diags) = program_score(src);
+            assert!(diags.is_empty(), "{diags:?}");
+            assert_eq!(score.bar_numbers, want);
+        }
+    }
+
+    #[test]
+    fn an_unknown_bar_number_mode_diagnoses_and_keeps_the_default() {
+        let (score, diags) = program_score("barnumbers sometimes\nscore {}");
+        assert!(
+            diags
+                .iter()
+                .any(|d| d.message.contains("unknown bar-number mode"))
+        );
+        assert_eq!(score.bar_numbers, crate::model::BarNumbers::Lines);
     }
 
     #[test]

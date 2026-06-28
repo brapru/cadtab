@@ -23,6 +23,7 @@ export const TEXT_STYLE: Record<TextRole, TextStyle> = {
   rest: { size: 1.5 },
   sectionLabel: { size: 1.2, weight: 700 },
   chordSymbol: { size: 1.05, weight: 600 },
+  barNumber: { size: 0.75 },
 };
 
 // The left-aligned header block anchors at its start x rather than centring.
@@ -31,6 +32,7 @@ const START_ANCHORED: ReadonlySet<TextRole> = new Set([
   "tuningString",
   "capo",
   "sectionLabel",
+  "barNumber",
 ]);
 
 // Hand/technique annotations and the header tuning block read as secondary ink.
@@ -42,6 +44,7 @@ const MUTED_ROLES: ReadonlySet<TextRole> = new Set([
   "tuningName",
   "tuningString",
   "capo",
+  "barNumber",
 ]);
 
 export function textAnchor(role: TextRole): "start" | "middle" {

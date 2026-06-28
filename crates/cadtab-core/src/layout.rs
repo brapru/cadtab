@@ -12,7 +12,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::beam;
 use crate::model::{
-    Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique, TimeSig,
+    BarNumbers, Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique,
+    TimeSig,
 };
 use crate::render::{LayoutMeta, MeasureBox, Primitive, Rect, RenderTree, System, TextRole};
 use crate::span::Span;
@@ -46,6 +47,9 @@ const SECTION_SPACE: f32 = 1.4;
 // Vertical room reserved above the staff for chord symbols, when any system
 // carries one. It sits below the section-label row and above any voltas.
 const CHORD_SPACE: f32 = 1.3;
+// Vertical room reserved above the staff for measure numbers, when numbering is
+// on. It sits at the very top of the above-staff band.
+const BARNUM_SPACE: f32 = 0.9;
 
 // Horizontal metrics.
 const LEFT_MARGIN: f32 = 2.0;
@@ -173,6 +177,22 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
 
     let (header, header_bottom) = build_header(score, width);
 
+    // Measure numbers, 1-based over the full bars (pickups are not numbered).
+    let mut bar_count = 0u32;
+    let bar_nums: Vec<Option<u32>> = score
+        .measures
+        .iter()
+        .map(|m| {
+            if m.is_pickup {
+                None
+            } else {
+                bar_count += 1;
+                Some(bar_count)
+            }
+        })
+        .collect();
+    let has_barnum = score.bar_numbers != BarNumbers::Off;
+
     // Stack the systems vertically, each restating the staff lines.
     let mut systems = Vec::with_capacity(groups.len());
     let mut cursor = header_bottom + HEADER_GAP;
@@ -180,14 +200,15 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     for &(start, end) in &groups {
         let measures = &score.measures[start..end];
         // The above-staff band stacks (top → staff): section label, chord
-        // symbols, then volta bracket.
+        // symbols, bar number, then volta bracket.
         let has_section = measures.iter().any(|m| m.section.is_some());
         let has_chord = measures
             .iter()
             .any(|m| m.events.iter().any(|e| e.chord.is_some()));
         let has_volta = measures.iter().any(|m| m.ending.is_some());
         let band_top = cursor;
-        let above = if has_section { SECTION_SPACE } else { 0.0 }
+        let above = if has_barnum { BARNUM_SPACE } else { 0.0 }
+            + if has_section { SECTION_SPACE } else { 0.0 }
             + if has_chord { CHORD_SPACE } else { 0.0 }
             + if has_volta { VOLTA_SPACE } else { 0.0 };
         let staff_top = band_top + above;
@@ -196,6 +217,8 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
             measures,
             &plans[start..end],
             &beams[start..end],
+            &bar_nums[start..end],
+            score.bar_numbers,
             width,
             band_top,
             staff_top,
@@ -286,6 +309,8 @@ fn build_system(
     measures: &[Measure],
     plans: &[MeasurePlan],
     beams: &[Vec<beam::BeamGroup>],
+    bar_nums: &[Option<u32>],
+    bar_mode: BarNumbers,
     width: f32,
     band_top: f32,
     staff_top: f32,
@@ -296,9 +321,13 @@ fn build_system(
     let beam_y = staff_bottom + BEAM_DROP;
     let line_y = |string: u8| staff_top + (f32::from(string.saturating_sub(1))) * STRING_SPACING;
 
-    // Chord symbols sit one row below any section labels in the above-staff band.
+    // The above-staff band rows, top → staff: section, chord, bar number.
     let has_section = measures.iter().any(|m| m.section.is_some());
-    let chord_row_y = band_top + if has_section { SECTION_SPACE } else { 0.0 } + CHORD_SPACE / 2.0;
+    let has_chord = measures
+        .iter()
+        .any(|m| m.events.iter().any(|e| e.chord.is_some()));
+    let rows = band_rows(band_top, has_section, has_chord);
+    let chord_row_y = rows.chord_y;
 
     let mut number_xs: Vec<Vec<f32>> = vec![Vec::new(); n_strings];
     let mut boxes = Vec::with_capacity(plans.len());
@@ -428,7 +457,8 @@ fn build_system(
     }
     sys_prims.extend(barlines(measures, &ranges, staff_top, staff_bottom));
     sys_prims.extend(volta_brackets(measures, &ranges, staff_top));
-    sys_prims.extend(section_labels(measures, &ranges, band_top));
+    sys_prims.extend(section_labels(measures, &ranges, rows.section_y));
+    sys_prims.extend(bar_numbers(bar_nums, bar_mode, &ranges, rows.barnum_y));
 
     System {
         bounds: Rect {
@@ -815,11 +845,40 @@ fn volta_brackets(measures: &[Measure], ranges: &[(f32, f32)], staff_top: f32) -
     prims
 }
 
+/// Baselines for the above-staff band rows, stacked top → staff: bar number,
+/// section label, chord symbol. A row's height only pushes the rows below it
+/// down when that row is actually present in this system.
+struct BandRows {
+    barnum_y: f32,
+    section_y: f32,
+    chord_y: f32,
+}
+
+/// Stacked top → staff: section label, chord symbol, then bar number (the
+/// bar number sits closest to the staff, just above any volta). A row's height
+/// only pushes the rows below it down when that row is present in this system.
+fn band_rows(band_top: f32, has_section: bool, has_chord: bool) -> BandRows {
+    let mut y = band_top;
+    let section_y = y + SECTION_SPACE / 2.0;
+    if has_section {
+        y += SECTION_SPACE;
+    }
+    let chord_y = y + CHORD_SPACE / 2.0;
+    if has_chord {
+        y += CHORD_SPACE;
+    }
+    let barnum_y = y + BARNUM_SPACE / 2.0;
+    BandRows {
+        barnum_y,
+        section_y,
+        chord_y,
+    }
+}
+
 /// Section labels (rehearsal marks) above the staff: each measure carrying a
-/// `section` mark gets its label left-anchored at the measure's start, at the
-/// top of the above-staff band. Span-tagged so it maps back to its source.
-fn section_labels(measures: &[Measure], ranges: &[(f32, f32)], band_top: f32) -> Vec<Primitive> {
-    let baseline = band_top + SECTION_SPACE / 2.0;
+/// `section` mark gets its label left-anchored at the measure's start, on the
+/// band's section row (`baseline`). Span-tagged so it maps back to its source.
+fn section_labels(measures: &[Measure], ranges: &[(f32, f32)], baseline: f32) -> Vec<Primitive> {
     measures
         .iter()
         .zip(ranges)
@@ -833,6 +892,35 @@ fn section_labels(measures: &[Measure], ranges: &[(f32, f32)], band_top: f32) ->
             })
         })
         .collect()
+}
+
+/// Measure numbers above the staff. `off` draws none; `lines` numbers only the
+/// first measure of the system; `all` numbers every measure. Pickups carry no
+/// number (`None`) and are skipped. Left-anchored at the measure's start.
+fn bar_numbers(
+    bar_nums: &[Option<u32>],
+    mode: BarNumbers,
+    ranges: &[(f32, f32)],
+    baseline: f32,
+) -> Vec<Primitive> {
+    let number = |i: usize, n: u32| Primitive::Text {
+        x: ranges[i].0,
+        y: baseline,
+        content: n.to_string(),
+        role: TextRole::BarNumber,
+        span: None,
+    };
+    // Pair each measure with its number, dropping unnumbered pickups.
+    let numbered = bar_nums
+        .iter()
+        .enumerate()
+        .filter_map(|(i, n)| n.map(|n| (i, n)));
+    match mode {
+        BarNumbers::Off => Vec::new(),
+        // Only the first numbered measure of the system.
+        BarNumbers::Lines => numbered.take(1).map(|(i, n)| number(i, n)).collect(),
+        BarNumbers::All => numbered.map(|(i, n)| number(i, n)).collect(),
+    }
 }
 
 /// Build the header block: a centred title/composer at the top, then a
@@ -1003,10 +1091,13 @@ mod tests {
     }
 
     fn banjo_score(measures: Vec<Measure>) -> Score {
+        // Bar numbers off by default in unit tests so they don't perturb other
+        // assertions; the `lines` default is covered by eval + the showcase.
         Score {
             meta: ScoreMeta::default(),
             instrument: Instrument::builtin("banjo").unwrap(),
             capo: vec![],
+            bar_numbers: BarNumbers::Off,
             measures,
         }
     }
@@ -1291,6 +1382,7 @@ mod tests {
                 meta: ScoreMeta::default(),
                 instrument: Instrument::builtin("guitar").unwrap(),
                 capo: vec![],
+                bar_numbers: BarNumbers::Off,
                 measures: vec![measure()],
             },
             cfg(),
@@ -1372,6 +1464,7 @@ mod tests {
                 .with_tuning("doubleC", Span::new(0, 0))
                 .unwrap(),
             capo: vec!["2".into()],
+            bar_numbers: BarNumbers::Off,
             measures: vec![Measure::new(vec![note(3, 0, 0)])],
         };
         let tree = layout(&score, cfg());
@@ -1411,6 +1504,7 @@ mod tests {
             meta: ScoreMeta::default(),
             instrument: Instrument::builtin("banjo").unwrap(),
             capo: vec![],
+            bar_numbers: BarNumbers::Off,
             measures: vec![Measure::new(vec![note(3, 0, 0)])],
         };
         let tree = layout(&score, cfg());
@@ -1442,6 +1536,7 @@ mod tests {
                 .with_custom_strings(None, strings, Span::new(0, 0))
                 .unwrap(),
             capo: vec![],
+            bar_numbers: BarNumbers::Off,
             measures: vec![Measure::new(vec![note(3, 0, 0)])],
         };
         let tree = layout(&score, cfg());
@@ -1613,6 +1708,109 @@ mod tests {
         // Top → staff: section label, chord symbol, volta number.
         assert!(section_y < chord_y);
         assert!(chord_y < ending_y);
+    }
+
+    fn numbered_score(measures: Vec<Measure>, mode: BarNumbers) -> Score {
+        Score {
+            bar_numbers: mode,
+            ..banjo_score(measures)
+        }
+    }
+
+    fn bar_prims(tree: &RenderTree) -> Vec<String> {
+        tree.systems
+            .iter()
+            .flat_map(|s| s.prims.iter())
+            .filter_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::BarNumber,
+                    content,
+                    ..
+                } => Some(content.clone()),
+                _ => None,
+            })
+            .collect()
+    }
+
+    #[test]
+    fn lines_mode_numbers_only_the_first_bar_of_the_system() {
+        let measures = vec![
+            Measure::new(vec![note(3, 0, 0)]),
+            Measure::new(vec![note(2, 0, 0)]),
+            Measure::new(vec![note(1, 0, 0)]),
+        ];
+        let tree = layout(&numbered_score(measures, BarNumbers::Lines), cfg());
+        assert_eq!(bar_prims(&tree), vec!["1"]);
+    }
+
+    #[test]
+    fn all_mode_numbers_every_bar() {
+        let measures = vec![
+            Measure::new(vec![note(3, 0, 0)]),
+            Measure::new(vec![note(2, 0, 0)]),
+            Measure::new(vec![note(1, 0, 0)]),
+        ];
+        let tree = layout(&numbered_score(measures, BarNumbers::All), cfg());
+        assert_eq!(bar_prims(&tree), vec!["1", "2", "3"]);
+    }
+
+    #[test]
+    fn off_mode_draws_no_bar_numbers() {
+        let measures = vec![
+            Measure::new(vec![note(3, 0, 0)]),
+            Measure::new(vec![note(2, 0, 0)]),
+        ];
+        let tree = layout(&numbered_score(measures, BarNumbers::Off), cfg());
+        assert!(bar_prims(&tree).is_empty());
+    }
+
+    #[test]
+    fn a_pickup_bar_is_not_numbered() {
+        let mut pickup = Measure::new(vec![note(1, 0, 0)]);
+        pickup.is_pickup = true;
+        let measures = vec![
+            pickup,
+            Measure::new(vec![note(3, 0, 0)]),
+            Measure::new(vec![note(2, 0, 0)]),
+        ];
+        // `all` would number every full bar; the leading pickup is skipped, so the
+        // first full bar is "1".
+        let tree = layout(&numbered_score(measures, BarNumbers::All), cfg());
+        assert_eq!(bar_prims(&tree), vec!["1", "2"]);
+    }
+
+    #[test]
+    fn bar_numbers_reserve_room_and_sit_closest_to_the_staff() {
+        let plain = layout(
+            &numbered_score(vec![Measure::new(vec![note(3, 0, 0)])], BarNumbers::Off),
+            cfg(),
+        );
+        let mut m = Measure::new(vec![note_with_chord("G", 3, 0)]);
+        m.section = Some(crate::model::SectionLabel {
+            text: "A".into(),
+            span: Span::new(0, 1),
+        });
+        let numbered = layout(&numbered_score(vec![m], BarNumbers::Lines), cfg());
+        // Adding the bar-number row grows the sheet.
+        assert!(numbered.meta.height > plain.meta.height);
+        let bar_y = numbered
+            .systems
+            .iter()
+            .flat_map(|s| s.prims.iter())
+            .find_map(|p| match p {
+                Primitive::Text {
+                    role: TextRole::BarNumber,
+                    y,
+                    ..
+                } => Some(*y),
+                _ => None,
+            })
+            .unwrap();
+        // The number sits below the section label and chord symbol — closest to
+        // the staff, but still above it.
+        assert!(bar_y > y_of(section_prims(&numbered)[0]));
+        assert!(bar_y > y_of(chord_prims(&numbered)[0]));
+        assert!(bar_y < y_of(fret_numbers(&numbered)[0]));
     }
 
     #[test]

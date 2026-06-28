@@ -371,14 +371,29 @@ pub struct ScoreMeta {
     pub tempo: Option<u16>,
 }
 
+/// How measures are numbered above the staff.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum BarNumbers {
+    /// Number the first bar of each system line (the default).
+    #[default]
+    Lines,
+    /// Number every bar.
+    All,
+    /// No bar numbers.
+    Off,
+}
+
 /// A fully evaluated score: metadata, the resolved instrument, display-only capo
-/// labels, and the barred measures. The layout engine is a pure function of it.
+/// labels, the bar-numbering mode, and the barred measures. The layout engine is
+/// a pure function of it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Score {
     pub meta: ScoreMeta,
     pub instrument: Instrument,
     pub capo: Vec<String>,
+    pub bar_numbers: BarNumbers,
     pub measures: Vec<Measure>,
 }
 

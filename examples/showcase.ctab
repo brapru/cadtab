@@ -5,6 +5,7 @@ tempo    130
 instrument banjo
 tuning     openG
 capo "5th string @ 2"
+barnumbers all            // number every bar (default is `lines`; `off` disables)
 
 score {
   time 4/4

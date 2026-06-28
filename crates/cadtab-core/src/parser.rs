@@ -115,6 +115,7 @@ impl<'a> Parser<'a> {
                     | Keyword::Tuning
                     | Keyword::Capo
                     | Keyword::Import
+                    | Keyword::BarNumbers
                     | Keyword::Def
                     | Keyword::Let
                     | Keyword::Score
@@ -201,6 +202,10 @@ impl<'a> Parser<'a> {
             Keyword::Tuning => {
                 self.bump();
                 self.parse_tuning()
+            }
+            Keyword::BarNumbers => {
+                self.bump();
+                self.ident_decl(ItemKind::BarNumbers)
             }
             Keyword::Score => {
                 self.bump();
@@ -1124,6 +1129,14 @@ mod tests {
         }
         match only_item("tuning openG") {
             ItemKind::Tuning(TuningRef::Named(id)) => assert_eq!(id.name, "openG"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn barnumbers_directive_carries_its_mode() {
+        match only_item("barnumbers all") {
+            ItemKind::BarNumbers(id) => assert_eq!(id.name, "all"),
             other => panic!("{other:?}"),
         }
     }

@@ -97,6 +97,21 @@ Program {
             },
         },
         Item {
+            kind: BarNumbers(
+                Ident {
+                    name: "all",
+                    span: Span {
+                        start: 126,
+                        end: 129,
+                    },
+                },
+            ),
+            span: Span {
+                start: 115,
+                end: 129,
+            },
+        },
+        Item {
             kind: Score(
                 Score {
                     items: [
@@ -106,26 +121,26 @@ Program {
                                     num: IntLit {
                                         value: 4,
                                         span: Span {
-                                            start: 131,
-                                            end: 132,
+                                            start: 214,
+                                            end: 215,
                                         },
                                     },
                                     den: IntLit {
                                         value: 4,
                                         span: Span {
-                                            start: 133,
-                                            end: 134,
+                                            start: 216,
+                                            end: 217,
                                         },
                                     },
                                     span: Span {
-                                        start: 131,
-                                        end: 134,
+                                        start: 214,
+                                        end: 217,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 126,
-                                end: 134,
+                                start: 209,
+                                end: 217,
                             },
                         },
                         ScoreItem {
@@ -134,26 +149,26 @@ Program {
                                     num: IntLit {
                                         value: 1,
                                         span: Span {
-                                            start: 145,
-                                            end: 146,
+                                            start: 228,
+                                            end: 229,
                                         },
                                     },
                                     den: IntLit {
                                         value: 8,
                                         span: Span {
-                                            start: 147,
-                                            end: 148,
+                                            start: 230,
+                                            end: 231,
                                         },
                                     },
                                     span: Span {
-                                        start: 145,
-                                        end: 148,
+                                        start: 228,
+                                        end: 231,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 137,
-                                end: 148,
+                                start: 220,
+                                end: 231,
                             },
                         },
                         ScoreItem {
@@ -169,34 +184,34 @@ Program {
                                                                 string: IntLit {
                                                                     value: 2,
                                                                     span: Span {
-                                                                        start: 215,
-                                                                        end: 216,
+                                                                        start: 298,
+                                                                        end: 299,
                                                                     },
                                                                 },
                                                                 fret: IntLit {
                                                                     value: 0,
                                                                     span: Span {
-                                                                        start: 217,
-                                                                        end: 218,
+                                                                        start: 300,
+                                                                        end: 301,
                                                                     },
                                                                 },
                                                                 span: Span {
-                                                                    start: 215,
-                                                                    end: 218,
+                                                                    start: 298,
+                                                                    end: 301,
                                                                 },
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 215,
-                                                            end: 218,
+                                                            start: 298,
+                                                            end: 301,
                                                         },
                                                     },
                                                     mark: Some(
                                                         Mark {
                                                             kind: Index,
                                                             span: Span {
-                                                                start: 218,
-                                                                end: 220,
+                                                                start: 301,
+                                                                end: 303,
                                                             },
                                                         },
                                                     ),
@@ -204,8 +219,8 @@ Program {
                                                 },
                                             ),
                                             span: Span {
-                                                start: 215,
-                                                end: 220,
+                                                start: 298,
+                                                end: 303,
                                             },
                                         },
                                         Event {
@@ -217,34 +232,34 @@ Program {
                                                                 string: IntLit {
                                                                     value: 1,
                                                                     span: Span {
-                                                                        start: 221,
-                                                                        end: 222,
+                                                                        start: 304,
+                                                                        end: 305,
                                                                     },
                                                                 },
                                                                 fret: IntLit {
                                                                     value: 0,
                                                                     span: Span {
-                                                                        start: 223,
-                                                                        end: 224,
+                                                                        start: 306,
+                                                                        end: 307,
                                                                     },
                                                                 },
                                                                 span: Span {
-                                                                    start: 221,
-                                                                    end: 224,
+                                                                    start: 304,
+                                                                    end: 307,
                                                                 },
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 221,
-                                                            end: 224,
+                                                            start: 304,
+                                                            end: 307,
                                                         },
                                                     },
                                                     mark: Some(
                                                         Mark {
                                                             kind: Thumb,
                                                             span: Span {
-                                                                start: 224,
-                                                                end: 226,
+                                                                start: 307,
+                                                                end: 309,
                                                             },
                                                         },
                                                     ),
@@ -252,20 +267,20 @@ Program {
                                                 },
                                             ),
                                             span: Span {
-                                                start: 221,
-                                                end: 226,
+                                                start: 304,
+                                                end: 309,
                                             },
                                         },
                                     ],
                                     span: Span {
-                                        start: 213,
-                                        end: 228,
+                                        start: 296,
+                                        end: 311,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 206,
-                                end: 228,
+                                start: 289,
+                                end: 311,
                             },
                         },
                         ScoreItem {
@@ -273,14 +288,14 @@ Program {
                                 StringLit {
                                     value: "A",
                                     span: Span {
-                                        start: 270,
-                                        end: 273,
+                                        start: 353,
+                                        end: 356,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 262,
-                                end: 273,
+                                start: 345,
+                                end: 356,
                             },
                         },
                         ScoreItem {
@@ -292,157 +307,13 @@ Program {
                                                 StringLit {
                                                     value: "G",
                                                     span: Span {
-                                                        start: 411,
-                                                        end: 414,
+                                                        start: 494,
+                                                        end: 497,
                                                     },
                                                 },
                                             ),
                                             span: Span {
-                                                start: 405,
-                                                end: 414,
-                                            },
-                                        },
-                                        Event {
-                                            kind: Note(
-                                                Note {
-                                                    head: Expr {
-                                                        kind: Position(
-                                                            Position {
-                                                                string: IntLit {
-                                                                    value: 3,
-                                                                    span: Span {
-                                                                        start: 478,
-                                                                        end: 479,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 480,
-                                                                        end: 481,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 478,
-                                                                    end: 481,
-                                                                },
-                                                            },
-                                                        ),
-                                                        span: Span {
-                                                            start: 478,
-                                                            end: 481,
-                                                        },
-                                                    },
-                                                    mark: Some(
-                                                        Mark {
-                                                            kind: Thumb,
-                                                            span: Span {
-                                                                start: 481,
-                                                                end: 483,
-                                                            },
-                                                        },
-                                                    ),
-                                                    duration: None,
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 478,
-                                                end: 483,
-                                            },
-                                        },
-                                        Event {
-                                            kind: Note(
-                                                Note {
-                                                    head: Expr {
-                                                        kind: Position(
-                                                            Position {
-                                                                string: IntLit {
-                                                                    value: 2,
-                                                                    span: Span {
-                                                                        start: 485,
-                                                                        end: 486,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 487,
-                                                                        end: 488,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 485,
-                                                                    end: 488,
-                                                                },
-                                                            },
-                                                        ),
-                                                        span: Span {
-                                                            start: 485,
-                                                            end: 488,
-                                                        },
-                                                    },
-                                                    mark: Some(
-                                                        Mark {
-                                                            kind: Index,
-                                                            span: Span {
-                                                                start: 488,
-                                                                end: 490,
-                                                            },
-                                                        },
-                                                    ),
-                                                    duration: None,
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 485,
-                                                end: 490,
-                                            },
-                                        },
-                                        Event {
-                                            kind: Note(
-                                                Note {
-                                                    head: Expr {
-                                                        kind: Position(
-                                                            Position {
-                                                                string: IntLit {
-                                                                    value: 1,
-                                                                    span: Span {
-                                                                        start: 492,
-                                                                        end: 493,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 494,
-                                                                        end: 495,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 492,
-                                                                    end: 495,
-                                                                },
-                                                            },
-                                                        ),
-                                                        span: Span {
-                                                            start: 492,
-                                                            end: 495,
-                                                        },
-                                                    },
-                                                    mark: Some(
-                                                        Mark {
-                                                            kind: Middle,
-                                                            span: Span {
-                                                                start: 495,
-                                                                end: 497,
-                                                            },
-                                                        },
-                                                    ),
-                                                    duration: None,
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 492,
+                                                start: 488,
                                                 end: 497,
                                             },
                                         },
@@ -453,36 +324,36 @@ Program {
                                                         kind: Position(
                                                             Position {
                                                                 string: IntLit {
-                                                                    value: 5,
+                                                                    value: 3,
                                                                     span: Span {
-                                                                        start: 500,
-                                                                        end: 501,
+                                                                        start: 561,
+                                                                        end: 562,
                                                                     },
                                                                 },
                                                                 fret: IntLit {
                                                                     value: 0,
                                                                     span: Span {
-                                                                        start: 502,
-                                                                        end: 503,
+                                                                        start: 563,
+                                                                        end: 564,
                                                                     },
                                                                 },
                                                                 span: Span {
-                                                                    start: 500,
-                                                                    end: 503,
+                                                                    start: 561,
+                                                                    end: 564,
                                                                 },
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 500,
-                                                            end: 503,
+                                                            start: 561,
+                                                            end: 564,
                                                         },
                                                     },
                                                     mark: Some(
                                                         Mark {
                                                             kind: Thumb,
                                                             span: Span {
-                                                                start: 503,
-                                                                end: 505,
+                                                                start: 564,
+                                                                end: 566,
                                                             },
                                                         },
                                                     ),
@@ -490,8 +361,8 @@ Program {
                                                 },
                                             ),
                                             span: Span {
-                                                start: 500,
-                                                end: 505,
+                                                start: 561,
+                                                end: 566,
                                             },
                                         },
                                         Event {
@@ -501,153 +372,7 @@ Program {
                                                         kind: Position(
                                                             Position {
                                                                 string: IntLit {
-                                                                    value: 3,
-                                                                    span: Span {
-                                                                        start: 507,
-                                                                        end: 508,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 509,
-                                                                        end: 510,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 507,
-                                                                    end: 510,
-                                                                },
-                                                            },
-                                                        ),
-                                                        span: Span {
-                                                            start: 507,
-                                                            end: 510,
-                                                        },
-                                                    },
-                                                    mark: Some(
-                                                        Mark {
-                                                            kind: Index,
-                                                            span: Span {
-                                                                start: 510,
-                                                                end: 512,
-                                                            },
-                                                        },
-                                                    ),
-                                                    duration: None,
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 507,
-                                                end: 512,
-                                            },
-                                        },
-                                        Event {
-                                            kind: Note(
-                                                Note {
-                                                    head: Expr {
-                                                        kind: Position(
-                                                            Position {
-                                                                string: IntLit {
-                                                                    value: 1,
-                                                                    span: Span {
-                                                                        start: 514,
-                                                                        end: 515,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 516,
-                                                                        end: 517,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 514,
-                                                                    end: 517,
-                                                                },
-                                                            },
-                                                        ),
-                                                        span: Span {
-                                                            start: 514,
-                                                            end: 517,
-                                                        },
-                                                    },
-                                                    mark: Some(
-                                                        Mark {
-                                                            kind: Middle,
-                                                            span: Span {
-                                                                start: 517,
-                                                                end: 519,
-                                                            },
-                                                        },
-                                                    ),
-                                                    duration: None,
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 514,
-                                                end: 519,
-                                            },
-                                        },
-                                        Event {
-                                            kind: ChordSymbol(
-                                                StringLit {
-                                                    value: "C",
-                                                    span: Span {
-                                                        start: 553,
-                                                        end: 556,
-                                                    },
-                                                },
-                                            ),
-                                            span: Span {
-                                                start: 547,
-                                                end: 556,
-                                            },
-                                        },
-                                        Event {
-                                            kind: Chord(
-                                                Chord {
-                                                    notes: [
-                                                        ChordNote {
-                                                            position: Position {
-                                                                string: IntLit {
-                                                                    value: 1,
-                                                                    span: Span {
-                                                                        start: 562,
-                                                                        end: 563,
-                                                                    },
-                                                                },
-                                                                fret: IntLit {
-                                                                    value: 0,
-                                                                    span: Span {
-                                                                        start: 564,
-                                                                        end: 565,
-                                                                    },
-                                                                },
-                                                                span: Span {
-                                                                    start: 562,
-                                                                    end: 565,
-                                                                },
-                                                            },
-                                                            mark: Some(
-                                                                Mark {
-                                                                    kind: Middle,
-                                                                    span: Span {
-                                                                        start: 565,
-                                                                        end: 567,
-                                                                    },
-                                                                },
-                                                            ),
-                                                            span: Span {
-                                                                start: 562,
-                                                                end: 567,
-                                                            },
-                                                        },
-                                                        ChordNote {
-                                                            position: Position {
-                                                                string: IntLit {
-                                                                    value: 5,
+                                                                    value: 2,
                                                                     span: Span {
                                                                         start: 568,
                                                                         end: 569,
@@ -665,18 +390,308 @@ Program {
                                                                     end: 571,
                                                                 },
                                                             },
+                                                        ),
+                                                        span: Span {
+                                                            start: 568,
+                                                            end: 571,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Index,
+                                                            span: Span {
+                                                                start: 571,
+                                                                end: 573,
+                                                            },
+                                                        },
+                                                    ),
+                                                    duration: None,
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 568,
+                                                end: 573,
+                                            },
+                                        },
+                                        Event {
+                                            kind: Note(
+                                                Note {
+                                                    head: Expr {
+                                                        kind: Position(
+                                                            Position {
+                                                                string: IntLit {
+                                                                    value: 1,
+                                                                    span: Span {
+                                                                        start: 575,
+                                                                        end: 576,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 577,
+                                                                        end: 578,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 575,
+                                                                    end: 578,
+                                                                },
+                                                            },
+                                                        ),
+                                                        span: Span {
+                                                            start: 575,
+                                                            end: 578,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Middle,
+                                                            span: Span {
+                                                                start: 578,
+                                                                end: 580,
+                                                            },
+                                                        },
+                                                    ),
+                                                    duration: None,
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 575,
+                                                end: 580,
+                                            },
+                                        },
+                                        Event {
+                                            kind: Note(
+                                                Note {
+                                                    head: Expr {
+                                                        kind: Position(
+                                                            Position {
+                                                                string: IntLit {
+                                                                    value: 5,
+                                                                    span: Span {
+                                                                        start: 583,
+                                                                        end: 584,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 585,
+                                                                        end: 586,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 583,
+                                                                    end: 586,
+                                                                },
+                                                            },
+                                                        ),
+                                                        span: Span {
+                                                            start: 583,
+                                                            end: 586,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Thumb,
+                                                            span: Span {
+                                                                start: 586,
+                                                                end: 588,
+                                                            },
+                                                        },
+                                                    ),
+                                                    duration: None,
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 583,
+                                                end: 588,
+                                            },
+                                        },
+                                        Event {
+                                            kind: Note(
+                                                Note {
+                                                    head: Expr {
+                                                        kind: Position(
+                                                            Position {
+                                                                string: IntLit {
+                                                                    value: 3,
+                                                                    span: Span {
+                                                                        start: 590,
+                                                                        end: 591,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 592,
+                                                                        end: 593,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 590,
+                                                                    end: 593,
+                                                                },
+                                                            },
+                                                        ),
+                                                        span: Span {
+                                                            start: 590,
+                                                            end: 593,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Index,
+                                                            span: Span {
+                                                                start: 593,
+                                                                end: 595,
+                                                            },
+                                                        },
+                                                    ),
+                                                    duration: None,
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 590,
+                                                end: 595,
+                                            },
+                                        },
+                                        Event {
+                                            kind: Note(
+                                                Note {
+                                                    head: Expr {
+                                                        kind: Position(
+                                                            Position {
+                                                                string: IntLit {
+                                                                    value: 1,
+                                                                    span: Span {
+                                                                        start: 597,
+                                                                        end: 598,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 599,
+                                                                        end: 600,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 597,
+                                                                    end: 600,
+                                                                },
+                                                            },
+                                                        ),
+                                                        span: Span {
+                                                            start: 597,
+                                                            end: 600,
+                                                        },
+                                                    },
+                                                    mark: Some(
+                                                        Mark {
+                                                            kind: Middle,
+                                                            span: Span {
+                                                                start: 600,
+                                                                end: 602,
+                                                            },
+                                                        },
+                                                    ),
+                                                    duration: None,
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 597,
+                                                end: 602,
+                                            },
+                                        },
+                                        Event {
+                                            kind: ChordSymbol(
+                                                StringLit {
+                                                    value: "C",
+                                                    span: Span {
+                                                        start: 636,
+                                                        end: 639,
+                                                    },
+                                                },
+                                            ),
+                                            span: Span {
+                                                start: 630,
+                                                end: 639,
+                                            },
+                                        },
+                                        Event {
+                                            kind: Chord(
+                                                Chord {
+                                                    notes: [
+                                                        ChordNote {
+                                                            position: Position {
+                                                                string: IntLit {
+                                                                    value: 1,
+                                                                    span: Span {
+                                                                        start: 645,
+                                                                        end: 646,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 647,
+                                                                        end: 648,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 645,
+                                                                    end: 648,
+                                                                },
+                                                            },
                                                             mark: Some(
                                                                 Mark {
-                                                                    kind: Thumb,
+                                                                    kind: Middle,
                                                                     span: Span {
-                                                                        start: 571,
-                                                                        end: 573,
+                                                                        start: 648,
+                                                                        end: 650,
                                                                     },
                                                                 },
                                                             ),
                                                             span: Span {
-                                                                start: 568,
-                                                                end: 573,
+                                                                start: 645,
+                                                                end: 650,
+                                                            },
+                                                        },
+                                                        ChordNote {
+                                                            position: Position {
+                                                                string: IntLit {
+                                                                    value: 5,
+                                                                    span: Span {
+                                                                        start: 651,
+                                                                        end: 652,
+                                                                    },
+                                                                },
+                                                                fret: IntLit {
+                                                                    value: 0,
+                                                                    span: Span {
+                                                                        start: 653,
+                                                                        end: 654,
+                                                                    },
+                                                                },
+                                                                span: Span {
+                                                                    start: 651,
+                                                                    end: 654,
+                                                                },
+                                                            },
+                                                            mark: Some(
+                                                                Mark {
+                                                                    kind: Thumb,
+                                                                    span: Span {
+                                                                        start: 654,
+                                                                        end: 656,
+                                                                    },
+                                                                },
+                                                            ),
+                                                            span: Span {
+                                                                start: 651,
+                                                                end: 656,
                                                             },
                                                         },
                                                     ],
@@ -685,22 +700,22 @@ Program {
                                                             denom: IntLit {
                                                                 value: 4,
                                                                 span: Span {
-                                                                    start: 575,
-                                                                    end: 576,
+                                                                    start: 658,
+                                                                    end: 659,
                                                                 },
                                                             },
                                                             dots: 0,
                                                             span: Span {
-                                                                start: 574,
-                                                                end: 576,
+                                                                start: 657,
+                                                                end: 659,
                                                             },
                                                         },
                                                     ),
                                                 },
                                             ),
                                             span: Span {
-                                                start: 561,
-                                                end: 576,
+                                                start: 644,
+                                                end: 659,
                                             },
                                         },
                                     ],
@@ -709,8 +724,8 @@ Program {
                                             number: IntLit {
                                                 value: 1,
                                                 span: Span {
-                                                    start: 652,
-                                                    end: 653,
+                                                    start: 735,
+                                                    end: 736,
                                                 },
                                             },
                                             body: Block {
@@ -723,22 +738,22 @@ Program {
                                                                         denom: IntLit {
                                                                             value: 8,
                                                                             span: Span {
-                                                                                start: 659,
-                                                                                end: 660,
+                                                                                start: 742,
+                                                                                end: 743,
                                                                             },
                                                                         },
                                                                         dots: 0,
                                                                         span: Span {
-                                                                            start: 658,
-                                                                            end: 660,
+                                                                            start: 741,
+                                                                            end: 743,
                                                                         },
                                                                     },
                                                                 ),
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 657,
-                                                            end: 660,
+                                                            start: 740,
+                                                            end: 743,
                                                         },
                                                     },
                                                     Event {
@@ -753,26 +768,26 @@ Program {
                                                                                         string: IntLit {
                                                                                             value: 3,
                                                                                             span: Span {
-                                                                                                start: 662,
-                                                                                                end: 663,
+                                                                                                start: 745,
+                                                                                                end: 746,
                                                                                             },
                                                                                         },
                                                                                         fret: IntLit {
                                                                                             value: 2,
                                                                                             span: Span {
-                                                                                                start: 664,
-                                                                                                end: 665,
+                                                                                                start: 747,
+                                                                                                end: 748,
                                                                                             },
                                                                                         },
                                                                                         span: Span {
-                                                                                            start: 662,
-                                                                                            end: 665,
+                                                                                            start: 745,
+                                                                                            end: 748,
                                                                                         },
                                                                                     },
                                                                                 ),
                                                                                 span: Span {
-                                                                                    start: 662,
-                                                                                    end: 665,
+                                                                                    start: 745,
+                                                                                    end: 748,
                                                                                 },
                                                                             },
                                                                             mark: None,
@@ -780,8 +795,8 @@ Program {
                                                                         },
                                                                     ),
                                                                     span: Span {
-                                                                        start: 662,
-                                                                        end: 665,
+                                                                        start: 745,
+                                                                        end: 748,
                                                                     },
                                                                 },
                                                                 right: Event {
@@ -793,26 +808,26 @@ Program {
                                                                                         string: IntLit {
                                                                                             value: 3,
                                                                                             span: Span {
-                                                                                                start: 668,
-                                                                                                end: 669,
+                                                                                                start: 751,
+                                                                                                end: 752,
                                                                                             },
                                                                                         },
                                                                                         fret: IntLit {
                                                                                             value: 2,
                                                                                             span: Span {
-                                                                                                start: 670,
-                                                                                                end: 671,
+                                                                                                start: 753,
+                                                                                                end: 754,
                                                                                             },
                                                                                         },
                                                                                         span: Span {
-                                                                                            start: 668,
-                                                                                            end: 671,
+                                                                                            start: 751,
+                                                                                            end: 754,
                                                                                         },
                                                                                     },
                                                                                 ),
                                                                                 span: Span {
-                                                                                    start: 668,
-                                                                                    end: 671,
+                                                                                    start: 751,
+                                                                                    end: 754,
                                                                                 },
                                                                             },
                                                                             mark: None,
@@ -820,34 +835,34 @@ Program {
                                                                         },
                                                                     ),
                                                                     span: Span {
-                                                                        start: 668,
-                                                                        end: 671,
+                                                                        start: 751,
+                                                                        end: 754,
                                                                     },
                                                                 },
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 662,
-                                                            end: 671,
+                                                            start: 745,
+                                                            end: 754,
                                                         },
                                                     },
                                                 ],
                                                 span: Span {
-                                                    start: 655,
-                                                    end: 673,
+                                                    start: 738,
+                                                    end: 756,
                                                 },
                                             },
                                             span: Span {
-                                                start: 645,
-                                                end: 673,
+                                                start: 728,
+                                                end: 756,
                                             },
                                         },
                                         Ending {
                                             number: IntLit {
                                                 value: 2,
                                                 span: Span {
-                                                    start: 716,
-                                                    end: 717,
+                                                    start: 799,
+                                                    end: 800,
                                                 },
                                             },
                                             body: Block {
@@ -861,34 +876,34 @@ Program {
                                                                             string: IntLit {
                                                                                 value: 1,
                                                                                 span: Span {
-                                                                                    start: 721,
-                                                                                    end: 722,
+                                                                                    start: 804,
+                                                                                    end: 805,
                                                                                 },
                                                                             },
                                                                             fret: IntLit {
                                                                                 value: 0,
                                                                                 span: Span {
-                                                                                    start: 723,
-                                                                                    end: 724,
+                                                                                    start: 806,
+                                                                                    end: 807,
                                                                                 },
                                                                             },
                                                                             span: Span {
-                                                                                start: 721,
-                                                                                end: 724,
+                                                                                start: 804,
+                                                                                end: 807,
                                                                             },
                                                                         },
                                                                     ),
                                                                     span: Span {
-                                                                        start: 721,
-                                                                        end: 724,
+                                                                        start: 804,
+                                                                        end: 807,
                                                                     },
                                                                 },
                                                                 mark: Some(
                                                                     Mark {
                                                                         kind: Middle,
                                                                         span: Span {
-                                                                            start: 724,
-                                                                            end: 726,
+                                                                            start: 807,
+                                                                            end: 809,
                                                                         },
                                                                     },
                                                                 ),
@@ -896,8 +911,8 @@ Program {
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 721,
-                                                            end: 726,
+                                                            start: 804,
+                                                            end: 809,
                                                         },
                                                     },
                                                     Event {
@@ -909,34 +924,34 @@ Program {
                                                                             string: IntLit {
                                                                                 value: 1,
                                                                                 span: Span {
-                                                                                    start: 727,
-                                                                                    end: 728,
+                                                                                    start: 810,
+                                                                                    end: 811,
                                                                                 },
                                                                             },
                                                                             fret: IntLit {
                                                                                 value: 0,
                                                                                 span: Span {
-                                                                                    start: 729,
-                                                                                    end: 730,
+                                                                                    start: 812,
+                                                                                    end: 813,
                                                                                 },
                                                                             },
                                                                             span: Span {
-                                                                                start: 727,
-                                                                                end: 730,
+                                                                                start: 810,
+                                                                                end: 813,
                                                                             },
                                                                         },
                                                                     ),
                                                                     span: Span {
-                                                                        start: 727,
-                                                                        end: 730,
+                                                                        start: 810,
+                                                                        end: 813,
                                                                     },
                                                                 },
                                                                 mark: Some(
                                                                     Mark {
                                                                         kind: Middle,
                                                                         span: Span {
-                                                                            start: 730,
-                                                                            end: 732,
+                                                                            start: 813,
+                                                                            end: 815,
                                                                         },
                                                                     },
                                                                 ),
@@ -944,27 +959,27 @@ Program {
                                                             },
                                                         ),
                                                         span: Span {
-                                                            start: 727,
-                                                            end: 732,
+                                                            start: 810,
+                                                            end: 815,
                                                         },
                                                     },
                                                 ],
                                                 span: Span {
-                                                    start: 719,
-                                                    end: 734,
+                                                    start: 802,
+                                                    end: 817,
                                                 },
                                             },
                                             span: Span {
-                                                start: 709,
-                                                end: 734,
+                                                start: 792,
+                                                end: 817,
                                             },
                                         },
                                     ],
                                 },
                             ),
                             span: Span {
-                                start: 336,
-                                end: 755,
+                                start: 419,
+                                end: 838,
                             },
                         },
                         ScoreItem {
@@ -972,14 +987,14 @@ Program {
                                 StringLit {
                                     value: "B",
                                     span: Span {
-                                        start: 767,
-                                        end: 770,
+                                        start: 850,
+                                        end: 853,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 759,
-                                end: 770,
+                                start: 842,
+                                end: 853,
                             },
                         },
                         ScoreItem {
@@ -988,26 +1003,26 @@ Program {
                                     num: IntLit {
                                         value: 1,
                                         span: Span {
-                                            start: 805,
-                                            end: 806,
+                                            start: 888,
+                                            end: 889,
                                         },
                                     },
                                     den: IntLit {
                                         value: 4,
                                         span: Span {
-                                            start: 807,
-                                            end: 808,
+                                            start: 890,
+                                            end: 891,
                                         },
                                     },
                                     span: Span {
-                                        start: 805,
-                                        end: 808,
+                                        start: 888,
+                                        end: 891,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 797,
-                                end: 808,
+                                start: 880,
+                                end: 891,
                             },
                         },
                         ScoreItem {
@@ -1016,8 +1031,8 @@ Program {
                                     count: IntLit {
                                         value: 2,
                                         span: Span {
-                                            start: 882,
-                                            end: 883,
+                                            start: 965,
+                                            end: 966,
                                         },
                                     },
                                     body: Block {
@@ -1031,26 +1046,26 @@ Program {
                                                                     string: IntLit {
                                                                         value: 3,
                                                                         span: Span {
-                                                                            start: 886,
-                                                                            end: 887,
+                                                                            start: 969,
+                                                                            end: 970,
                                                                         },
                                                                     },
                                                                     fret: IntLit {
                                                                         value: 2,
                                                                         span: Span {
-                                                                            start: 888,
-                                                                            end: 889,
+                                                                            start: 971,
+                                                                            end: 972,
                                                                         },
                                                                     },
                                                                     span: Span {
-                                                                        start: 886,
-                                                                        end: 889,
+                                                                        start: 969,
+                                                                        end: 972,
                                                                     },
                                                                 },
                                                             ),
                                                             span: Span {
-                                                                start: 886,
-                                                                end: 889,
+                                                                start: 969,
+                                                                end: 972,
                                                             },
                                                         },
                                                         mark: None,
@@ -1058,8 +1073,8 @@ Program {
                                                     },
                                                 ),
                                                 span: Span {
-                                                    start: 886,
-                                                    end: 889,
+                                                    start: 969,
+                                                    end: 972,
                                                 },
                                             },
                                             Event {
@@ -1071,26 +1086,26 @@ Program {
                                                                     string: IntLit {
                                                                         value: 3,
                                                                         span: Span {
-                                                                            start: 890,
-                                                                            end: 891,
+                                                                            start: 973,
+                                                                            end: 974,
                                                                         },
                                                                     },
                                                                     fret: IntLit {
                                                                         value: 4,
                                                                         span: Span {
-                                                                            start: 892,
-                                                                            end: 893,
+                                                                            start: 975,
+                                                                            end: 976,
                                                                         },
                                                                     },
                                                                     span: Span {
-                                                                        start: 890,
-                                                                        end: 893,
+                                                                        start: 973,
+                                                                        end: 976,
                                                                     },
                                                                 },
                                                             ),
                                                             span: Span {
-                                                                start: 890,
-                                                                end: 893,
+                                                                start: 973,
+                                                                end: 976,
                                                             },
                                                         },
                                                         mark: None,
@@ -1098,21 +1113,21 @@ Program {
                                                     },
                                                 ),
                                                 span: Span {
-                                                    start: 890,
-                                                    end: 893,
+                                                    start: 973,
+                                                    end: 976,
                                                 },
                                             },
                                         ],
                                         span: Span {
-                                            start: 884,
-                                            end: 895,
+                                            start: 967,
+                                            end: 978,
                                         },
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 877,
-                                end: 895,
+                                start: 960,
+                                end: 978,
                             },
                         },
                         ScoreItem {
@@ -1128,8 +1143,8 @@ Program {
                                                                 "hammer",
                                                             ),
                                                             span: Span {
-                                                                start: 1019,
-                                                                end: 1025,
+                                                                start: 1102,
+                                                                end: 1108,
                                                             },
                                                         },
                                                         args: [
@@ -1139,26 +1154,26 @@ Program {
                                                                         string: IntLit {
                                                                             value: 3,
                                                                             span: Span {
-                                                                                start: 1026,
-                                                                                end: 1027,
+                                                                                start: 1109,
+                                                                                end: 1110,
                                                                             },
                                                                         },
                                                                         fret: IntLit {
                                                                             value: 0,
                                                                             span: Span {
-                                                                                start: 1028,
-                                                                                end: 1029,
+                                                                                start: 1111,
+                                                                                end: 1112,
                                                                             },
                                                                         },
                                                                         span: Span {
-                                                                            start: 1026,
-                                                                            end: 1029,
+                                                                            start: 1109,
+                                                                            end: 1112,
                                                                         },
                                                                     },
                                                                 ),
                                                                 span: Span {
-                                                                    start: 1026,
-                                                                    end: 1029,
+                                                                    start: 1109,
+                                                                    end: 1112,
                                                                 },
                                                             },
                                                             Expr {
@@ -1167,39 +1182,39 @@ Program {
                                                                         string: IntLit {
                                                                             value: 3,
                                                                             span: Span {
-                                                                                start: 1031,
-                                                                                end: 1032,
+                                                                                start: 1114,
+                                                                                end: 1115,
                                                                             },
                                                                         },
                                                                         fret: IntLit {
                                                                             value: 2,
                                                                             span: Span {
-                                                                                start: 1033,
-                                                                                end: 1034,
+                                                                                start: 1116,
+                                                                                end: 1117,
                                                                             },
                                                                         },
                                                                         span: Span {
-                                                                            start: 1031,
-                                                                            end: 1034,
+                                                                            start: 1114,
+                                                                            end: 1117,
                                                                         },
                                                                     },
                                                                 ),
                                                                 span: Span {
-                                                                    start: 1031,
-                                                                    end: 1034,
+                                                                    start: 1114,
+                                                                    end: 1117,
                                                                 },
                                                             },
                                                         ],
                                                     },
                                                     span: Span {
-                                                        start: 1019,
-                                                        end: 1035,
+                                                        start: 1102,
+                                                        end: 1118,
                                                     },
                                                 },
                                             ),
                                             span: Span {
-                                                start: 1019,
-                                                end: 1035,
+                                                start: 1102,
+                                                end: 1118,
                                             },
                                         },
                                         Event {
@@ -1211,8 +1226,8 @@ Program {
                                                                 "bend",
                                                             ),
                                                             span: Span {
-                                                                start: 1074,
-                                                                end: 1078,
+                                                                start: 1157,
+                                                                end: 1161,
                                                             },
                                                         },
                                                         args: [
@@ -1222,64 +1237,64 @@ Program {
                                                                         string: IntLit {
                                                                             value: 1,
                                                                             span: Span {
-                                                                                start: 1079,
-                                                                                end: 1080,
+                                                                                start: 1162,
+                                                                                end: 1163,
                                                                             },
                                                                         },
                                                                         fret: IntLit {
                                                                             value: 7,
                                                                             span: Span {
-                                                                                start: 1081,
-                                                                                end: 1082,
+                                                                                start: 1164,
+                                                                                end: 1165,
                                                                             },
                                                                         },
                                                                         span: Span {
-                                                                            start: 1079,
-                                                                            end: 1082,
+                                                                            start: 1162,
+                                                                            end: 1165,
                                                                         },
                                                                     },
                                                                 ),
                                                                 span: Span {
-                                                                    start: 1079,
-                                                                    end: 1082,
+                                                                    start: 1162,
+                                                                    end: 1165,
                                                                 },
                                                             },
                                                         ],
                                                     },
                                                     span: Span {
-                                                        start: 1074,
-                                                        end: 1083,
+                                                        start: 1157,
+                                                        end: 1166,
                                                     },
                                                 },
                                             ),
                                             span: Span {
-                                                start: 1074,
-                                                end: 1083,
+                                                start: 1157,
+                                                end: 1166,
                                             },
                                         },
                                     ],
                                     span: Span {
-                                        start: 968,
-                                        end: 1087,
+                                        start: 1051,
+                                        end: 1170,
                                     },
                                 },
                             ),
                             span: Span {
-                                start: 960,
-                                end: 1087,
+                                start: 1043,
+                                end: 1170,
                             },
                         },
                     ],
                 },
             ),
             span: Span {
-                start: 116,
-                end: 1089,
+                start: 199,
+                end: 1172,
             },
         },
     ],
     span: Span {
         start: 0,
-        end: 1090,
+        end: 1173,
     },
 }
