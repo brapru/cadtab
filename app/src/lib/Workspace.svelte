@@ -283,20 +283,6 @@
                 </span>
                 <span class="tab-title">{viewDef(tab.type)?.title}</span>
               </button>
-              {#if tab.type === "editor"}
-                {@const open = hasView("render", tab.docId)}
-                <!-- Reopen a closed render (T7.12): spawns this doc's render tab,
-                     or jumps to it when already open. -->
-                <button
-                  class="tab-launch"
-                  class:open
-                  aria-label={open ? "Go to render" : "Open render"}
-                  title={open ? "Go to render" : "Open render"}
-                  onclick={() => tab.docId && onOpenRender?.(tab.docId)}
-                >
-                  <Icon name="music_note" size={14} fill={open} />
-                </button>
-              {/if}
               <button
                 class="tab-close"
                 aria-label="Close {viewDef(tab.type)?.title}"
@@ -313,6 +299,20 @@
         <div class="group-actions">
           {#if g.id === controlGroupId}
             {@render newControl(g.id)}
+            {#if active?.type === "editor"}
+              {@const open = hasView("render", active.docId)}
+              <!-- Open/jump to the active editor's render (T7.12): closes the gap
+                   where a closed render had no way back. -->
+              <button
+                class="launch"
+                class:open
+                aria-label={open ? "Go to render" : "Open render"}
+                title={open ? "Go to render" : "Open render"}
+                onclick={() => active?.docId && onOpenRender?.(active.docId)}
+              >
+                <Icon name="music_note" size={16} fill={open} />
+              </button>
+            {/if}
             {#if active?.type === "render"}
               <!-- Fit moved off the render toolbar (T7.12): resets zoom to fill
                    the pane width. Shown when this group is showing a render. -->
@@ -438,10 +438,9 @@
   .tab.active {
     color: var(--fg);
   }
-  /* The active tint covers the tab and its trailing control buttons (launch,
-     close) so the whole cell reads as one active tab. */
+  /* The active tint covers the tab and its trailing close button so the whole
+     cell reads as one active tab. */
   .tab.active,
-  .tab.active ~ .tab-launch,
   .tab.active ~ .tab-close {
     background: color-mix(in srgb, var(--fg) 6%, transparent);
   }
@@ -452,7 +451,6 @@
     display: flex;
     align-items: center;
   }
-  .tab-launch,
   .tab-close {
     display: flex;
     align-items: center;
@@ -463,22 +461,17 @@
     cursor: pointer;
     opacity: 0.6;
   }
-  .tab-launch:hover,
   .tab-close:hover {
     opacity: 1;
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 12%, transparent);
-  }
-  /* When the render is already open, the launcher reads as an active toggle. */
-  .tab-launch.open {
-    opacity: 1;
-    color: var(--accent);
   }
   .group-actions {
     display: flex;
     align-items: stretch;
   }
   .new,
+  .launch,
   .fit,
   .split,
   .maximize {
@@ -493,10 +486,16 @@
     line-height: 1;
   }
   .new:hover,
+  .launch:hover,
   .fit:hover,
   .split:hover,
   .maximize:hover {
     color: var(--fg);
+  }
+  /* When the active editor's render is already open, the launcher reads as a
+     jump-to toggle. */
+  .launch.open {
+    color: var(--accent);
   }
   /* The New control anchors its template menu just below the "+". */
   .new-wrap {

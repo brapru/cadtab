@@ -583,25 +583,26 @@ describe("App", () => {
     expect(container.querySelectorAll(".tab")).toHaveLength(0);
   });
 
-  it("reopens a closed render from the editor tab's launcher (T7.12)", async () => {
+  it("reopens a closed render from the active group's render control (T7.12)", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
-    // Close the render — it's gone, and the launcher now invites reopening it.
+    // Close the render — it's gone, and the editor group's control set (now
+    // active) invites reopening it.
     await fireEvent.click(getByLabelText("Close Render"));
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).toBeNull();
       expect(getByLabelText("Open render")).toBeTruthy();
     });
 
-    // The launcher respawns the render for the document.
+    // The control respawns the render for the document; it becomes the active
+    // tab, so its Fit control now shows.
     await fireEvent.click(getByLabelText("Open render"));
     await vi.waitFor(() => {
       expect(container.querySelector("svg.tab")).not.toBeNull();
-      // It now reads as a jump-to control while open.
-      expect(getByLabelText("Go to render")).toBeTruthy();
+      expect(getByLabelText("Fit to width")).toBeTruthy();
     });
   });
 

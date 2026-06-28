@@ -315,11 +315,11 @@ describe("Workspace chrome", () => {
     ).toEqual(["Editor", "Render"]);
   });
 
-  it("offers a render launcher on editor tabs only, reflecting open state", async () => {
+  it("puts a render launcher in the control set when the active tab is an editor", async () => {
     const onOpenRender = vi.fn();
-    // Render closed: the editor tab's launcher invites opening it.
+    // Editor active, render closed: the control invites opening it.
     const { getByLabelText, queryByLabelText } = render(Workspace, {
-      workspace: closeTab(defaultWorkspace("doc"), "render:doc"),
+      workspace: closeTab(defaultWorkspace("doc"), "render:doc"), // g1 [editor]
       view: stubView,
       onOpenRender,
     });
@@ -329,16 +329,16 @@ describe("Workspace chrome", () => {
     expect(queryByLabelText("Go to render")).toBeNull();
   });
 
-  it("marks the launcher as jump-to when the render is already open", () => {
+  it("marks the render launcher as jump-to when the render is already open", () => {
     const { getByLabelText, container } = render(Workspace, {
-      workspace: defaultWorkspace("doc"), // render:doc is open in g2
+      workspace: defaultWorkspace("doc"), // editor active (g1), render open (g2)
       view: stubView,
     });
-    // The open render makes the editor tab's launcher a jump-to control.
+    // The active editor's control set shows a jump-to render launcher.
     expect(getByLabelText("Go to render")).toBeTruthy();
-    expect(container.querySelector(".tab-launch.open")).not.toBeNull();
-    // The render tab itself carries no launcher.
-    expect(container.querySelectorAll(".tab-launch")).toHaveLength(1);
+    expect(container.querySelector(".launch.open")).not.toBeNull();
+    // Only the active group's control set carries it.
+    expect(container.querySelectorAll(".launch")).toHaveLength(1);
   });
 
   it("opens the New template menu and reports the chosen template", async () => {
