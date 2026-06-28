@@ -634,6 +634,25 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       `draft:` doc as a root leaf in the dock-as-folder tree (`music_note` + dirty dot). New
       (`newDraft`) creates a dirty `draft:` doc; the built-in starter stays clean (special-case).
 
+*Dock UX (placed by topic next to T7.15; not strict dep-order):*
+
+- [x] **T7.35 — Dock folder indent guides.** Draw a vertical guide line down the left of each folder's
+      children (Zed/VS Code style), terminating where that folder's contents end, so folder width and
+      nesting read clearly. Pure `Dock.svelte` markup/CSS on the existing recursive `row` snippet; no
+      model change. **Done:** each folder's nested `<ul>` carries its `--depth` and draws the guide as
+      an absolutely-positioned `::before` spanning the block top→bottom (so it ends exactly at the last
+      child), offset to sit under the parent folder's icon (`calc(0.7rem + var(--depth)*0.85rem +
+      0.45rem)`) using the same `--depth` indent unit the rows use. Test in `Dock.test.ts` asserts each
+      nesting level carries its parent's depth (the guide's anchor); the line itself is visual-only
+      (jsdom can't measure pseudo-elements).
+- [ ] **T7.36 — Dock file management (right-click context menu).** Right-click a dock item → a context
+      menu with **New File / New Folder / Rename / Delete**. New File/Folder created in the right-clicked
+      folder (or project root otherwise); Delete confirms via `ConfirmDialog` (native confirm no-ops on
+      desktop). On desktop these hit the real live folder; the watcher re-scans and reconciles the dock,
+      and the new file opens as a tab. Needs: empty-folder scan support (dirs in the tree), an in-app
+      naming input (not `window.prompt`), new fs ops behind the io.ts seam + `fs:allow-remove/mkdir/rename`
+      capabilities, and a reusable context-menu component. *Decomposed into confirmed sub-chunks.*
+
 *Render content & labels:*
 
 - [ ] **T7.16 — Contextual render (def-gallery) + filename tab labels (D49).** Render/preview is

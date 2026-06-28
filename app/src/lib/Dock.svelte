@@ -48,7 +48,7 @@
         <span class="file-name">{node.name}</span>
       </button>
       {#if open}
-        <ul class="file-list nested">
+        <ul class="file-list nested" style="--depth: {depth}">
           {#each node.children as child (child.kind === "folder" ? "d:" + child.path : "f:" + child.entry.key)}
             {@render row(child, depth + 1)}
           {/each}
@@ -153,6 +153,19 @@
   .file-list.nested {
     padding: 0;
     overflow: visible;
+    position: relative;
+  }
+  /* Vertical indent guide down the left of a folder's children — spans the full
+     height of the nested block (top→bottom of its contents) and sits under the
+     parent folder's icon, offset via the folder's --depth. */
+  .file-list.nested::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(0.7rem + var(--depth) * 0.85rem + 0.45rem);
+    width: 1px;
+    background: var(--border);
   }
   .row {
     display: flex;

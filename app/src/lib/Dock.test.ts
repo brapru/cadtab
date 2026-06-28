@@ -71,6 +71,19 @@ describe("Dock", () => {
     expect(files).toEqual(["pinch.ctab", "roll.ctab", "tune.ctab"]);
   });
 
+  it("anchors each folder's indent guide to the folder's depth", () => {
+    const { container } = render(Dock, {
+      entries: [file("licks/rolls/forward.ctab")],
+    });
+    // The guide is a ::before on the nested <ul>, positioned via --depth; assert
+    // each nesting level carries its parent folder's depth (0 then 1). Visual
+    // only otherwise (jsdom can't measure the pseudo-element).
+    const depths = [...container.querySelectorAll("ul.nested")].map((ul) =>
+      (ul as HTMLElement).style.getPropertyValue("--depth"),
+    );
+    expect(depths).toEqual(["0", "1"]);
+  });
+
   it("collapses a folder's files when its row is clicked", async () => {
     const { container, getByText, queryByText } = render(Dock, {
       entries: [file("tune.ctab"), file("licks/roll.ctab")],
