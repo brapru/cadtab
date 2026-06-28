@@ -23,7 +23,8 @@
     "@codemirror/view": "^6.43.1",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "^2.7.1",
-    "@tauri-apps/plugin-fs": "^2.5.1"
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "material-symbols": "^0.45.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

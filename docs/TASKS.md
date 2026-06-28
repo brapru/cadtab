@@ -488,9 +488,15 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Icon foundation → workspace UX:*
 
-- [ ] **T7.10 — Self-host Material Symbols icons (D51).** Bundle the Material Symbols set locally (font
+- [x] **T7.10 — Self-host Material Symbols icons (D51).** Bundle the Material Symbols set locally (font
       or SVGs in the build) so icons work fully offline on desktop — no CDN. Establish the icon-usage
       convention (a small `Icon` wrapper/class) the rest of the UI draws from. *(NOTES #1.)*
+      **Done:** chose the variable woff2 + ligatures (over curated inline SVGs) — added the
+      `material-symbols` dep and committed `material-symbols-outlined.woff2` to `app/public/fonts/`,
+      `@font-face`'d locally in `app.css` (served at `/fonts/…`, never CDN). New `Icon.svelte` is the
+      one convention: `name` ligature + `size`/`fill`/`weight`/`label` props, decorative (aria-hidden)
+      by default. `-webkit-font-feature-settings: "liga"` so WKWebView renders the ligature glyphs.
+      T7.12/T7.14 swap the text-glyph/emoji chrome over to it. Tests in `Icon.test.ts`.
 - [ ] **T7.11 — Close tab.** A close affordance on each tab that removes that view instance from its
       group (dropping an emptied group, like `moveTab`), with an **unsaved-changes guard** when closing
       the last editor of a dirty document, and session cleanup when a doc has no remaining views. The

@@ -58,3 +58,36 @@ body {
   background: var(--bg);
   color: var(--fg);
 }
+
+/* Self-hosted Material Symbols (D51): the variable font is bundled in
+   public/fonts and served locally so icons work fully offline on desktop —
+   never a CDN/Google Fonts load. The Icon.svelte wrapper is the one usage
+   convention the chrome draws from. */
+@font-face {
+  font-family: "Material Symbols Outlined";
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: block;
+  src: url("/fonts/material-symbols-outlined.woff2") format("woff2");
+}
+
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  /* currentColor so a glyph inherits the button's text colour. */
+  color: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* -webkit prefix: WKWebView needs it to render the name→glyph ligature. */
+  -webkit-font-feature-settings: "liga";
+  font-feature-settings: "liga";
+}
