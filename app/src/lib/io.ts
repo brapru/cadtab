@@ -42,6 +42,26 @@ export function basename(path: string): string {
   return segments[segments.length - 1] || path;
 }
 
+/// The separator a path uses: a backslash only when it has one and no forward
+/// slash (a Windows path), else a forward slash.
+function pathSep(path: string): string {
+  return path.includes("\\") && !path.includes("/") ? "\\" : "/";
+}
+
+/// Join a directory and a child name with the directory's own separator.
+export function joinPath(dir: string, name: string): string {
+  if (dir === "") return name;
+  const tail = /[\\/]$/.test(dir) ? "" : pathSep(dir);
+  return dir + tail + name;
+}
+
+/// A path relative to `root`, with the leading separator dropped and the result
+/// normalized to forward slashes — the stable key the dock + import map use.
+export function toRelative(root: string, abs: string): string {
+  const rel = abs.startsWith(root) ? abs.slice(root.length) : abs;
+  return rel.replace(/^[\\/]+/, "").replace(/\\/g, "/");
+}
+
 /// Ensure a filename carries `ext`, swapping a sibling cadtab extension if one
 /// is present (so `tune.ctab` becomes `tune.ctabz`, not `tune.ctab.ctabz`).
 function withExtension(name: string, ext: string): string {
@@ -84,6 +104,70 @@ export async function openProject(): Promise<OpenedProject | null> {
     return { kind: "bundle", path, name, bundle: parseBundle(content) };
   }
   return { kind: "single", ...picked };
+}
+
+/// A directory entry as the fs backends report it (name + kind).
+export interface DirEntry {
+  name: string;
+  isDirectory: boolean;
+  isFile: boolean;
+}
+
+/// A live folder opened from disk: its root path, dock name, the file map (key
+/// -> contents), and key -> absolute path for write-back. Keys are root-relative
+/// forward-slash paths.
+export type OpenedFolder = {
+  root: string;
+  name: string;
+  files: Record<string, string>;
+  filePaths: Record<string, string>;
+};
+
+/// Walk a directory tree from `root`, collecting every `.ctab` file: its
+/// forward-slash key relative to root -> contents, plus key -> absolute path for
+/// write-back. Dot-directories are skipped. The fs access is injected (the real
+/// Tauri plugin in `openFolder`, fakes in tests), so the recursion stays pure.
+export async function collectCtabFiles(
+  root: string,
+  readDir: (dir: string) => Promise<DirEntry[]>,
+  readFile: (path: string) => Promise<string>,
+): Promise<{
+  files: Record<string, string>;
+  filePaths: Record<string, string>;
+}> {
+  const files: Record<string, string> = {};
+  const filePaths: Record<string, string> = {};
+  async function walk(dir: string): Promise<void> {
+    for (const entry of await readDir(dir)) {
+      const child = joinPath(dir, entry.name);
+      if (entry.isDirectory) {
+        if (!entry.name.startsWith(".")) await walk(child);
+      } else if (entry.isFile && entry.name.toLowerCase().endsWith(CTAB_EXT)) {
+        const key = toRelative(root, child);
+        files[key] = await readFile(child);
+        filePaths[key] = child;
+      }
+    }
+  }
+  await walk(root);
+  return { files, filePaths };
+}
+
+/// Open a whole project directory (desktop only — web has no folder access until
+/// the FSA path lands). Picks a directory, then reads every `.ctab` under it.
+/// Null when cancelled or off-desktop.
+export async function openFolder(): Promise<OpenedFolder | null> {
+  if (!isTauri()) return null;
+  const { open } = await import("@tauri-apps/plugin-dialog");
+  const root = await open({ directory: true });
+  if (typeof root !== "string") return null;
+  const { readDir, readTextFile } = await import("@tauri-apps/plugin-fs");
+  const { files, filePaths } = await collectCtabFiles(
+    root,
+    (dir) => readDir(dir) as Promise<DirEntry[]>,
+    readTextFile,
+  );
+  return { root, name: basename(root), files, filePaths };
 }
 
 /// Save a single score to `target`. Overwrites a known path silently (desktop),

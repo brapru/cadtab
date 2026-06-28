@@ -5,6 +5,7 @@ const saveMock = vi.fn();
 const readTextFileMock = vi.fn();
 const writeTextFileMock = vi.fn();
 const writeFileMock = vi.fn();
+const readDirMock = vi.fn();
 vi.mock("@tauri-apps/plugin-dialog", () => ({
   open: (...args: unknown[]) => openMock(...args),
   save: (...args: unknown[]) => saveMock(...args),
@@ -13,17 +14,23 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   readTextFile: (...args: unknown[]) => readTextFileMock(...args),
   writeTextFile: (...args: unknown[]) => writeTextFileMock(...args),
   writeFile: (...args: unknown[]) => writeFileMock(...args),
+  readDir: (...args: unknown[]) => readDirMock(...args),
 }));
 
 import {
   basename,
+  joinPath,
+  toRelative,
   withCtabExtension,
   defaultDocName,
+  collectCtabFiles,
+  openFolder,
   openProject,
   saveDocument,
   saveBundle,
   saveSvg,
   savePng,
+  type DirEntry,
 } from "./io";
 import { serializeBundle, type ProjectBundle } from "./bundle";
 
@@ -56,6 +63,85 @@ describe("io path/name helpers", () => {
     expect(defaultDocName("score { 3:0 }")).toBe("untitled.ctab");
     expect(defaultDocName('title "   "')).toBe("untitled.ctab");
   });
+
+  it("joinPath uses the directory's own separator", () => {
+    expect(joinPath("/Users/x", "tune.ctab")).toBe("/Users/x/tune.ctab");
+    expect(joinPath("C:\\scores", "tune.ctab")).toBe("C:\\scores\\tune.ctab");
+    expect(joinPath("/Users/x/", "tune.ctab")).toBe("/Users/x/tune.ctab");
+    expect(joinPath("", "tune.ctab")).toBe("tune.ctab");
+  });
+
+  it("toRelative strips the root and normalizes keys to forward slashes", () => {
+    expect(toRelative("/proj", "/proj/licks/roll.ctab")).toBe(
+      "licks/roll.ctab",
+    );
+    expect(toRelative("C:\\proj", "C:\\proj\\licks\\roll.ctab")).toBe(
+      "licks/roll.ctab",
+    );
+    // A path not under root still comes back normalized (leading sep dropped).
+    expect(toRelative("/other", "/proj/tune.ctab")).toBe("proj/tune.ctab");
+  });
+});
+
+describe("collectCtabFiles", () => {
+  // A fake tree: dir -> entries, with file contents keyed by absolute path.
+  function fakeFs(
+    tree: Record<string, DirEntry[]>,
+    contents: Record<string, string>,
+  ) {
+    return {
+      readDir: (dir: string) => Promise.resolve(tree[dir] ?? []),
+      readFile: (path: string) => Promise.resolve(contents[path] ?? ""),
+    };
+  }
+  const dir = (name: string): DirEntry => ({
+    name,
+    isDirectory: true,
+    isFile: false,
+  });
+  const file = (name: string): DirEntry => ({
+    name,
+    isDirectory: false,
+    isFile: true,
+  });
+
+  it("recurses, keeping .ctab files keyed relative to root with their abs path", async () => {
+    const { readDir, readFile } = fakeFs(
+      {
+        "/proj": [dir("licks"), file("tune.ctab"), file("notes.txt")],
+        "/proj/licks": [file("roll.ctab"), file("pinch.ctab")],
+      },
+      {
+        "/proj/tune.ctab": "score {}",
+        "/proj/licks/roll.ctab": "def roll() {}",
+        "/proj/licks/pinch.ctab": "def pinch() {}",
+      },
+    );
+    const { files, filePaths } = await collectCtabFiles(
+      "/proj",
+      readDir,
+      readFile,
+    );
+    expect(files).toEqual({
+      "tune.ctab": "score {}",
+      "licks/roll.ctab": "def roll() {}",
+      "licks/pinch.ctab": "def pinch() {}",
+    });
+    // Non-.ctab files are skipped; abs paths map back for write-back.
+    expect(filePaths["licks/roll.ctab"]).toBe("/proj/licks/roll.ctab");
+  });
+
+  it("skips dot-directories", async () => {
+    const { readDir, readFile } = fakeFs(
+      {
+        "/proj": [dir(".git"), file("tune.ctab")],
+        "/proj/.git": [file("config.ctab")],
+      },
+      { "/proj/tune.ctab": "score {}", "/proj/.git/config.ctab": "x" },
+    );
+    const { files } = await collectCtabFiles("/proj", readDir, readFile);
+    expect(Object.keys(files)).toEqual(["tune.ctab"]);
+  });
 });
 
 describe("io desktop (Tauri) backend", () => {
@@ -64,6 +150,7 @@ describe("io desktop (Tauri) backend", () => {
     saveMock.mockReset();
     readTextFileMock.mockReset();
     writeTextFileMock.mockReset();
+    readDirMock.mockReset();
     setTauri(true);
   });
   afterEach(() => setTauri(false));
@@ -207,11 +294,51 @@ describe("io desktop (Tauri) backend", () => {
     expect(path).toBe("/x/tab.png");
     expect(Array.from(bytes)).toEqual([1, 2, 3]);
   });
+
+  it("opens a folder: picks a directory and reads its .ctab tree", async () => {
+    openMock.mockResolvedValue("/proj");
+    readDirMock.mockImplementation((dir: string) =>
+      Promise.resolve(
+        dir === "/proj"
+          ? [
+              { name: "licks", isDirectory: true, isFile: false },
+              { name: "tune.ctab", isDirectory: false, isFile: true },
+            ]
+          : [{ name: "roll.ctab", isDirectory: false, isFile: true }],
+      ),
+    );
+    readTextFileMock.mockImplementation((p: string) =>
+      Promise.resolve(p === "/proj/tune.ctab" ? "score {}" : "def roll() {}"),
+    );
+
+    const folder = await openFolder();
+
+    expect(openMock).toHaveBeenCalledWith({ directory: true });
+    expect(folder).toEqual({
+      root: "/proj",
+      name: "proj",
+      files: { "tune.ctab": "score {}", "licks/roll.ctab": "def roll() {}" },
+      filePaths: {
+        "tune.ctab": "/proj/tune.ctab",
+        "licks/roll.ctab": "/proj/licks/roll.ctab",
+      },
+    });
+  });
+
+  it("returns null when the folder dialog is cancelled", async () => {
+    openMock.mockResolvedValue(null);
+    expect(await openFolder()).toBeNull();
+    expect(readDirMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("io web backend", () => {
   beforeEach(() => setTauri(false));
   afterEach(() => vi.restoreAllMocks());
+
+  it("openFolder is a no-op (null) off-desktop", async () => {
+    expect(await openFolder()).toBeNull();
+  });
 
   type FakeInput = {
     type: string;

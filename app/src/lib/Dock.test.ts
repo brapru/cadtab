@@ -16,7 +16,7 @@ describe("Dock", () => {
       entries: [file("tune.ctab"), file("lib.ctab")],
       projectName: "proj.ctabz",
     });
-    expect(container.querySelector(".dock-header")?.textContent).toBe(
+    expect(container.querySelector(".dock-title")?.textContent).toBe(
       "proj.ctabz",
     );
     const names = [...container.querySelectorAll(".file .file-name")].map(
@@ -50,9 +50,7 @@ describe("Dock", () => {
 
   it("defaults the header to 'Project'", () => {
     const { container } = render(Dock, { entries: [] });
-    expect(container.querySelector(".dock-header")?.textContent).toBe(
-      "Project",
-    );
+    expect(container.querySelector(".dock-title")?.textContent).toBe("Project");
   });
 
   it("renders nested paths as folders over their files", () => {
@@ -85,6 +83,18 @@ describe("Dock", () => {
     expect(queryByText("roll.ctab")).toBeNull();
     // the root entry stays visible — only the folder's contents hide
     expect(getByText("tune.ctab")).toBeTruthy();
+  });
+
+  it("shows an Open Folder control that fires onOpenFolder", async () => {
+    const onOpenFolder = vi.fn();
+    const { getByLabelText } = render(Dock, { entries: [], onOpenFolder });
+    await fireEvent.click(getByLabelText("Open Folder"));
+    expect(onOpenFolder).toHaveBeenCalled();
+  });
+
+  it("omits the Open Folder control when no callback is given", () => {
+    const { queryByLabelText } = render(Dock, { entries: [] });
+    expect(queryByLabelText("Open Folder")).toBeNull();
   });
 
   it("shows unsaved drafts as root leaves with a dirty dot", () => {

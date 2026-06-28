@@ -14,11 +14,13 @@
     projectName = "Project",
     activeKey = null,
     onOpen,
+    onOpenFolder,
   }: {
     entries?: DockEntry[];
     projectName?: string;
     activeKey?: string | null;
     onOpen?: (entry: DockEntry) => void;
+    onOpenFolder?: () => void;
   } = $props();
 
   const tree = $derived(projectTree(entries));
@@ -40,7 +42,6 @@
         class="row folder"
         style="--depth: {depth}"
         aria-expanded={open}
-        use:tooltip={node.path}
         onclick={() => toggle(node.path)}
       >
         <Icon name={open ? "folder_open" : "folder"} size={15} />
@@ -61,7 +62,6 @@
         class:active={activeKey === node.entry.key}
         class:dirty={node.entry.dirty}
         style="--depth: {depth}"
-        use:tooltip={node.entry.path ?? "unsaved draft"}
         onclick={() => onOpen?.(node.entry)}
       >
         <Icon name="music_note" size={15} />
@@ -75,7 +75,19 @@
 {/snippet}
 
 <aside class="dock" aria-label="Project files">
-  <div class="dock-header">{projectName}</div>
+  <div class="dock-header">
+    <span class="dock-title">{projectName}</span>
+    {#if onOpenFolder}
+      <button
+        class="dock-action"
+        aria-label="Open Folder"
+        use:tooltip={"Open folder (Cmd/Ctrl+Shift+O)"}
+        onclick={() => onOpenFolder?.()}
+      >
+        <Icon name="folder_open" size={16} />
+      </button>
+    {/if}
+  </div>
   <ul class="file-list">
     {#each tree as node (node.kind === "folder" ? "d:" + node.path : "f:" + node.entry.key)}
       {@render row(node, 0)}
@@ -94,16 +106,42 @@
     overflow: hidden;
   }
   .dock-header {
-    padding: 0.45rem 0.7rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.4rem 0.3rem 0.7rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .dock-title {
+    flex: 1;
+    min-width: 0;
     font-size: 0.72rem;
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--muted);
-    border-bottom: 1px solid var(--border);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  /* The dock-header Open Folder control (desktop): a quiet square icon button. */
+  .dock-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    padding: 0;
+  }
+  .dock-action:hover {
+    color: var(--fg);
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
   }
   .file-list {
     list-style: none;

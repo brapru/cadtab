@@ -7,7 +7,7 @@
   import Dock from "./lib/Dock.svelte";
   import ConfirmDialog from "./lib/ConfirmDialog.svelte";
   import Icon from "./lib/Icon.svelte";
-  import { compile } from "./lib/core";
+  import { compile, isTauri } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
   import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
@@ -41,6 +41,7 @@
   import { nextTheme, themeIcon, type Theme } from "./lib/theme";
   import {
     openProject,
+    openFolder,
     saveDocument,
     saveBundle,
     saveSvg,
@@ -104,13 +105,16 @@ score {
   const dirty = $derived(active ? isDirty(active) : false);
   const activeResult = $derived(active ? (results[active.id] ?? null) : null);
 
+  // True in the desktop (Tauri) webview: folder open + write-back are desktop
+  // features; the topbar Open button is web-only (desktop opens via Cmd/Ctrl+O
+  // and the dock's Open Folder, with the native menu to come in T7.30).
+  const desktop = isTauri();
+
   // The open project: every file in it (key -> latest contents — the import map
   // shared by every compile), the fs path each key maps to (desktop write-back /
-  // import base; empty for bundle/web), the bundle path for "Save Project", and
-  // the dock header name.
+  // import base; empty for bundle/web), and the dock header name.
   let projectFiles = $state<Record<string, string>>({});
   let filePaths = $state<Record<string, string>>({});
-  let bundlePath = $state<string | null>(null);
   let projectName = $state("Project");
 
   // The dock's rows: every project file (dirty iff its open doc has unsaved
@@ -298,15 +302,21 @@ score {
   function openProjectInto(opts: {
     files: Record<string, string>;
     filePaths?: Record<string, string>;
-    openKey: string;
+    openKey: string | null;
     projectName: string;
-    bundlePath: string | null;
   }) {
     projectFiles = opts.files;
     filePaths = opts.filePaths ?? {};
-    bundlePath = opts.bundlePath;
     projectName = opts.projectName;
     resetDocState();
+    // A folder opens with no file in the editor (`openKey` null): the dock shows
+    // the tree and the workspace rests on its empty-tabs placeholder until the
+    // user opens a file.
+    if (opts.openKey === null) {
+      docStore = { docs: [], activeId: null };
+      workspace = { groups: [], maximizedId: null };
+      return;
+    }
     const doc = fileSession(opts.openKey);
     docStore = singleDocStore(doc);
     workspace = defaultWorkspace(doc.id);
@@ -555,16 +565,32 @@ score {
         filePaths: opened.path ? { [key]: opened.path } : {},
         openKey: key,
         projectName: opened.name,
-        bundlePath: null,
       });
       return;
     }
     const { entry, files } = opened.bundle;
+    openProjectInto({ files, openKey: entry, projectName: opened.name });
+  }
+
+  // Open a whole project directory as a live folder (desktop). Same discard
+  // guard as opening a file; the dock then shows the real tree and saves write
+  // back to the real files (each opened doc carries its fs path). A no-op
+  // off-desktop, where `openFolder` resolves null (web folder access is later).
+  async function openFolderFlow() {
+    if (!(await confirmDiscardIfDirty())) return;
+    let folder;
+    try {
+      folder = await openFolder();
+    } catch (e) {
+      window.alert(`Could not open folder: ${(e as Error).message}`);
+      return;
+    }
+    if (!folder) return;
     openProjectInto({
-      files,
-      openKey: entry,
-      projectName: opened.name,
-      bundlePath: opened.path,
+      files: folder.files,
+      filePaths: folder.filePaths,
+      openKey: null,
+      projectName: folder.name,
     });
   }
 
@@ -589,25 +615,19 @@ score {
     });
   }
 
-  // Save the whole project as one `.ctabz` bundle: every project file plus the
-  // live active source under its key. The bundle format names one entry — the
-  // active doc (its project key, or a derived name for a draft). Overwrites the
-  // known bundle path in place, else prompts.
-  async function saveProject() {
+  // Export the project as one portable `.ctabz` bundle: every project file plus
+  // the live active source under its key. The bundle format names one entry —
+  // the active doc (its project key, or a derived name for a draft). A derived
+  // artifact like the image exports, so it always prompts for a destination and
+  // never rebaselines the document's saved state.
+  async function exportBundle() {
     const entry = active?.id.startsWith("file:")
       ? active.id.slice(5)
       : (currentName ?? defaultDocName(source));
-    const saved = await saveBundle(
+    await saveBundle(
       { entry, files: { ...projectFiles, [entry]: source } },
-      { path: bundlePath, suggestedName: basename(entry) },
+      { path: null, suggestedName: basename(entry) },
     );
-    if (!saved) return;
-    bundlePath = saved.path;
-    // The bundle write rebaselines the active doc without changing its own path.
-    docStore = markActiveSaved(docStore, {
-      path: currentPath,
-      name: currentName,
-    });
   }
 
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
@@ -651,13 +671,16 @@ score {
     };
   });
 
-  // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves, Cmd/Ctrl+Shift+S saves the project;
   // preventDefault overrides the browser's native page-save / open shortcuts.
+  // Cmd/Ctrl+O opens a file/bundle; Cmd/Ctrl+Shift+O opens a folder (desktop —
+  // a no-op elsewhere); Cmd/Ctrl+S saves the active file.
   function onIOKey(e: KeyboardEvent) {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
     const key = e.key.toLowerCase();
-    if (key === "o" && !e.shiftKey) void openFile();
-    else if (key === "s" && e.shiftKey) void saveProject();
+    if (key === "o" && e.shiftKey) {
+      if (!desktop) return;
+      void openFolderFlow();
+    } else if (key === "o" && !e.shiftKey) void openFile();
     else if (key === "s" && !e.shiftKey) void saveFile();
     else return;
     e.preventDefault();
@@ -683,14 +706,18 @@ score {
       </span>
     </div>
     <div class="actions">
-      <button
-        class="icon-btn"
-        onclick={openFile}
-        aria-label="Open"
-        use:tooltip={"Open score or project (Cmd/Ctrl+O)"}
-      >
-        <Icon name="folder_open" size={18} />
-      </button>
+      {#if !desktop}
+        <!-- File/bundle open lives here on web; on desktop it's Cmd/Ctrl+O and
+             (folders) the dock's Open Folder, with the native menu in T7.30. -->
+        <button
+          class="icon-btn"
+          onclick={openFile}
+          aria-label="Open"
+          use:tooltip={"Open score or project (Cmd/Ctrl+O)"}
+        >
+          <Icon name="folder_open" size={18} />
+        </button>
+      {/if}
       <button
         class="icon-btn"
         onclick={saveFile}
@@ -698,14 +725,6 @@ score {
         use:tooltip={"Save score (Cmd/Ctrl+S)"}
       >
         <Icon name="save" size={18} />
-      </button>
-      <button
-        class="icon-btn"
-        onclick={saveProject}
-        aria-label="Save Project"
-        use:tooltip={"Save project bundle (Cmd/Ctrl+Shift+S)"}
-      >
-        <Icon name="save_as" size={18} />
       </button>
       <span class="sep" aria-hidden="true"></span>
       <button
@@ -739,6 +758,12 @@ score {
               role="menuitem"
               onclick={() => chooseExport(exportPng)}>Export PNG</button
             >
+            <button
+              class="menu-item"
+              role="menuitem"
+              onclick={() => chooseExport(exportBundle)}
+              >Export Bundle (.ctabz)</button
+            >
           </div>
         {/if}
       </div>
@@ -760,6 +785,7 @@ score {
         {projectName}
         {activeKey}
         onOpen={onOpenEntry}
+        onOpenFolder={desktop ? openFolderFlow : undefined}
       />
     {/if}
     <Workspace

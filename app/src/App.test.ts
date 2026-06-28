@@ -46,12 +46,14 @@ vi.mock("./lib/wasm", () => ({
 }));
 
 const openProjectMock = vi.fn();
+const openFolderMock = vi.fn();
 const saveDocumentMock = vi.fn();
 const saveBundleMock = vi.fn();
 const saveSvgMock = vi.fn();
 const savePngMock = vi.fn();
 vi.mock("./lib/io", () => ({
   openProject: (...args: unknown[]) => openProjectMock(...args),
+  openFolder: (...args: unknown[]) => openFolderMock(...args),
   saveDocument: (...args: unknown[]) => saveDocumentMock(...args),
   saveBundle: (...args: unknown[]) => saveBundleMock(...args),
   saveSvg: (...args: unknown[]) => saveSvgMock(...args),
@@ -59,6 +61,21 @@ vi.mock("./lib/io", () => ({
   defaultDocName: () => "untitled.ctab",
   basename: (p: string) => p.split(/[\\/]/).pop() || p,
 }));
+
+// The desktop backend invokes a Tauri command to compile; stub it so a
+// desktop-mode render (with __TAURI_INTERNALS__ set) still produces a render.
+const invokeMock = vi.fn(async (..._args: unknown[]) => fake);
+vi.mock("@tauri-apps/api/core", () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}));
+
+// Toggle the Tauri-webview marker `isTauri()` keys off, so a test can render the
+// app in desktop mode. Cleaned up per-test so others stay in web mode.
+function setDesktop(on: boolean) {
+  const w = window as unknown as { __TAURI_INTERNALS__?: unknown };
+  if (on) w.__TAURI_INTERNALS__ = {};
+  else delete w.__TAURI_INTERNALS__;
+}
 
 const svgToPngBlobMock = vi.fn(
   async (..._args: unknown[]) => new Blob(["png"], { type: "image/png" }),
@@ -727,23 +744,28 @@ describe("App", () => {
     });
   });
 
-  it("saves a project bundle from the Save Project button", async () => {
+  it("exports the project as a .ctabz bundle from the Export menu", async () => {
     saveBundleMock.mockReset();
     saveBundleMock.mockResolvedValue({
       path: "/proj.ctabz",
       name: "proj.ctabz",
     });
-    render(App);
+    const { getByText } = render(App);
 
-    await fireEvent.click(screen.getByLabelText("Save Project"));
+    // The bundle is an export now (alongside SVG/PNG), not a separate "Save".
+    await fireEvent.click(screen.getByLabelText("Export"));
+    await fireEvent.click(getByText("Export Bundle (.ctabz)"));
 
     await vi.waitFor(() => expect(saveBundleMock).toHaveBeenCalled());
-    // The bundle carries the entry name plus the live editor source under it.
-    const [bundle] = saveBundleMock.mock.calls[0] as [
+    // It carries the entry name plus the live editor source under it, and always
+    // prompts for a destination (path: null — a derived artifact).
+    const [bundle, target] = saveBundleMock.mock.calls[0] as [
       { entry: string; files: Record<string, string> },
+      { path: string | null; suggestedName: string },
     ];
     expect(bundle.entry).toBe("untitled.ctab");
     expect(bundle.files["untitled.ctab"]).toContain("Cripple Creek");
+    expect(target.path).toBeNull();
   });
 
   it("exports the rendered tab as a standalone SVG", async () => {
@@ -929,7 +951,7 @@ describe("App", () => {
     // Reveal the dock: it shows the entry (active) and the sibling lib, headed
     // by the bundle name.
     await fireEvent.click(container.querySelector(".dock-toggle")!);
-    expect(container.querySelector(".dock-header")?.textContent).toBe(
+    expect(container.querySelector(".dock-title")?.textContent).toBe(
       "proj.ctabz",
     );
     const names = [...container.querySelectorAll(".file-name")].map(
@@ -977,6 +999,96 @@ describe("App", () => {
         "untitled",
       );
     });
+  });
+
+  it("desktop: hides the topbar Open and opens a folder from the dock into the tree", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score {}", "licks/roll.ctab": "def roll() {}" },
+        filePaths: {
+          "tune.ctab": "/proj/tune.ctab",
+          "licks/roll.ctab": "/proj/licks/roll.ctab",
+        },
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      // The topbar Open button is web-only; on desktop you open via the dock /
+      // Cmd+O.
+      expect(screen.queryByLabelText("Open")).toBeNull();
+
+      // Reveal the dock and open a folder from its header control.
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+
+      // The dock shows the real folder tree, headed by the folder name...
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock-title")?.textContent).toBe(
+          "proj",
+        );
+      });
+      expect(
+        [...container.querySelectorAll(".dock .file-name")].map(
+          (n) => n.textContent,
+        ),
+      ).toEqual(["licks", "roll.ctab", "tune.ctab"]);
+
+      // ...and no file is open — the workspace rests on its empty placeholder.
+      expect(container.querySelector(".cm-content")).toBeNull();
+      expect(screen.getAllByLabelText("New tab").length).toBeGreaterThan(0);
+    } finally {
+      setDesktop(false);
+    }
+  });
+
+  it("desktop: saves an opened folder file back to its real fs path", async () => {
+    setDesktop(true);
+    try {
+      openFolderMock.mockReset();
+      saveDocumentMock.mockReset();
+      saveDocumentMock.mockResolvedValue({
+        path: "/proj/tune.ctab",
+        name: "tune.ctab",
+      });
+      openFolderMock.mockResolvedValue({
+        root: "/proj",
+        name: "proj",
+        files: { "tune.ctab": "score {}" },
+        filePaths: { "tune.ctab": "/proj/tune.ctab" },
+      });
+      const { container } = render(App);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      // Open the folder, then open its file from the dock.
+      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      await fireEvent.click(screen.getByLabelText("Open Folder"));
+      await vi.waitFor(() => {
+        expect(container.querySelector(".dock .file")).toBeTruthy();
+      });
+      await fireEvent.click(container.querySelector(".dock .file")!);
+      await vi.waitFor(() => {
+        expect(container.querySelector(".cm-content")).toBeTruthy();
+      });
+
+      // Save writes straight back to the file's real path — no dialog.
+      await fireEvent.click(screen.getByLabelText("Save"));
+      await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
+      const [, target] = saveDocumentMock.mock.calls[0] as [
+        string,
+        { path: string | null; suggestedName: string },
+      ];
+      expect(target.path).toBe("/proj/tune.ctab");
+    } finally {
+      setDesktop(false);
+    }
   });
 
   it("cycles the colour theme onto the document root", async () => {
