@@ -28,7 +28,7 @@ export const VIEWS: Record<string, ViewDef> = {
   editor: {
     type: "editor",
     title: "Editor",
-    icon: "edit",
+    icon: "code",
     kind: "document-bound",
   },
   render: {

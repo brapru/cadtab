@@ -322,7 +322,7 @@
                 title="Fit to width"
                 onclick={() => onFit?.()}
               >
-                <Icon name="fit_screen" size={16} />
+                <Icon name="crop_free" size={16} />
               </button>
             {/if}
             {#if g.tabs.length > 1}
@@ -332,7 +332,7 @@
                 title="Split the active tab into its own group"
                 onclick={() => (workspace = splitTab(workspace, g.id))}
               >
-                <Icon name="vertical_split" size={16} />
+                <Icon name="split_scene" size={16} />
               </button>
             {/if}
             <button
