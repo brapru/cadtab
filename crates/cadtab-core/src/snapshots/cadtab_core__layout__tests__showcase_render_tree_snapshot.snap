@@ -4,13 +4,13 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 ---
 {
   "meta": {
-    "width": 43.200005,
+    "width": 80.0,
     "height": 22.3
   },
   "header": [
     {
       "kind": "text",
-      "x": 21.600002,
+      "x": 40.0,
       "y": 1.5,
       "content": "Syntax Showcase",
       "role": "title",
@@ -18,7 +18,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
     },
     {
       "kind": "text",
-      "x": 21.600002,
+      "x": 40.0,
       "y": 3.1,
       "content": "cadtab",
       "role": "composer",
@@ -94,7 +94,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "bounds": {
         "x": 0.0,
         "y": 15.5,
-        "w": 43.200005,
+        "w": 80.0,
         "h": 4.0
       },
       "prims": [

@@ -168,7 +168,11 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
         .map(|(m, &mark)| plan_measure(m, mark))
         .collect();
     let groups = pack_systems(&plans, config.width);
-    let width = overall_width(&groups, &plans);
+    // Pin the page to the layout target: at least `config.width`, growing only
+    // when a single measure is wider than the target. The centred header and the
+    // viewBox then stay put as measures are added, rather than reflowing with the
+    // content. (The def-gallery pins the same way.)
+    let width = overall_width(&groups, &plans).max(config.width);
 
     // Beam grouping per measure, threading the running meter (default 4/4).
     let mut meter = TimeSig::new(4, 4);
@@ -389,8 +393,9 @@ fn pack_systems(plans: &[MeasurePlan], width: f32) -> Vec<(usize, usize)> {
     groups
 }
 
-/// The widest system's extent (with margins) — the viewBox width all systems
-/// share. Falls back to a minimum for an empty score.
+/// The widest system's extent (with margins) — the content-derived floor for
+/// the viewBox width all systems share. Falls back to a minimum for an empty
+/// score; the caller pins this up to the layout target (`config.width`).
 fn overall_width(groups: &[(usize, usize)], plans: &[MeasurePlan]) -> f32 {
     let widest = groups
         .iter()
@@ -2774,6 +2779,26 @@ mod tests {
                 _ => None,
             })
             .collect()
+    }
+
+    #[test]
+    fn page_pins_to_the_target_width_when_content_is_narrower() {
+        // A lone short measure is far narrower than the 800-unit target, so the
+        // page width is the target, not the content-derived width.
+        let tree = layout(&banjo_score(vec![Measure::new(vec![note(3, 0, 0)])]), cfg());
+        assert_eq!(tree.meta.width, 800.0);
+    }
+
+    #[test]
+    fn page_grows_past_the_target_when_a_measure_overflows() {
+        // A single measure packed with events exceeds a tiny target; the page
+        // grows to hold it rather than clipping.
+        let events: Vec<Event> = (0..12)
+            .map(|i| note_dur(3, 0, i * 2, Duration::from_denominator(8)))
+            .collect();
+        let narrow = LayoutConfig { width: 10.0 };
+        let tree = layout(&banjo_score(vec![Measure::new(events)]), narrow);
+        assert!(tree.meta.width > 10.0);
     }
 
     #[test]

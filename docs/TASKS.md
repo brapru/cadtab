@@ -538,7 +538,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 - [ ] **T7.17 — Justify systems + pin page width.** Pin the page to the layout target, then stretch
       short systems to fill it. **Blocks T7.19.** Relates to T3.3/T3.4 and T7.18.
-  - [ ] T7.17a — **Pin page width.** `overall_width(...).max(config.width)` in `layout()` so the page is
+  - [x] T7.17a — **Pin page width.** `overall_width(...).max(config.width)` in `layout()` so the page is
         the layout target, not content-derived — the centred header and zoom stop reflowing as measures
         are added. (The def-gallery already pins; prerequisite for justifying.)
   - [ ] T7.17b — **Justify systems.** Stretch measures/events to fill each system's width within the

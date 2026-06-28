@@ -4,7 +4,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 ---
 {
   "meta": {
-    "width": 17.4,
+    "width": 800.0,
     "height": 13.5
   },
   "header": [
@@ -62,7 +62,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "bounds": {
         "x": 0.0,
         "y": 6.7,
-        "w": 17.4,
+        "w": 800.0,
         "h": 4.0
       },
       "prims": [

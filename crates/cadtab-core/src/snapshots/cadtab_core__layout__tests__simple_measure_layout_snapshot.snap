@@ -4,13 +4,13 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 ---
 {
   "meta": {
-    "width": 14.2,
+    "width": 800.0,
     "height": 15.3
   },
   "header": [
     {
       "kind": "text",
-      "x": 7.1,
+      "x": 400.0,
       "y": 1.5,
       "content": "Syntax Showcase",
       "role": "title",
@@ -78,7 +78,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
       "bounds": {
         "x": 0.0,
         "y": 8.5,
-        "w": 14.2,
+        "w": 800.0,
         "h": 4.0
       },
       "prims": [
