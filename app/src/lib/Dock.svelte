@@ -1,5 +1,6 @@
 <script lang="ts">
   import { projectFileList } from "./project";
+  import { tooltip } from "./tooltip";
 
   // The left project dock (D41 global singleton): a collapsible panel showing the
   // open project's structure — the entry document plus its importable libs (D38).
@@ -31,7 +32,7 @@
         <button
           class="file"
           class:active={activePath === f.path}
-          title={f.path}
+          use:tooltip={f.path}
           onclick={() => onOpenFile?.(f.path, f.isEntry)}
         >
           <span class="file-icon" aria-hidden="true">♪</span>

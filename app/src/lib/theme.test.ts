@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nextTheme, themeGlyph, THEMES } from "./theme";
+import { nextTheme, themeIcon, THEMES } from "./theme";
 
 describe("nextTheme", () => {
   it("cycles system -> light -> dark -> system", () => {
@@ -9,9 +9,9 @@ describe("nextTheme", () => {
   });
 });
 
-describe("themeGlyph", () => {
-  it("gives a distinct glyph for every theme", () => {
-    const glyphs = THEMES.map(themeGlyph);
-    expect(new Set(glyphs).size).toBe(THEMES.length);
+describe("themeIcon", () => {
+  it("gives a distinct icon name for every theme", () => {
+    const icons = THEMES.map(themeIcon);
+    expect(new Set(icons).size).toBe(THEMES.length);
   });
 });

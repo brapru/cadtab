@@ -8,7 +8,11 @@ export function nextTheme(current: Theme): Theme {
   return THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
 }
 
-// A short glyph for the toggle button, per theme.
-export function themeGlyph(theme: Theme): string {
-  return theme === "light" ? "☀" : theme === "dark" ? "☾" : "◐";
+// The Material Symbols icon for the toggle button, per theme (T7.14).
+export function themeIcon(theme: Theme): string {
+  return theme === "light"
+    ? "light_mode"
+    : theme === "dark"
+      ? "dark_mode"
+      : "brightness_auto";
 }

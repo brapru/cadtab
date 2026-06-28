@@ -551,9 +551,19 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       (a `flex: 1` filler that also pushes the controls right). Only that space is cued (a translucent
       accent wash + an `inset` accent bottom edge), not the existing tabs, the view body, or the whole
       group. Test in `workspace.test.ts` (mid-drag, only the hovered group's drop space is cued).
-- [ ] **T7.14 — Iconify the topbar + styled tooltips.** Replace the remaining topbar text buttons with
+- [x] **T7.14 — Iconify the topbar + styled tooltips.** Replace the remaining topbar text buttons with
       Material Symbols icons (T7.10), and give **every** control a neat CSS hover tooltip (replacing
       native `title=`), ensuring full coverage. Feeds the T7.34 cohesion pass. *(NOTES #2, #9.)*
+      **Done (two chunks):** **(1) Tooltips** — a reusable `use:tooltip={text}` action (`lib/tooltip.ts`)
+      shows a CSS-styled chip **portaled to `<body>`** (positioned by JS), so it's never clipped by an
+      `overflow:hidden/auto` ancestor (the tab strip, the dock list) — the reason for an action over a
+      pure `[data-tip]` pseudo-element. Dismisses on leave/blur/activation. Replaced **every** native
+      `title=` with it: topbar, Workspace controls, BottomBar, Dock. **(2) Iconified topbar** — Open
+      `folder_open`, Save `save`, Save Project `save_as`, Preview `preview`, Theme
+      `brightness_auto`/`light_mode`/`dark_mode` (`themeGlyph`→`themeIcon`), and **Export collapsed into
+      one `download` menu** (SVG/PNG popover, like the New "+"; replaces the two text export buttons).
+      Buttons are square `.icon-btn`s labelled by `aria-label` + tooltip. Tests in `tooltip.test.ts`,
+      `theme.test.ts`, and `App.test.ts` (label/menu-driven queries, Export menu open/dismiss).
 
 *Project open:*
 

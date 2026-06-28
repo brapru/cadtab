@@ -59,6 +59,23 @@ body {
   color: var(--fg);
 }
 
+/* Styled hover/focus tooltip (T7.14), portaled to <body> by the `tooltip` action
+   so it is never clipped. An inverted chip (ink background, page-coloured text)
+   that reads clearly over either theme. */
+.app-tooltip {
+  position: fixed;
+  z-index: 1000;
+  padding: 0.2rem 0.45rem;
+  background: var(--fg);
+  color: var(--bg);
+  border-radius: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 25%, transparent);
+}
+
 /* Self-hosted Material Symbols (D51): the variable font is bundled in
    public/fonts and served locally so icons work fully offline on desktop —
    never a CDN/Google Fonts load. The Icon.svelte wrapper is the one usage

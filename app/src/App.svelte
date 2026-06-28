@@ -6,6 +6,7 @@
   import BottomBar from "./lib/BottomBar.svelte";
   import Dock from "./lib/Dock.svelte";
   import ConfirmDialog from "./lib/ConfirmDialog.svelte";
+  import Icon from "./lib/Icon.svelte";
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
@@ -36,7 +37,7 @@
     type DocSession,
   } from "./lib/documents";
   import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
-  import { nextTheme, themeGlyph, type Theme } from "./lib/theme";
+  import { nextTheme, themeIcon, type Theme } from "./lib/theme";
   import {
     openProject,
     saveDocument,
@@ -48,6 +49,7 @@
   } from "./lib/io";
   import { renderTreeToSvg } from "./lib/svg";
   import { svgToPngBlob } from "./lib/png";
+  import { tooltip } from "./lib/tooltip";
   import { TEMPLATES, templateById } from "./lib/templates";
   import type { CompileResult, Span } from "./lib/types";
 
@@ -566,7 +568,8 @@ score {
   }
 
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
-  // derived artifacts, so they always prompt for a destination (path: null).
+  // derived artifacts, so they always prompt for a destination (path: null). Both
+  // live behind the topbar Export menu (T7.14).
   async function exportSvg() {
     if (!activeResult) return;
     const svg = renderTreeToSvg(activeResult.renderTree);
@@ -579,6 +582,31 @@ score {
   }
   // The base name to seed an export with; `saveSvg`/`savePng` swap the extension.
   const exportName = () => currentName ?? defaultDocName(source);
+
+  // The topbar Export menu (download ▾): one icon opening an SVG/PNG choice,
+  // dismissed on Escape or a pointer down outside it.
+  let exportMenuOpen = $state(false);
+  function chooseExport(fn: () => void) {
+    exportMenuOpen = false;
+    fn();
+  }
+  $effect(() => {
+    if (!exportMenuOpen) return;
+    function onPointer(e: PointerEvent) {
+      const t = e.target;
+      if (t instanceof Element && t.closest(".export-wrap")) return;
+      exportMenuOpen = false;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") exportMenuOpen = false;
+    }
+    window.addEventListener("pointerdown", onPointer, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  });
 
   // Cmd/Ctrl+O opens, Cmd/Ctrl+S saves, Cmd/Ctrl+Shift+S saves the project;
   // preventDefault overrides the browser's native page-save / open shortcuts.
@@ -606,37 +634,80 @@ score {
       <span
         class="doc-name"
         class:dirty
-        title={currentName ?? "unsaved document"}
+        use:tooltip={currentName ?? "unsaved document"}
       >
         {currentName ?? "untitled"}{dirty ? " •" : ""}
       </span>
     </div>
     <div class="actions">
-      <button onclick={openFile} title="Open score or project (Cmd/Ctrl+O)"
-        >Open</button
-      >
-      <button onclick={saveFile} title="Save score (Cmd/Ctrl+S)">Save</button>
       <button
-        onclick={saveProject}
-        title="Save project bundle (Cmd/Ctrl+Shift+S)">Save Project</button
+        class="icon-btn"
+        onclick={openFile}
+        aria-label="Open"
+        use:tooltip={"Open score or project (Cmd/Ctrl+O)"}
       >
+        <Icon name="folder_open" size={18} />
+      </button>
+      <button
+        class="icon-btn"
+        onclick={saveFile}
+        aria-label="Save"
+        use:tooltip={"Save score (Cmd/Ctrl+S)"}
+      >
+        <Icon name="save" size={18} />
+      </button>
+      <button
+        class="icon-btn"
+        onclick={saveProject}
+        aria-label="Save Project"
+        use:tooltip={"Save project bundle (Cmd/Ctrl+Shift+S)"}
+      >
+        <Icon name="save_as" size={18} />
+      </button>
       <span class="sep" aria-hidden="true"></span>
       <button
+        class="icon-btn"
         onclick={openPreview}
-        title="Open the print preview (final light output)">Preview</button
+        aria-label="Preview"
+        use:tooltip={"Open the print preview (final light output)"}
       >
-      <button onclick={exportSvg} title="Export the tab as an SVG image"
-        >Export SVG</button
-      >
-      <button onclick={exportPng} title="Export the tab as a PNG image"
-        >Export PNG</button
-      >
+        <Icon name="preview" size={18} />
+      </button>
+      <div class="export-wrap">
+        <button
+          class="icon-btn"
+          aria-label="Export"
+          aria-haspopup="menu"
+          aria-expanded={exportMenuOpen}
+          use:tooltip={"Export the tab as an image"}
+          onclick={() => (exportMenuOpen = !exportMenuOpen)}
+        >
+          <Icon name="download" size={18} />
+        </button>
+        {#if exportMenuOpen}
+          <div class="menu" role="menu">
+            <button
+              class="menu-item"
+              role="menuitem"
+              onclick={() => chooseExport(exportSvg)}>Export SVG</button
+            >
+            <button
+              class="menu-item"
+              role="menuitem"
+              onclick={() => chooseExport(exportPng)}>Export PNG</button
+            >
+          </div>
+        {/if}
+      </div>
+      <span class="sep" aria-hidden="true"></span>
       <button
-        class="theme-toggle"
+        class="icon-btn theme-toggle"
         onclick={cycleTheme}
         aria-label="Theme: {theme}"
-        title="Theme: {theme}">{themeGlyph(theme)}</button
+        use:tooltip={`Theme: ${theme}`}
       >
+        <Icon name={themeIcon(theme)} size={18} />
+      </button>
     </div>
   </header>
   <div class="body">
@@ -771,26 +842,57 @@ score {
     margin: 0.15rem 0.15rem;
     background: var(--border);
   }
-  .actions button {
-    border: 1px solid var(--border);
-    background: transparent;
-    color: inherit;
-    border-radius: 0.3rem;
-    padding: 0.25rem 0.6rem;
-    cursor: pointer;
-    font-size: 0.85rem;
-    line-height: 1;
-  }
-  .theme-toggle {
-    border: 1px solid var(--border);
-    background: transparent;
-    color: inherit;
-    border-radius: 0.3rem;
+  /* Topbar actions are icon-only square buttons (T7.14), labelled by tooltip. */
+  .icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 1.9rem;
     height: 1.9rem;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: inherit;
+    border-radius: 0.3rem;
     cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
+    padding: 0;
+  }
+  .icon-btn:hover {
+    background: color-mix(in srgb, var(--fg) 8%, transparent);
+  }
+  /* The Export control anchors its SVG/PNG menu just below the download icon. */
+  .export-wrap {
+    position: relative;
+    display: flex;
+  }
+  .menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    z-index: 10;
+    margin-top: 0.25rem;
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
+    padding: 0.25rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 0.4rem;
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent);
+  }
+  .menu-item {
+    border: none;
+    background: transparent;
+    color: var(--fg);
+    text-align: left;
+    padding: 0.35rem 0.55rem;
+    border-radius: 0.25rem;
+    cursor: pointer;
+    font: inherit;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+  .menu-item:hover {
+    background: color-mix(in srgb, var(--fg) 10%, transparent);
   }
   .body {
     display: flex;

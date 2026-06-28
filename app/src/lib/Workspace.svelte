@@ -14,6 +14,7 @@
   } from "./workspace";
   import { splitFromPointer, clampSplit } from "./split";
   import Icon from "./Icon.svelte";
+  import { tooltip } from "./tooltip";
 
   // The shell renders groups, tab strips, resize gutters, and the maximize
   // toggle; the parent supplies `view`, a snippet that mounts the right
@@ -230,7 +231,7 @@
       aria-label="New tab"
       aria-haspopup="menu"
       aria-expanded={newMenuKey === key}
-      title="New tab"
+      use:tooltip={"New tab"}
       onclick={() => toggleNewMenu(key)}
     >
       <Icon name="add" size={16} />
@@ -285,7 +286,7 @@
               <button
                 class="tab-close"
                 aria-label="Close {viewDef(tab.type)?.title}"
-                title="Close"
+                use:tooltip={`Close ${viewDef(tab.type)?.title}`}
                 onclick={() => onCloseTab?.(tab)}
               >
                 <Icon name="close" size={14} />
@@ -312,7 +313,7 @@
                 class="launch"
                 class:open
                 aria-label={open ? "Go to render" : "Open render"}
-                title={open ? "Go to render" : "Open render"}
+                use:tooltip={open ? "Go to render" : "Open render"}
                 onclick={() => active?.docId && onOpenRender?.(active.docId)}
               >
                 <Icon name="music_note" size={16} fill={open} />
@@ -324,7 +325,7 @@
               <button
                 class="fit"
                 aria-label="Fit to width"
-                title="Fit to width"
+                use:tooltip={"Fit to width"}
                 onclick={() => onFit?.()}
               >
                 <Icon name="crop_free" size={16} />
@@ -334,7 +335,7 @@
               <button
                 class="split"
                 aria-label="Split group"
-                title="Split the active tab into its own group"
+                use:tooltip={"Split the active tab into its own group"}
                 onclick={() => (workspace = splitTab(workspace, g.id))}
               >
                 <Icon name="split_scene" size={16} />
@@ -345,7 +346,7 @@
               aria-label={workspace.maximizedId
                 ? "Restore group"
                 : "Maximize group"}
-              title={workspace.maximizedId ? "Restore" : "Maximize"}
+              use:tooltip={workspace.maximizedId ? "Restore" : "Maximize"}
               onclick={() => (workspace = toggleMaximize(workspace, g.id))}
             >
               <Icon

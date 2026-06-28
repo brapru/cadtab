@@ -261,9 +261,9 @@ describe("App", () => {
       name: "loaded.ctab",
       content: "score { 1:0 }",
     });
-    const { container, getByText } = render(App);
+    const { container } = render(App);
 
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
 
     await vi.waitFor(() => {
       const name = container.querySelector(".doc-name");
@@ -288,9 +288,9 @@ describe("App", () => {
         },
       },
     });
-    const { container, getByText } = render(App);
+    const { container } = render(App);
 
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
 
     // The entry becomes the open document...
     await vi.waitFor(() => {
@@ -321,7 +321,7 @@ describe("App", () => {
     });
     const { container, getByText } = render(App);
 
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "tune.ctab",
@@ -359,7 +359,7 @@ describe("App", () => {
 
     // Open the project, then a sibling lib from the dock: two editor tabs within
     // the one project (lib focused).
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "tune.ctab",
@@ -407,7 +407,7 @@ describe("App", () => {
       );
 
     // Open the bundle, then a dock lib — two editor tabs open in this project.
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "tune.ctab",
@@ -425,7 +425,7 @@ describe("App", () => {
       name: "other.ctab",
       content: "score { 2:0 }",
     });
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() => {
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "other.ctab",
@@ -449,12 +449,12 @@ describe("App", () => {
       path: "/scores/loaded.ctab",
       name: "loaded.ctab",
     });
-    const { getByText } = render(App);
+    render(App);
 
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
 
-    await fireEvent.click(getByText("Save"));
+    await fireEvent.click(screen.getByLabelText("Save"));
     await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
     // Save targets the opened path, so the backend overwrites in place.
     const [, target] = saveDocumentMock.mock.calls[0] as [
@@ -470,9 +470,9 @@ describe("App", () => {
       path: "/x/tune.ctab",
       name: "tune.ctab",
     });
-    const { container, getByText } = render(App);
+    const { container } = render(App);
 
-    await fireEvent.click(getByText("Save"));
+    await fireEvent.click(screen.getByLabelText("Save"));
 
     await vi.waitFor(() => {
       expect(saveDocumentMock).toHaveBeenCalled();
@@ -730,9 +730,9 @@ describe("App", () => {
       path: "/proj.ctabz",
       name: "proj.ctabz",
     });
-    const { getByText } = render(App);
+    render(App);
 
-    await fireEvent.click(getByText("Save Project"));
+    await fireEvent.click(screen.getByLabelText("Save Project"));
 
     await vi.waitFor(() => expect(saveBundleMock).toHaveBeenCalled());
     // The bundle carries the entry name plus the live editor source under it.
@@ -751,6 +751,8 @@ describe("App", () => {
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
+    // Export lives behind the topbar download menu now.
+    await fireEvent.click(screen.getByLabelText("Export"));
     await fireEvent.click(getByText("Export SVG"));
 
     await vi.waitFor(() => expect(saveSvgMock).toHaveBeenCalled());
@@ -772,6 +774,7 @@ describe("App", () => {
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
+    await fireEvent.click(screen.getByLabelText("Export"));
     await fireEvent.click(getByText("Export PNG"));
 
     await vi.waitFor(() => expect(savePngMock).toHaveBeenCalled());
@@ -779,6 +782,24 @@ describe("App", () => {
     expect(svgToPngBlobMock).toHaveBeenCalled();
     const [blob] = savePngMock.mock.calls[0] as [Blob];
     expect(blob.type).toBe("image/png");
+  });
+
+  it("opens and dismisses the topbar Export menu (T7.14)", async () => {
+    render(App);
+    // Closed by default; the icon opens an SVG/PNG menu.
+    expect(screen.queryByText("Export SVG")).toBeNull();
+    await fireEvent.click(screen.getByLabelText("Export"));
+    expect(screen.getByText("Export SVG")).toBeTruthy();
+    expect(screen.getByText("Export PNG")).toBeTruthy();
+
+    // Escape closes it...
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(screen.queryByText("Export SVG")).toBeNull();
+
+    // ...as does a pointer down outside the menu.
+    await fireEvent.click(screen.getByLabelText("Export"));
+    await fireEvent.pointerDown(document.body);
+    expect(screen.queryByText("Export SVG")).toBeNull();
   });
 
   it("opens a new document from the New + menu as its own untitled tab", async () => {
@@ -829,12 +850,12 @@ describe("App", () => {
   });
 
   it("opens the print preview as a tab showing the light export output", async () => {
-    const { container, getByText } = render(App);
+    const { container } = render(App);
     await vi.waitFor(() =>
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
-    await fireEvent.click(getByText("Preview"));
+    await fireEvent.click(screen.getByLabelText("Preview"));
 
     // A Preview tab appears and renders the export SVG on a white sheet.
     await vi.waitFor(() => {
@@ -892,9 +913,9 @@ describe("App", () => {
         },
       },
     });
-    const { container, getByText } = render(App);
+    const { container } = render(App);
 
-    await fireEvent.click(getByText("Open"));
+    await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() => {
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "tune.ctab",

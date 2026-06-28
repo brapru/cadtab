@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Diagnostic } from "./types";
   import { diagnosticCounts } from "./diagnostics";
+  import { tooltip } from "./tooltip";
 
   // The bottom status bar (D41 global singleton): a small, unobtrusive strip
   // hosting the dock toggle and a live problem indicator. It sets the
@@ -27,7 +28,7 @@
       class:active={dockOpen}
       aria-label="Toggle project dock"
       aria-pressed={dockOpen}
-      title="Toggle project dock (Cmd/Ctrl+B)"
+      use:tooltip={"Toggle project dock (Cmd/Ctrl+B)"}
       onclick={() => onToggleDock?.()}
     >
       <span aria-hidden="true">◧</span>
@@ -39,7 +40,7 @@
     <div
       class="diagnostics"
       class:clean
-      title={clean
+      use:tooltip={clean
         ? "No problems"
         : `${counts.errors} error(s), ${counts.warnings} warning(s)`}
     >
