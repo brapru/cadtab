@@ -567,7 +567,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Project open:*
 
-- [ ] **T7.15 — Open a project as a folder (D38 live folder).** Open a whole project directory, not
+- [x] **T7.15 — Open a project as a folder (D38 live folder).** Open a whole project directory, not
       just a single score or `.ctabz` bundle: a live folder on desktop (Tauri fs) / Chromium-web (File
       System Access API); the dock then shows the real folder tree (hierarchical) and imports resolve
       against it. The live-folder source flagged unbuilt in T7.2. Pairs with T7.8. *(NOTES #16.)*
@@ -620,8 +620,15 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       (the earlier never-clobber/notice plan was overridden). `documents.ts` gained `reloadDoc`. Tests:
       `watch.test.ts`, `documents.test.ts` (`reloadDoc`), `io.test.ts` (`rescanFolder`/`watchFolder`),
       `App.test.ts` (desktop: an open file live-reloads to disk content on a synthetic watch event).
-      **Only Chunk D remains (web FSA directory open + manual Refresh) — optional/deferred** per D38
-      (FSA is a Chromium-only enhancement, not the dependency); the desktop live folder is complete.
+      **Chunk D (web FSA directory open + manual Refresh) — SKIPPED by decision (2026-06-28).** Per D38
+      FSA is an optional Chromium-only enhancement, not the dependency; the desktop live folder (A–C) is
+      complete and the `.ctabz` **bundle is the browser-agnostic web baseline** (Firefox included). Rationale
+      (user): a desktop app should have desktop-like features (a live, watched folder) and a web app
+      web-like features (the portable bundle) — that division is an implied, fair UX expectation, and FSA
+      would be Chromium-only + degraded (no change-notification API → snapshot + manual Refresh, three sync
+      models to maintain) while reimplementing the T7.36 ops against FSA handles for parity. Revisit
+      post-MVP only if browser-side folder *authoring* (not just viewing/sharing) becomes a real target.
+      **T7.15 closed — desktop live folder (A–C) + T7.36 dock file management ship it.**
 - [x] **T7.15b — New = an unsaved draft listed in the dock (IDE-style).** New (the T7.12 "+") should
       create an **untitled, dirty draft** that's surfaced in the dock's file tree and saved through the
       in-app flow — not a phantom "clean" doc the user only ever names via the system save dialog. Two
