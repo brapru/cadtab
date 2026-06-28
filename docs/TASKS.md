@@ -466,11 +466,18 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       below 1 leaves the rest of the row empty. *Fix:* `Workspace.svelte` now normalizes `flex-grow`
       over the visible groups (`weight / totalWeight`), so it always sums to 1 and the row fills while
       ratios are preserved — independent of the raw-weight churn in `moveTab`/`splitTab`. *(NOTES #18.)*
-- [ ] **T7.8 — Fix: opening a project clears the previous one.** Opening a new project leaves the old
-      project's documents, tabs, and renders open, so a stale render lingers. Opening a project (single
-      score, bundle, or folder) should close the prior project's docs/tabs and reset
-      `projectFiles`/`bundlePath` (the multi-project isolation deferred in T7.4b). New-from-template and
-      opening more files *within* a project still add tabs. *(NOTES #17.)*
+- [x] **T7.8 — Fix: opening a project clears the previous one.** Opening a new project left the old
+      project's documents, tabs, and renders open, so a stale render lingered. *Fix:* in `App.svelte`,
+      `openDoc` distinguishes opening a *project* (the `context` branch — a single score or bundle from
+      disk) from opening a file *within* one. A project open now replaces the prior one: it resets the
+      doc store to the new entry, rebuilds the workspace to a fresh `defaultWorkspace`, clears the
+      per-doc maps + live-compiler/edit-handler caches (`resetDocState`), and resets
+      `projectFiles`/`bundlePath`/`projectEntryName`. New-from-template and dock-opened libs omit
+      `context` and still add tabs. Because replacing can discard unsaved work, `openFile` guards with a
+      **dirty-only confirm** before the file picker (clean projects swap silently). The confirm is a
+      custom in-app modal (`ConfirmDialog.svelte` + an `askConfirm` promise controller in `App.svelte`),
+      themed with the app tokens — cohesive with the UI and unaffected by WKWebView's no-op of the native
+      `window.confirm` (which made the first attempt appear to do nothing on desktop). *(NOTES #17.)*
 - [ ] **T7.9 — Fix: only panes scroll, not the page.** The app shell (`main`) must never scroll; only
       the scrollable view bodies (editor, render, preview, dock) do. Audit `height`/`overflow` so the
       chrome stays fixed. *(NOTES #4.)*

@@ -5,6 +5,7 @@
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
   import Dock from "./lib/Dock.svelte";
+  import ConfirmDialog from "./lib/ConfirmDialog.svelte";
   import { compile } from "./lib/core";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
@@ -206,9 +207,25 @@ score {
     return ws;
   }
 
-  // Open or focus a document, adding its tabs the first time and compiling it.
-  // `context`, supplied when opening from disk, replaces the project import
-  // context; dock-opened libs omit it to stay within the current bundle.
+  // Drop every per-document derived map and cache. Used when opening a project
+  // replaces the prior one, so a closed doc leaves nothing behind — no stale
+  // render, no orphaned live compiler/edit handler. The new doc repopulates these
+  // on its compile.
+  function resetDocState() {
+    results = {};
+    errors = {};
+    selections = {};
+    activeSpans = {};
+    layoutWidths = {};
+    for (const k in compilers) delete compilers[k];
+    for (const k in editHandlers) delete editHandlers[k];
+  }
+
+  // Open or focus a document. Opening a *project* (a single score or a bundle
+  // from disk, which supplies `context`) replaces the prior one: it closes the
+  // old project's docs, tabs, and renders and resets the import context, so no
+  // stale render lingers. Files opened *within* a project — dock-opened libs and
+  // New-from-template — omit `context` and just add or focus a tab.
   function openDoc(o: {
     id: string;
     name: string | null;
@@ -220,6 +237,13 @@ score {
       projectFiles = o.context.libs;
       bundlePath = o.context.bundlePath;
       projectEntryName = o.name ?? "untitled";
+      resetDocState();
+      docStore = singleDocStore(
+        newSession(o.id, { name: o.name, path: o.path, content: o.content }),
+      );
+      workspace = defaultWorkspace(o.id);
+      compileDoc(o.id);
+      return;
     }
     if (!docStore.docs.some((d) => d.id === o.id)) {
       docStore = putDoc(
@@ -314,7 +338,55 @@ score {
   // Open a score (`.ctab`) or a whole project bundle (`.ctabz`) as a new tab (or
   // focus it if already open). A bundle sets the project context (entry + libs);
   // a single score opens with its own standalone context.
+  // In-app confirmation modal: a single prompt at a time, holding the resolver its
+  // buttons settle. Our own DOM dialog — cohesive with the UI, and it works in the
+  // desktop WKWebView (which silently ignores the native `window.confirm`).
+  let confirmPrompt = $state<{
+    message: string;
+    confirmLabel: string;
+    cancelLabel: string;
+    destructive: boolean;
+    resolve: (ok: boolean) => void;
+  } | null>(null);
+
+  function askConfirm(opts: {
+    message: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    destructive?: boolean;
+  }): Promise<boolean> {
+    return new Promise((resolve) => {
+      confirmPrompt = {
+        message: opts.message,
+        confirmLabel: opts.confirmLabel ?? "Confirm",
+        cancelLabel: opts.cancelLabel ?? "Cancel",
+        destructive: opts.destructive ?? false,
+        resolve,
+      };
+    });
+  }
+
+  function settleConfirm(ok: boolean) {
+    confirmPrompt?.resolve(ok);
+    confirmPrompt = null;
+  }
+
+  // Opening a project replaces the current one (T7.8), which can discard unsaved
+  // work. Guard it: when the current project has dirty docs, confirm before going
+  // further; otherwise swap silently. Checked before the file picker so a declined
+  // prompt never opens a dialog.
+  function confirmDiscardIfDirty(): Promise<boolean> {
+    if (!docStore.docs.some(isDirty)) return Promise.resolve(true);
+    return askConfirm({
+      message:
+        "Discard unsaved changes in the current project and open another?",
+      confirmLabel: "Discard & Open",
+      destructive: true,
+    });
+  }
+
   async function openFile() {
+    if (!(await confirmDiscardIfDirty())) return;
     let opened;
     try {
       opened = await openProject();
@@ -541,6 +613,15 @@ score {
     diagnostics={activeResult?.diagnostics ?? []}
     {dockOpen}
     onToggleDock={toggleDock}
+  />
+  <ConfirmDialog
+    open={confirmPrompt !== null}
+    message={confirmPrompt?.message ?? ""}
+    confirmLabel={confirmPrompt?.confirmLabel ?? "Confirm"}
+    cancelLabel={confirmPrompt?.cancelLabel ?? "Cancel"}
+    destructive={confirmPrompt?.destructive ?? false}
+    onConfirm={() => settleConfirm(true)}
+    onCancel={() => settleConfirm(false)}
   />
 </main>
 

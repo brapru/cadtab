@@ -308,31 +308,96 @@ describe("App", () => {
   it("makes the active document follow the focused editor tab", async () => {
     openProjectMock.mockReset();
     openProjectMock.mockResolvedValue({
-      kind: "single",
-      path: "/scores/loaded.ctab",
-      name: "loaded.ctab",
-      content: "score { 1:0 }",
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
     });
     const { container, getByText } = render(App);
 
+    // Open the project, then a sibling lib from the dock: two editor tabs within
+    // the one project (lib focused).
     await fireEvent.click(getByText("Open"));
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "loaded.ctab",
+        "tune.ctab",
+      ),
+    );
+    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    await fireEvent.click(getByText("lib.ctab"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "lib.ctab",
       ),
     );
 
-    // The editor group now stacks two tabs; activating the first (the default
-    // untitled doc) makes it active again.
-    const editorTab = [...container.querySelectorAll(".tab")].find((t) =>
+    // Activating the entry's editor tab (the first one — the lib was appended
+    // after it) makes it the active document again.
+    const entryTab = [...container.querySelectorAll(".tab")].find((t) =>
       t.textContent?.includes("Editor"),
     )!;
-    await fireEvent.click(editorTab);
+    await fireEvent.click(entryTab);
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "untitled",
+        "tune.ctab",
       ),
     );
+  });
+
+  it("opening a project closes the prior project's docs, tabs, and renders", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
+    });
+    const { container, getByText } = render(App);
+    const editorTabs = () =>
+      [...container.querySelectorAll(".tab")].filter((t) =>
+        t.textContent?.includes("Editor"),
+      );
+
+    // Open the bundle, then a dock lib — two editor tabs open in this project.
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "tune.ctab",
+      ),
+    );
+    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    await fireEvent.click(getByText("lib.ctab"));
+    await vi.waitFor(() => expect(editorTabs()).toHaveLength(2));
+
+    // Open a different project: it replaces the prior one — a single editor tab
+    // for the new score, the old project's tabs/docs gone.
+    openProjectMock.mockResolvedValue({
+      kind: "single",
+      path: "/scores/other.ctab",
+      name: "other.ctab",
+      content: "score { 2:0 }",
+    });
+    await fireEvent.click(getByText("Open"));
+    await vi.waitFor(() => {
+      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+        "other.ctab",
+      );
+      expect(editorTabs()).toHaveLength(1);
+    });
+    // The bundle's lib is no longer reachable from the dock (project reset).
+    expect(screen.queryByText("lib.ctab")).toBeNull();
   });
 
   it("saves an opened file in place, reusing its path (no re-prompt)", async () => {
@@ -401,7 +466,7 @@ describe("App", () => {
     await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
   });
 
-  it("marks the document dirty on edit; opening adds a tab without a discard prompt", async () => {
+  it("marks the document dirty on edit; opening a project confirms then replaces it", async () => {
     openProjectMock.mockReset();
     openProjectMock.mockResolvedValue({
       kind: "single",
@@ -423,23 +488,66 @@ describe("App", () => {
       expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
     });
 
-    // Opening no longer prompts to discard — multi-file open adds a tab. No
-    // confirm dialog is consulted, and the opened file becomes the active doc.
-    const confirmSpy = vi.spyOn(window, "confirm");
+    // Opening a project replaces the current one (T7.8); since the current doc is
+    // dirty it raises our in-app confirm modal first. Accepting swaps in the
+    // opened file as the sole doc.
     await fireEvent.keyDown(window, { key: "o", metaKey: true });
+    let confirmBtn!: HTMLElement;
+    await vi.waitFor(() => {
+      confirmBtn = container.querySelector(".dialog .confirm")!;
+      expect(confirmBtn).toBeTruthy();
+    });
+    // The native dialog is never consulted — this is our own DOM modal.
+    await fireEvent.click(confirmBtn);
     await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
-    expect(confirmSpy).not.toHaveBeenCalled();
     await vi.waitFor(() => {
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
         "x.ctab",
       );
+      // The modal closes once settled.
+      expect(container.querySelector(".dialog")).toBeNull();
     });
-    // Both documents are open: two editor tabs across the groups.
+    // The prior dirty doc is closed: a single editor tab for the opened file.
     const editorTabs = [...container.querySelectorAll(".tab-title")].filter(
       (t) => t.textContent === "Editor",
     );
-    expect(editorTabs).toHaveLength(2);
-    confirmSpy.mockRestore();
+    expect(editorTabs).toHaveLength(1);
+  });
+
+  it("keeps the current project when the discard prompt is cancelled", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "single",
+      path: "/x.ctab",
+      name: "x.ctab",
+      content: "score {}",
+    });
+    const { container } = render(App);
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() =>
+      expect(container.querySelector(".doc-name.dirty")).not.toBeNull(),
+    );
+
+    // Cancelling the modal aborts before the file picker — nothing is opened and
+    // the dirty doc stays put.
+    await fireEvent.keyDown(window, { key: "o", metaKey: true });
+    let cancelBtn!: HTMLElement;
+    await vi.waitFor(() => {
+      cancelBtn = container.querySelector(".dialog .cancel")!;
+      expect(cancelBtn).toBeTruthy();
+    });
+    await fireEvent.click(cancelBtn);
+    expect(openProjectMock).not.toHaveBeenCalled();
+    expect(container.querySelector(".dialog")).toBeNull();
+    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
+      "untitled •",
+    );
   });
 
   it("saves a project bundle from the Save Project button", async () => {
