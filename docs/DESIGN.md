@@ -302,10 +302,10 @@ stale). Click note → span → editor selection; cursor move → span → highl
   embedded in the binary** (`include_str!`). Git-friendly, easy to share.
 - **D30 — Export = SVG + PNG + PDF in MVP** (reuse render tree → SVG). SVG/PNG shipped in
   M5 (T5.3). **PDF is an MVP deliverable too** — it's the distribution standard for tab —
-  but **sequenced post-M6** (tracked as T7.9; see 2026-06-27 changelog). The value of PDF
+  but **sequenced post-M6** (tracked as T7.19; see 2026-06-27 changelog). The value of PDF
   is paginated, print-ready Letter/A4 output, which is a *layout-engine* feature (page
   breaks, systems-per-page, margins/headers), not a serialization add-on. It builds on
-  M7's pinned-page layout (T4.7t) and shares the print styling (T5.3 / print-preview
+  M7's pinned-page layout (T7.17) and shares the print styling (T5.3 / print-preview
   T7.6); sequencing it after M6's above-staff notation keeps pagination from being built
   twice.
 - **D31 — Diagnostics = squiggles + hover, best-effort render.** CodeMirror squiggles +
@@ -481,27 +481,51 @@ Pre-MVP additions identified after M6: editor completions, a `.ctab` formatter, 
 command source feeding both the in-app controls and the native desktop menu. Captured so the core
 stays the single source of truth (consistent with D27's "Rust lexer is the single source").
 
-- **D46 — Completions come from the core, not a second grammar (T7.10).** Autocomplete and inline
+*(Task IDs renumbered 2026-06-28 — see §11g and TASKS.md: D46→T7.24, D47→T7.25, D48→T7.20+T7.30.)*
+
+- **D46 — Completions come from the core, not a second grammar (T7.24).** Autocomplete and inline
   hints are driven by the *existing* core knowledge: the keyword table (every keyword with a fixed
   value set — `instrument`, `tuning`, `barnumbers` — hints its options), the top-level operand
   shapes (`title` → a string), and the loaded stdlib/`def` registry (identifier completion). The
   `core` adapter exposes a completion query (position → candidates); CodeMirror renders them, tab
   accepts. No JS-side list of keywords/tunings to drift (mirrors D27). A setting toggles
   autocomplete + inline hinting off for users who want a quiet editor.
-- **D47 — The formatter is a core pretty-printer over the parse tree (T7.11).** A pure
+- **D47 — The formatter is a core pretty-printer over the parse tree (T7.25).** A pure
   `format(source) -> String` in `cadtab-core` that re-emits from the AST/token stream, so it is the
   one canonical layout of a document. Properties: **idempotent** (`fmt(fmt(x)) == fmt(x)`),
   **comment-preserving**, and **error-safe** — a document with parse errors is returned untouched
   rather than half-formatted (the resilient parser would otherwise drop the broken span). The UI is
   thin: a Format button and a format-on-save toggle both call the same core function. Lives in core
   (not the editor) so desktop, web, and any future CLI share one formatter.
-- **D48 — One command source for in-app controls and the native desktop menu (T7.13, T7.14).**
+- **D48 — One command source for in-app controls and the native desktop menu (T7.20, T7.30).**
   User actions (open, save, export-as, zoom in/out/reset, toggle dock…) are defined once as named
   commands; the toolbar/buttons and the Tauri native menu (View ▸ Zoom In, File ▸ Export…) both
   dispatch the same command, so the two never diverge. The **unified export control** (one button +
   SVG/PNG/PDF picker) is an instance: it replaces M5's separate buttons and routes every format
   through the existing io seam (binary write on desktop, download on web; D29/D30). The native menu
   is desktop-only (no-op on web); commands stay callable from the in-app UI on both targets.
+
+## 11g. M7 re-scope from NOTES.md (D49–D51)
+
+Mid-M7, a backlog of UX/workspace notes (`docs/NOTES.md`) was triaged into tasks and the remaining
+M7 work was renumbered into one dependency-ordered sequence (T7.7–T7.34) so nothing is listed before
+its blocker (the trigger was T7.9-PDF surfacing as "next" while blocked by the page-pin work). Three
+items needed a decision:
+
+- **D49 — Render is contextual; a lib renders a def-gallery (T7.16).** Render/preview is a property
+  of what a file *is*: a file with a `score{}` renders its score; a **lib** (only `def`s, no score)
+  renders a **gallery** that previews each `def` on its own page — answering "do imported files even
+  have a render?". Needs **core** support to render a single `def` (e.g. synthesize a minimal score
+  invoking it). Tab labels become the **filename**, with the view icon (editor/render/preview) doing
+  the type distinction. Open sub-decision deferred to T7.16: how to render a **parameterized** `def`
+  (representative/default args, nullary-only, or a placeholder).
+- **D50 — Splits stay horizontal for MVP (T7.12).** The workspace remains a single horizontal row of
+  groups; the split control offers **left/right** only. Full 2D nested splitting (up/down → a split
+  tree) is deferred — it's a substantial rewrite of the D41 layout and isn't needed to ship.
+- **D51 — Icons: self-hosted Material Symbols (T7.10).** The desktop app must work fully offline, so
+  icons are **bundled at build** (font/SVGs in the app), never CDN-loaded (which would rule out a
+  remote Google Fonts load). Material Symbols, self-hosted. A small icon wrapper gives one usage
+  convention; the topbar/controls move from text to icons + styled tooltips (T7.14).
 
 ## 12. Phase 3 — MVP task order
 
@@ -534,6 +558,7 @@ dependency-ordered build plan.
 - *2026-06-27* — T7.2 left project dock landed (D41 global singleton): `Dock.svelte` mounted left of the workspace, toggled by the T7.3 `dockOpen` seam; lists entry + bundle libs via pure `project.ts`. Display-only — opening a file as a tab is T7.4. Confirmed the **live-folder (FSA) tree source from D38 is not yet implemented** (open is single-file or one bundle), so the dock lists the loaded bundle map; folder-tree rendering + live-folder watching are deferred refinements.
 - *2026-06-27* — T7.5 render-as-document-bound-view landed: turned on the deferred D41 move/split verbs with the render as first consumer. `workspace.ts` gains `moveTab` (tab drag between groups; emptied groups drop) and `splitTab` (pop active tab into a new group); `Workspace.svelte` makes tabs draggable, groups drop targets, plus a keyboard-reachable Split button. The render is now placeable in any group. Multi-document render coexistence rides this once T7.4 adds a second doc.
 - *2026-06-27* — T7.4 decomposed into a model refactor then the UX. **T7.4a landed:** App's single-document state moved into a keyed session store (`documents.ts` — `DocStore`/`DocSession` + pure ops); the active doc's `source`/`name`/`path`/`dirty` derive from it. Behavior-preserving (one session this phase), green against the existing App suite. T7.4b will give each opened/imported file its own id + editor tab, wire the dock to open files, and make compile/selection per-doc so two renders coexist.
-- *2026-06-28* — **T7.6 print-preview landed — Phase A (shell skeleton) complete.** `PreviewView.svelte` (registered `preview` document-bound view) shows a doc's print output by running its live render tree through the export serializer (`renderTreeToSvg`) inline — light, self-contained, theme-independent; no second layout pipeline. Opened from a topbar **Preview** button as a tab beside the render. Paginated print/PDF is still T7.9. Phase A done: foundation (T7.1) + bottom bar (T7.3) + dock (T7.2) + render view (T7.5) + multi-file tabs (T7.4) + preview (T7.6). Next: Phase B editor/core tooling (T7.7/T7.8/T7.10/T7.11/T7.12).
+- *2026-06-28* — **T7.6 print-preview landed — Phase A (shell skeleton) complete.** `PreviewView.svelte` (registered `preview` document-bound view) shows a doc's print output by running its live render tree through the export serializer (`renderTreeToSvg`) inline — light, self-contained, theme-independent; no second layout pipeline. Opened from a topbar **Preview** button as a tab beside the render. Paginated print/PDF is still T7.19. Phase A done: foundation (T7.1) + bottom bar (T7.3) + dock (T7.2) + render view (T7.5) + multi-file tabs (T7.4) + preview (T7.6). *(Subsequent plan re-scope superseded the "next" pointer — see the renumber entry.)*
+- *2026-06-28* — **M7 re-scope + task renumber (D49–D51, see §11g).** Triaged a `docs/NOTES.md` backlog (18 UX/workspace items) into tasks and renumbered all remaining M7 work into one dependency-ordered sequence **T7.7–T7.34** (TASKS.md) so nothing is listed before its blocker — the trigger was T7.9-PDF showing as "next" while blocked by the page-pin work (now T7.17). New: 3 bug fixes (group sizing, project-clear-on-open, page-scroll), an icon foundation (Material Symbols, self-hosted, D51) + iconified chrome, tab-strip group controls (+/maximize/close/Fit/split — horizontal only, D50), close-tab, drag-cue refinement, open-as-folder, contextual def-gallery render (D49), code-folding, and a help view. Old→new map in TASKS.md (e.g. T4.7t→T7.17, old-T7.9→T7.19, T4.7n→T7.34). Completed T7.1–T7.6 keep their IDs.
 - *2026-06-28* — **Desktop (WKWebView) parity fix for T7.5/T7.4b.** Tab dragging used HTML5 drag-and-drop, which is intercepted/unreliable in WKWebView (Tauri's desktop webview) though it worked on Chromium/web; reimplemented on **pointer events** (the same approach as the gutter, which already worked on desktop) — press/threshold/hit-test-by-rect/`moveTab`, with guarded `setPointerCapture`. Active-follows-focus relied on CodeMirror's DOM `focus` event; added a `pointerdown` path on the editor pane + render so focusing a doc is reliable on WKWebView too. No Tauri config change needed (pointer drag coexists with the default OS drag handler). Reinforces the WKWebView-divergence rule: prefer pointer events over HTML5 DnD / sole reliance on DOM focus for desktop.
 - *2026-06-27* — **T7.4b landed — multi-file editing.** Each opened/imported file gets its own `docId`, editor tab, render, and latest-wins compiler; compile output/highlight/layout-width are per-doc maps. Open/New/dock **add or focus a tab** rather than replacing (discard-on-open guard removed — opening never loses work). Active-follows-focus (Editor `onFocus` + Workspace `onActivateView`) drives the topbar/Save/Export; the dock opens files on click; editing a lib syncs `projectFiles` and recompiles dependents. New `RenderView.svelte` owns each render's pane width/reflow; the snippet keys views by instance so a doc switch mounts a fresh editor. **Deferred:** closing tabs; keep-alive across *stacked*-tab switches (a switch remounts — undo/scroll reset; side-by-side groups keep both mounted); multi-project import isolation (`projectFiles` is the current project context); per-doc zoom. **T7.4 done; Phase A (shell skeleton) complete.**

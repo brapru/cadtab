@@ -227,7 +227,7 @@ Entirely headless and test-driven (D18, D19, D20).
         names seeded as ambient so they still resolve.
   - [x] T4.7b — **Desktop squiggles render.** WKWebView (Tauri's macOS webview) ignores the
         `text-decoration: wavy` shorthand; added `-webkit-text-decoration`. Squiggles were
-        web-only before. *(Same WKWebView CSS exposure applies to T4.7i.)*
+        web-only before. *(Same WKWebView CSS exposure applies to T7.27.)*
   - [x] T4.7c — **Connected stems.** Stems now hang from a slight gap below each event's lowest
         fret number to the beam line (was a fixed band): reaches upper-string notes, no longer
         overlaps the 5th-string number.
@@ -364,7 +364,9 @@ that split, resize, and maximize — **no free-floating docking**. Build the fou
 the dock/tabs/render/preview are views on top; then the cohesion pass styles the result. Shell
 chrome is universal (desktop + web), and multi-file projects work on every target (D38: live fs on
 desktop, project bundle on web) — the only nuance is how the dock's tree is sourced (live folder on
-desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 items keep their IDs.
+desktop / Chromium-web; uploaded/exported bundle on Firefox). *Remaining work was renumbered
+2026-06-28 into one dependency-ordered sequence (T7.7–T7.34) so nothing is listed before its
+blocker — see the map below.*
 
 **Workspace shell (D41 — view registry + editor groups):**
 
@@ -389,18 +391,18 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     (sorted, entry flagged active), headed by the bundle name. *Display-only:* opening a file as an
     editor tab is **T7.4** (needs the per-file/multi-doc machinery T7.1 deferred). *Note:* the tree
     currently sources from the loaded bundle map; the **live-folder (FSA) source isn't built yet**
-    (D38) — `openProject` picks one score or one `.ctabz`, so flat lists today; hierarchical folder
-    rendering + live-folder watching are later refinements.
+    (D38, now **T7.15**) — `openProject` picks one score or one `.ctabz`, so flat lists today;
+    hierarchical folder rendering + live-folder watching land with T7.15.
 - [x] **T7.3 — Bottom status bar (slick, minimal, non-invasive).** *(global-singleton view)* A
-      small bottom bar hosting the dock toggle and the diagnostics button (T4.7m); sets the
-      bottom-control styling — small, unobtrusive, out of the way. Pairs with T4.7m and T4.7n.
+      small bottom bar hosting the dock toggle and the diagnostics button (T7.28); sets the
+      bottom-control styling — small, unobtrusive, out of the way. Pairs with T7.28 and T7.34.
   - *Landed:* `BottomBar.svelte` (registered `bottomBar` global-singleton in the view registry),
     rendered as fixed chrome below the workspace. Left: a dock toggle wired to `dockOpen` +
     **Cmd/Ctrl-B** (the panel it reveals is T7.2; the control + keybinding live here). Right: a live
     problem indicator ("No problems" / error+warning counts) from the compile's diagnostics, via a
     pure `diagnosticCounts` helper. Added shared `--error`/`--warning` theme tokens (light+dark) for
-    cohesion with the diagnostics tooltip/panel (T4.7i/T4.7m). *Deferred:* making the indicator a
-    button that opens the exhaustive panel + jumps to spans is **T4.7m**.
+    cohesion with the diagnostics tooltip/panel (T7.27/T7.28). *Deferred:* making the indicator a
+    button that opens the exhaustive panel + jumps to spans is **T7.28**.
 - [x] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
       view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
       tab/group mechanics come from T7.1. *Decomposed into T7.4a (model refactor) + T7.4b (multi-file
@@ -445,91 +447,156 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
     light, self-contained SVG export produces, shown as a white sheet on a fixed light backdrop so it
     reads the same in either app theme. No second layout pipeline; it reuses the per-doc compile
     result. A topbar **Preview** button opens it as a tab beside the render (active-follows-focus via
-    `onActivate`). Print-to-paper pagination is **T7.9** (PDF); this is the on-screen preview.
-- [ ] **T7.9 — PDF export (paginated, MVP — D30).** The MVP's third export format and the
-      distribution standard for tab. Unlike SVG/PNG (one continuous canvas, shipped in T5.3), PDF
-      needs **pagination**: fixed Letter/A4 pages, systems packed per page, margins, and a per-page
-      sheet header. This is layout work, not a serializer — it builds on the pinned-page width
-      (T4.7t) and reuses the print styling (T5.3 / preview T7.6). Sequenced here (post-M6) so it
-      paginates the *final* above-staff layout once. Save via the existing io seam (binary write on
-      desktop, download on web).
-  - *Tests:* page-break placement (systems-per-page) golden cases; multi-page doc emits N pages;
-    one-page doc emits one; valid PDF bytes (header + page count).
+    `onActivate`). Print-to-paper pagination is **T7.19** (PDF); this is the on-screen preview.
+**Remaining work — one execution-ordered sequence (T7.7–T7.34).**
 
-**Editor & theme:**
+*Renumbered 2026-06-28 from a NOTES.md triage + re-order so the list is dependency-sorted (nothing
+before its blocker). New tasks are from `docs/NOTES.md`; the M4 T4.7 render/UI items were folded in
+and renumbered. **Old → new:** T4.7t→T7.17 · T4.7s→T7.18 · (old)T7.9→T7.19 · (old)T7.13→T7.20 ·
+(old)T7.8→T7.21 · (old)T7.7→T7.22 · (old)T7.10→T7.24 · (old)T7.11→T7.25 · (old)T7.12→T7.26 ·
+T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r→T7.32 · T4.7q→T7.33 · T4.7n→T7.34.*
 
-- [ ] **T7.7 — Editor line numbers + gutter divider.** CodeMirror `lineNumbers()` gutter with a
-      divider rule between the gutter and the code text.
-- [ ] **T7.8 — Dark theme by default.** Default the app to the dark theme (keep the light / system
+*Bugs (broken now, no upstream deps):*
+
+- [ ] **T7.7 — Fix: group sizing after move→split→move.** Repro: launch (editor|render split); move
+      the render tab onto the editor group (stack); Split; move render beside editor again — the
+      render (then the editor on tab switch) no longer fills its group and gets cut off. Group flex
+      weights aren't renormalized across move/split churn. Fix the weight bookkeeping in `workspace.ts`
+      (`moveTab`/`splitTab`) and/or the flex sizing in `Workspace.svelte`. *(NOTES #18.)*
+- [ ] **T7.8 — Fix: opening a project clears the previous one.** Opening a new project leaves the old
+      project's documents, tabs, and renders open, so a stale render lingers. Opening a project (single
+      score, bundle, or folder) should close the prior project's docs/tabs and reset
+      `projectFiles`/`bundlePath` (the multi-project isolation deferred in T7.4b). New-from-template and
+      opening more files *within* a project still add tabs. *(NOTES #17.)*
+- [ ] **T7.9 — Fix: only panes scroll, not the page.** The app shell (`main`) must never scroll; only
+      the scrollable view bodies (editor, render, preview, dock) do. Audit `height`/`overflow` so the
+      chrome stays fixed. *(NOTES #4.)*
+
+*Icon foundation → workspace UX:*
+
+- [ ] **T7.10 — Self-host Material Symbols icons (D51).** Bundle the Material Symbols set locally (font
+      or SVGs in the build) so icons work fully offline on desktop — no CDN. Establish the icon-usage
+      convention (a small `Icon` wrapper/class) the rest of the UI draws from. *(NOTES #1.)*
+- [ ] **T7.11 — Close tab.** A close affordance on each tab that removes that view instance from its
+      group (dropping an emptied group, like `moveTab`), with an **unsaved-changes guard** when closing
+      the last editor of a dirty document, and session cleanup when a doc has no remaining views. The
+      close-tab deferred in T7.4b. *(NOTES #8.)*
+- [ ] **T7.12 — Group controls in the tab strip.** A tidy control set shown on the **active group**
+      only: **New ("+")** (replaces the topbar New), **maximize**, **close** (T7.11), **Fit**
+      (aspect-ratio icon, moved off the render toolbar), and **split** (left/right — up/down deferred,
+      D50). **Remove the render zoom toolbar** (the % field goes away; zoom lives in a command/Fit).
+      **Double-click a tab to maximize/restore.** Uses the T7.10 icons. *(NOTES #5, #6, #7, #10, #15.)*
+- [ ] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
+      dimming **only the drop region** (the group body) to a movable-cue colour, not outlining the
+      whole field. Refines the T7.5 drop cue. *(NOTES #3.)*
+- [ ] **T7.14 — Iconify the topbar + styled tooltips.** Replace the remaining topbar text buttons with
+      Material Symbols icons (T7.10), and give **every** control a neat CSS hover tooltip (replacing
+      native `title=`), ensuring full coverage. Feeds the T7.34 cohesion pass. *(NOTES #2, #9.)*
+
+*Project open:*
+
+- [ ] **T7.15 — Open a project as a folder (D38 live folder).** Open a whole project directory, not
+      just a single score or `.ctabz` bundle: a live folder on desktop (Tauri fs) / Chromium-web (File
+      System Access API); the dock then shows the real folder tree (hierarchical) and imports resolve
+      against it. The live-folder source flagged unbuilt in T7.2. Pairs with T7.8. *(NOTES #16.)*
+
+*Render content & labels:*
+
+- [ ] **T7.16 — Contextual render (def-gallery) + filename tab labels (D49).** Render/preview is
+      **contextual**: a file with a `score{}` renders its score; a **lib** (defs only) renders a
+      **gallery** previewing each `def` on its own page. Needs **core** support to render an individual
+      `def` (e.g. synthesize a minimal score per def). Tab labels become the **filename**, with the
+      icon distinguishing view type (editor / render / preview). *Open sub-decision (resolve here):* how
+      to render a parameterized `def` — representative/default args, nullary-only, or a placeholder.
+      *(NOTES #12, #13.)*
+
+*Render-layout → export track:*
+
+- [ ] **T7.17 — Justify systems + pin page width.** A line holding only one (or a few) measures renders
+      at its natural width, leaving the system short — stretch measures/events to fill the system width
+      (justified systems). *Includes* **pinning the page width to the layout target** so the header
+      (centred) and zoom stop reflowing as measures are added — root cause is `width = overall_width(...)`
+      in `layout()` (content-derived), fix is `overall_width(...).max(config.width)`, then justify within
+      that fixed page. **Blocks T7.19.** Relates to T3.3/T3.4 and T7.18.
+- [ ] **T7.18 — Even out intra-measure spacing.** A bar's last note gets trailing space equal to its
+      full duration, reading as more room on its right than the small leading pad. Spacing pass: revisit
+      trailing-space vs leading-pad symmetry / even distribution. Pairs with T7.17.
+- [ ] **T7.19 — Paginated PDF export (D30).** The MVP's third export format and the distribution
+      standard for tab. Unlike SVG/PNG (one continuous canvas, T5.3), PDF needs **pagination**: fixed
+      Letter/A4 pages, systems packed per page, margins, and a per-page sheet header — layout work, not
+      a serializer. Builds on the pinned page (T7.17) and reuses the print styling (T5.3 / preview T7.6).
+      Save via the io seam (binary write on desktop, download on web). *Tests:* page-break placement
+      (systems-per-page) golden cases; multi-page doc emits N pages; one-page doc emits one; valid PDF
+      bytes (header + page count).
+- [ ] **T7.20 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and the
+      PDF export (T7.19) into a single **Export** button with a format picker (SVG / PNG / PDF). One
+      control, one dropdown; reuses the io seam. Depends on T7.19; pairs with the cohesion pass (T7.34).
+
+*Editor tooling:*
+
+- [ ] **T7.21 — Dark theme by default.** Default the app to the dark theme (keep the light / system
       toggle).
-- [ ] **T7.10 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven
-      by the core's existing knowledge: every keyword with a fixed value set hints its options
-      (`instrument` → `banjo`/`guitar`; `tuning` → the named tunings; `barnumbers` →
-      `lines`/`all`/`off`), top-level keywords hint their operand (`title` → `"Title"`), and
-      stdlib/`def` names complete as identifiers. Tab to accept. A setting toggles autocomplete +
-      inline hinting on/off. Source the candidate lists from the keyword table + stdlib/def registry
-      (no second source of truth), surfaced through the `core` adapter.
-- [ ] **T7.11 — DSL formatter (button + format-on-save toggle, D47).** A canonical pretty-printer
-      for `.ctab`: a **core** `format(source) -> String` over the parsed AST/token stream
-      (deterministic, idempotent, comment-preserving) plus a toolbar **Format** button and a
-      **format-on-save** toggle. Returns a document with parse errors untouched. *Tests:* idempotence
-      (`fmt(fmt(x)) == fmt(x)`); a corpus of messy→canonical golden cases; comments survive.
-- [ ] **T7.12 — Theme switcher in the bottom bar.** Move the light / dark / system control out of
-      the topbar into the bottom status bar (T7.3) as a compact control. Folds into T7.8's toggle and
-      the T7.3 bottom-bar styling.
+- [ ] **T7.22 — Editor line numbers + gutter divider.** CodeMirror `lineNumbers()` gutter with a
+      divider rule between the gutter and the code text.
+- [ ] **T7.23 — Editor code-folding for `{ }` blocks.** A fold control on lines opening a curly block
+      (`score {`, `measure {`, `repeat {`, `def … {`): a down chevron that collapses the block's
+      contents and turns into a coloured side arrow to re-expand. CodeMirror `foldGutter`/code-folding
+      keyed to the brace structure. *(NOTES #14.)*
+- [ ] **T7.24 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven by
+      the core's existing knowledge: every keyword with a fixed value set hints its options
+      (`instrument` → `banjo`/`guitar`; `tuning` → the named tunings; `barnumbers` → `lines`/`all`/`off`),
+      top-level keywords hint their operand (`title` → `"Title"`), and stdlib/`def` names complete as
+      identifiers. Tab to accept. A setting toggles autocomplete + inline hinting on/off. Source the
+      candidate lists from the keyword table + stdlib/def registry (no second source of truth), surfaced
+      through the `core` adapter.
+- [ ] **T7.25 — DSL formatter (button + format-on-save toggle, D47).** A canonical pretty-printer for
+      `.ctab`: a **core** `format(source) -> String` over the parsed AST/token stream (deterministic,
+      idempotent, comment-preserving) plus a toolbar **Format** button and a **format-on-save** toggle.
+      Returns a document with parse errors untouched. *Tests:* idempotence (`fmt(fmt(x)) == fmt(x)`); a
+      corpus of messy→canonical golden cases; comments survive.
+- [ ] **T7.26 — Theme switcher in the bottom bar.** Move the light / dark / system control out of the
+      topbar into the bottom status bar (T7.3) as a compact control. Folds into T7.21's toggle and the
+      T7.3 bottom-bar styling.
 
-**Layout (migrated from T4.7):**
+*Diagnostics:*
 
-- [ ] **T4.7t — Justify systems + pin page width.** A line holding only one (or a few) measures
-      renders at its natural width, leaving the system short. Stretch measures/events to fill the
-      system width (justified systems). *Includes* **pinning the page width to the layout target**
-      so the header (centred on the page) and the zoom stop reflowing as measures are added — root
-      cause is `width = overall_width(...)` in `layout()` (content-derived), fix is
-      `overall_width(...).max(config.width)`, then justify within that fixed page. Relates to
-      T3.3/T3.4 and T4.7s.
-- [ ] **T4.7s — Even out intra-measure spacing.** A bar's last note gets trailing space equal to
-      its full duration, reading as more room on its right than the small leading pad. Spacing
-      pass: revisit trailing-space vs leading-pad symmetry / even distribution. Pairs with T4.7t.
+- [ ] **T7.27 — Diagnostic tooltip readability.** Currently white-on-white until selected; give it
+      themed background/foreground/border keyed to the semantic tokens (WKWebView caveat — prefer
+      `-webkit-` prefixes / pointer events where needed).
+- [ ] **T7.28 — Diagnostics panel + bottom button.** Make the bottom-bar problem indicator (T7.3) a
+      button that opens an exhaustive warning/error list; clicking an entry jumps the editor selection
+      to its span. *(The "error diagnostic button down below" from the notes.)*
 
-**Diagnostics (migrated from T4.7):**
+*Help & desktop:*
 
-- [ ] **T4.7i — Diagnostic tooltip readability.** Currently white-on-white until selected; give it
-      themed background/foreground/border keyed to the semantic tokens (WKWebView caveat per
-      T4.7b).
-- [ ] **T4.7m — Diagnostics panel + bottom button.** A warning/error count button (lives in the
-      T7.3 bottom bar) that opens an exhaustive list; clicking an entry jumps the editor selection
-      to its span. *(This is the "error diagnostic button down below" from the notes.)*
+- [ ] **T7.29 — Help view.** A **help** button in the bottom bar opens a how-to-use-the-app tab (a
+      global-singleton view with getting-started content: syntax basics, shortcuts, the workspace).
+      Overlaps M8's T8.3 content. *(NOTES #11.)*
+- [ ] **T7.30 — Native desktop menu bar (Tauri, D48).** Wire the desktop app's native top-bar menu so
+      every in-app command is reachable there, grouped conventionally — **File ▸ Open / Save / Export…**,
+      **View ▸ Zoom / Reset**, **Edit** basics. Menu items dispatch the same commands as the in-app
+      controls (single command source). Desktop-only (no-op on web).
 
-**Cohesion (migrated from T4.7):**
+*Cohesion (last — styles the finished UI):*
 
-- [ ] **T4.7h — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure,
-      warm tan numbers, muted green strings, gray italic comments); replace the dramatic
-      full-width active-line bar with a faint left-edge tick so the cursor stays readable.
-- [ ] **T4.7r — Bidirectional highlight treatment.** *(open decision)* The active cursor↔primitive
-      highlight reuses the orange `--accent` and reads wrong. Pick a calmer treatment (e.g.
-      desaturated fill vs underline vs halo, and which token); touches the theme accent token +
-      `.active` styles in `Tab.svelte`. T4.7q reuses whatever is chosen.
-- [ ] **T4.7n — Accent/detail cohesion pass.** A coherent accent/detail pass across topbar,
-      toolbar, gutter, panels, **the new dock / tabs / bottom bar**, and M5's open/save/export
-      buttons so the whole UI reads as one design. Umbrella for h, i, r and the shell chrome.
-- [ ] **T4.7q — Structural bidirectional mapping.** Cursor↔render mapping (T4.5) only covers
+- [ ] **T7.31 — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure, warm
+      tan numbers, muted green strings, gray italic comments); replace the dramatic full-width
+      active-line bar with a faint left-edge tick so the cursor stays readable.
+- [ ] **T7.32 — Bidirectional highlight treatment.** *(open decision)* The active cursor↔primitive
+      highlight reuses the orange `--accent` and reads wrong. Pick a calmer treatment (desaturated fill
+      vs underline vs halo, and which token); touches the theme accent token + `.active` styles in
+      `Tab.svelte`. T7.33 reuses whatever is chosen.
+- [ ] **T7.33 — Structural bidirectional mapping.** Cursor↔render mapping (T4.5) only covers
       span-bearing text/notes; thread spans onto repeat barlines, ending (volta) brackets, and
-      `measure {}` boxes, and extend the highlight (reusing T4.7r's treatment) to line/box prims so
+      `measure {}` boxes, and extend the highlight (reusing T7.32's treatment) to line/box prims so
       clicking or cursoring a repeat / ending / measure lights it up. *(Extends T4.5.)*
-
-**Desktop & export polish:**
-
-- [ ] **T7.13 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and
-      the PDF export (T7.9) into a single **Export** button with a format picker (SVG / PNG / PDF).
-      One control, one dropdown; reuses the existing io seam (binary write on desktop, download on
-      web). Depends on T7.9 for the PDF option; pairs with the cohesion pass (T4.7n).
-- [ ] **T7.14 — Native desktop menu bar (Tauri, D48).** Wire the desktop app's native top-bar menu
-      so every in-app command is reachable there, grouped conventionally — e.g. **View ▸ Zoom In /
-      Zoom Out / Reset Zoom**, **File ▸ Open / Save / Export…**, **Edit** basics. Menu items dispatch
-      the same commands as the in-app controls (single command source). Desktop-only (no-op on web).
+- [ ] **T7.34 — Accent/detail cohesion pass.** A coherent accent/detail pass across topbar, toolbar,
+      gutter, panels, the dock / tabs / bottom bar, the **iconified controls + tooltips (T7.10/T7.14)**,
+      and the open/save/export controls so the whole UI reads as one design. Umbrella for T7.31, T7.27,
+      T7.32 and the shell chrome.
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
-+ web; justified systems with a fixed page; **paginated PDF export (T7.9)** behind a unified export
++ web; justified systems with a fixed page; **paginated PDF export (T7.19)** behind a unified export
 control; autocomplete, formatter, and a native desktop menu; readable diagnostics + panel;
 dark-by-default cohesive themed UI; structural elements participate in bidirectional mapping. Green.
 
@@ -551,7 +618,7 @@ dark-by-default cohesive themed UI; structural elements participate in bidirecti
 
 **DoD / MVP ship:** author `.ctab` banjo tab live (highlighting, diagnostics, rhythm via
 stems+beams, licks, repeats, pickups, metadata), bidirectional mapping, open/save, export
-SVG+PNG+PDF (paginated, T7.9) — on desktop and web. CI green; packaged. **Static site (T8.6)** hosts
+SVG+PNG+PDF (paginated, T7.19) — on desktop and web. CI green; packaged. **Static site (T8.6)** hosts
 downloads, examples, docs, and links to the web UI.
 
 ---
