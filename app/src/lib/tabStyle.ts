@@ -26,6 +26,7 @@ export const TEXT_STYLE: Record<TextRole, TextStyle> = {
   barNumber: { size: 0.75 },
   defHeading: { size: 1.1, weight: 700 },
   defNote: { size: 0.8, italic: true },
+  pageNumber: { size: 0.8 },
 };
 
 // The left-aligned header block anchors at its start x rather than centring.
@@ -39,6 +40,9 @@ const START_ANCHORED: ReadonlySet<TextRole> = new Set([
   "defNote",
 ]);
 
+// The folio page number (T7.19) sits flush against the right margin.
+const END_ANCHORED: ReadonlySet<TextRole> = new Set(["pageNumber"]);
+
 // Hand/technique annotations and the header tuning block read as secondary ink.
 const MUTED_ROLES: ReadonlySet<TextRole> = new Set([
   "finger",
@@ -50,9 +54,11 @@ const MUTED_ROLES: ReadonlySet<TextRole> = new Set([
   "capo",
   "barNumber",
   "defNote",
+  "pageNumber",
 ]);
 
-export function textAnchor(role: TextRole): "start" | "middle" {
+export function textAnchor(role: TextRole): "start" | "middle" | "end" {
+  if (END_ANCHORED.has(role)) return "end";
   return START_ANCHORED.has(role) ? "start" : "middle";
 }
 
@@ -63,5 +69,8 @@ export function isMuted(role: TextRole): boolean {
 // Open curves (ties, slides, bends, choke arcs) stroke at a hairline weight.
 export const PATH_STROKE_WIDTH = 0.07;
 
-// The engraved-sheet serif stack used across all rendered text.
-export const FONT_FAMILY = 'Georgia, "Times New Roman", serif';
+// The engraved-sheet serif stack used across all rendered text. Source Serif 4 is
+// self-hosted (app.css) and the same family is embedded into PDF exports, so the
+// on-screen tab and the printed page render in one identical face; Georgia/serif
+// are fallbacks only until the webfont loads.
+export const FONT_FAMILY = "'Source Serif 4', Georgia, serif";

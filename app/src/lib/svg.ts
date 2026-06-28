@@ -78,7 +78,8 @@ export function renderTreeToSvg(tree: RenderTree): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${num(w)} ${num(h)}"` +
       ` width="${num(w * EXPORT_SCALE)}" height="${num(h * EXPORT_SCALE)}"` +
-      ` font-family='${FONT_FAMILY}'>`,
+      // Double-quoted: FONT_FAMILY single-quotes the face name ('Source Serif 4').
+      ` font-family="${FONT_FAMILY}">`,
     `<rect x="0" y="0" width="${num(w)}" height="${num(h)}" fill="${BG}"/>`,
     ...body,
     `</svg>`,

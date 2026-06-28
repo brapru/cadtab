@@ -2,7 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use cadtab_core::provider::{FileProvider, MapProvider};
-use cadtab_core::{CompileResult, compile_with_provider, layout::LayoutConfig};
+use cadtab_core::render::PaginatedTree;
+use cadtab_core::{
+    CompileResult, compile_with_provider, layout::LayoutConfig, layout::PageConfig,
+    paginate_with_provider,
+};
 
 /// Resolves `import`s for the desktop build: an in-memory bundle map first (so an
 /// opened `.ctabz` works on desktop too), then the real filesystem relative to
@@ -52,6 +56,17 @@ fn compile(
     compile_with_provider(&source, config, &provider)
 }
 
+#[tauri::command]
+fn paginate(
+    source: String,
+    config: PageConfig,
+    base_path: Option<String>,
+    files: Option<HashMap<String, String>>,
+) -> PaginatedTree {
+    let provider = ProjectProvider::new(base_path, files.unwrap_or_default());
+    paginate_with_provider(&source, config, &provider)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -67,7 +82,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![compile])
+        .invoke_handler(tauri::generate_handler![compile, paginate])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

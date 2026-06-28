@@ -140,8 +140,9 @@
     fill: var(--tab-ink);
     text-anchor: middle;
     dominant-baseline: central;
-    /* Engraved-sheet look: serif across all rendered text. */
-    font-family: Georgia, "Times New Roman", serif;
+    /* Engraved-sheet look: self-hosted Source Serif 4 (app.css), the same face
+       embedded into PDF exports so screen and print match; serif fallback. */
+    font-family: "Source Serif 4", Georgia, serif;
   }
   /* The left-aligned header block (tuning name, string grid, capo) and the
      def-gallery card text anchor at their start x rather than centring like the

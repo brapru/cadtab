@@ -25,11 +25,11 @@ use crate::ast::ItemKind;
 use crate::diagnostics::Diagnostic;
 use crate::eval::{eval_def_gallery, eval_program_with_modules};
 use crate::imports::load_imports;
-use crate::layout::{LayoutConfig, layout, layout_gallery};
+use crate::layout::{LayoutConfig, PageConfig, layout, layout_gallery, paginate};
 use crate::lexer::lex;
 use crate::parser::parse;
 use crate::provider::{FileProvider, MapProvider};
-use crate::render::RenderTree;
+use crate::render::{Page, PaginatedTree, Rect, RenderTree};
 use crate::token::Token;
 
 /// Everything a single compile produces for the frontend: the positioned render
@@ -121,6 +121,63 @@ pub fn compile_with_provider(
         render_tree,
         diagnostics,
         tokens,
+    }
+}
+
+/// Lay source text out across fixed-size print pages for PDF export (T7.19),
+/// resolving `import`s through `provider` exactly as [`compile_with_provider`]
+/// does. Runs parse → resolve imports → evaluate, then paginates: a file with a
+/// `score` is broken into Letter/A4 pages ([`paginate`]); a library (def-gallery)
+/// is wrapped as a single content-sized page (PDF of a library is an edge the UI
+/// gates). Resilient like `compile` — a malformed document still paginates its
+/// best-effort score. Diagnostics are not re-derived here; the editor already
+/// surfaces them from `compile`.
+pub fn paginate_with_provider(
+    source: &str,
+    config: PageConfig,
+    provider: &dyn FileProvider,
+) -> PaginatedTree {
+    let parsed = parse(source);
+    let loaded = load_imports(&parsed.program, provider);
+    let (score, _eval_diagnostics) = eval_program_with_modules(&parsed.program, &loaded.items);
+
+    let has_score = parsed
+        .program
+        .items
+        .iter()
+        .any(|i| matches!(i.kind, ItemKind::Score(_)));
+    let has_def = parsed
+        .program
+        .items
+        .iter()
+        .any(|i| matches!(i.kind, ItemKind::Def(_)));
+
+    if !has_score && has_def {
+        // A library renders as a def-gallery; wrap its (tall) tree as one page.
+        let (instrument, defs) = eval_def_gallery(&parsed.program, &loaded.items);
+        let tree = layout_gallery(
+            &instrument,
+            &defs,
+            LayoutConfig {
+                width: config.content_width,
+            },
+        );
+        PaginatedTree {
+            page_width: tree.meta.width,
+            page_height: tree.meta.height,
+            pages: vec![Page {
+                bounds: Rect {
+                    x: 0.0,
+                    y: 0.0,
+                    w: tree.meta.width,
+                    h: tree.meta.height,
+                },
+                header: tree.header,
+                systems: tree.systems,
+            }],
+        }
+    } else {
+        paginate(&score, config)
     }
 }
 
@@ -459,6 +516,38 @@ mod tests {
                 result.diagnostics
             );
         }
+    }
+
+    #[test]
+    fn paginates_a_score_into_pages() {
+        use crate::layout::{PageConfig, PageSize};
+        let cfg = PageConfig {
+            size: PageSize::Letter,
+            content_width: 80.0,
+        };
+        // A short score fits one page and carries its systems.
+        let doc = paginate_with_provider(ONE_BAR, cfg, &MapProvider::new());
+        assert_eq!(doc.pages.len(), 1);
+        assert!(!doc.pages[0].systems.is_empty());
+    }
+
+    #[test]
+    fn paginates_a_library_as_a_single_page() {
+        use crate::layout::{PageConfig, PageSize};
+        let cfg = PageConfig {
+            size: PageSize::Letter,
+            content_width: 80.0,
+        };
+        // A library (no score) wraps its def-gallery as one content-sized page.
+        let doc = paginate_with_provider("def open() { 3:0 2:0 1:0 }", cfg, &MapProvider::new());
+        assert_eq!(doc.pages.len(), 1);
+        assert!(doc.pages[0].header.iter().any(|p| matches!(
+            p,
+            Primitive::Text {
+                role: TextRole::DefHeading,
+                ..
+            }
+        )));
     }
 
     #[test]

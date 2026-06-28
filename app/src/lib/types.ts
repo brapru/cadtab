@@ -54,7 +54,8 @@ export type TextRole =
   | "chordSymbol"
   | "barNumber"
   | "defHeading"
-  | "defNote";
+  | "defNote"
+  | "pageNumber";
 
 export type Primitive =
   | {
@@ -106,6 +107,32 @@ export interface CompileResult {
 
 export interface LayoutConfig {
   width: number;
+}
+
+// A single paginated page (T7.19): its page box (logical units, origin top-left),
+// the per-page header furniture (full title block on page one, a folio number
+// after), and the systems placed within it. Each page is its own coordinate
+// space starting at (0, 0).
+export interface Page {
+  bounds: Rect;
+  header: Primitive[];
+  systems: System[];
+}
+
+// A score laid out across fixed-size print pages, the input to PDF emission.
+export interface PaginatedTree {
+  pageWidth: number;
+  pageHeight: number;
+  pages: Page[];
+}
+
+export type PageSize = "letter" | "a4";
+
+export interface PageConfig {
+  size: PageSize;
+  // Logical units across the printable content area (the justify target),
+  // matching LayoutConfig.width.
+  contentWidth: number;
 }
 
 // Per-compile project context: how `import`s resolve. Desktop uses `basePath`

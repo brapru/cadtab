@@ -88,6 +88,39 @@ body {
   src: url("/fonts/material-symbols-outlined.woff2") format("woff2");
 }
 
+/* Source Serif 4 (SIL OFL), self-hosted from public/fonts — the engraved face
+   for all rendered tab text. The same family is embedded/subset into PDF exports
+   (pdf.ts) so screen and print are identical. Weights used by the render:
+   400 / 600 / 700, plus 400 italic (technique + def-note marks). */
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/SourceSerif4-Italic.woff2") format("woff2");
+}
+
 .material-symbols-outlined {
   font-family: "Material Symbols Outlined";
   font-weight: normal;

@@ -37,6 +37,30 @@ pub fn compile(source: &str, config: JsValue, files: JsValue) -> Result<JsValue,
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Lays source text out across fixed-size print pages for PDF export (T7.19),
+/// marshalled to a JS `PaginatedTree`. `config` is a `PageConfig` JS object;
+/// `files` backs `import` resolution exactly as in [`compile`]. Mirrors the Tauri
+/// `paginate` command so the frontend can dispatch to either backend.
+#[wasm_bindgen]
+pub fn paginate(source: &str, config: JsValue, files: JsValue) -> Result<JsValue, JsValue> {
+    let config: cadtab_core::layout::PageConfig =
+        serde_wasm_bindgen::from_value(config).map_err(|e| JsValue::from_str(&e.to_string()))?;
+
+    let files: std::collections::HashMap<String, String> =
+        if files.is_undefined() || files.is_null() {
+            std::collections::HashMap::new()
+        } else {
+            serde_wasm_bindgen::from_value(files).map_err(|e| JsValue::from_str(&e.to_string()))?
+        };
+    let mut provider = cadtab_core::provider::MapProvider::new();
+    for (path, contents) in files {
+        provider.insert(path, contents);
+    }
+
+    let tree = cadtab_core::paginate_with_provider(source, config, &provider);
+    serde_wasm_bindgen::to_value(&tree).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use cadtab_core::{CompileResult, compile, layout::LayoutConfig};
@@ -64,5 +88,19 @@ mod wasm_tests {
         let value = compile("score { 3:0 2:0 1:0 5:0 }", config, JsValue::UNDEFINED).unwrap();
         let result: cadtab_core::CompileResult = serde_wasm_bindgen::from_value(value).unwrap();
         assert_eq!(result.render_tree.systems.len(), 1);
+    }
+
+    #[wasm_bindgen_test]
+    fn paginate_marshals_a_paginated_tree() {
+        let config = serde_wasm_bindgen::to_value(&cadtab_core::layout::PageConfig {
+            size: cadtab_core::layout::PageSize::Letter,
+            content_width: 80.0,
+        })
+        .unwrap();
+        let value = paginate("score { 3:0 2:0 1:0 5:0 }", config, JsValue::UNDEFINED).unwrap();
+        let tree: cadtab_core::render::PaginatedTree =
+            serde_wasm_bindgen::from_value(value).unwrap();
+        assert_eq!(tree.pages.len(), 1);
+        assert!(!tree.pages[0].systems.is_empty());
     }
 }

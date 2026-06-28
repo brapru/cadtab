@@ -1,4 +1,10 @@
-import type { CompileResult, LayoutConfig, ProjectContext } from "./types";
+import type {
+  CompileResult,
+  LayoutConfig,
+  PageConfig,
+  PaginatedTree,
+  ProjectContext,
+} from "./types";
 
 export type Backend = (
   source: string,
@@ -49,4 +55,26 @@ export function compile(
   ctx?: ProjectContext,
 ): Promise<CompileResult> {
   return selectBackend()(source, config, ctx);
+}
+
+// The pagination seam for PDF export (T7.19): lays a document out across fixed
+// Letter/A4 pages via the same backend split as `compile`.
+export function paginate(
+  source: string,
+  config: PageConfig,
+  ctx?: ProjectContext,
+): Promise<PaginatedTree> {
+  if (isTauri()) {
+    return import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke<PaginatedTree>("paginate", {
+        source,
+        config,
+        basePath: ctx?.basePath ?? null,
+        files: ctx?.files ?? {},
+      }),
+    );
+  }
+  return import("./wasm").then(({ paginate }) =>
+    paginate(source, config, ctx?.files ?? {}),
+  );
 }
