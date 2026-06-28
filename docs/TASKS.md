@@ -543,9 +543,14 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       close/launcher stay on every tab. Tests across `workspace.test.ts` + `App.test.ts`.
       **Deferred to T7.15b** (raised here): New should create an *unsaved dirty draft listed in the
       dock* — rides with the dock-as-folder rework.
-- [ ] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
+- [x] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
       dimming **only the drop region** (the group body) to a movable-cue colour, not outlining the
       whole field. Refines the T7.5 drop cue. *(NOTES #3.)*
+      **Done:** moved the `droptarget` cue off the `.group` section (which outlined the whole group)
+      onto a dedicated **`.dropzone`** — the open strip space after the tabs where a dropped tab lands
+      (a `flex: 1` filler that also pushes the controls right). Only that space is cued (a translucent
+      accent wash + an `inset` accent bottom edge), not the existing tabs, the view body, or the whole
+      group. Test in `workspace.test.ts` (mid-drag, only the hovered group's drop space is cued).
 - [ ] **T7.14 — Iconify the topbar + styled tooltips.** Replace the remaining topbar text buttons with
       Material Symbols icons (T7.10), and give **every** control a neat CSS hover tooltip (replacing
       native `title=`), ensuring full coverage. Feeds the T7.34 cohesion pass. *(NOTES #2, #9.)*

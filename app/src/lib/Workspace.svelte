@@ -256,7 +256,6 @@
     {@const active = activeTab(g)}
     <section
       class="group"
-      class:droptarget={dragOverId === g.id && draggingId !== null}
       bind:this={groupEls[i]}
       style="flex: {flexGrow(g.weight)}"
       role="group"
@@ -294,6 +293,12 @@
             </div>
           {/each}
         </div>
+        <!-- The open space after the tabs, where a dragged tab lands; it grows to
+             fill the strip and is the only region the drop cue highlights (T7.13). -->
+        <div
+          class="dropzone"
+          class:droptarget={dragOverId === g.id && draggingId !== null}
+        ></div>
         <!-- The control set lives on the active (last-interacted) group only; the
              per-tab close/launcher stay on every tab. -->
         <div class="group-actions">
@@ -397,17 +402,23 @@
     flex-direction: column;
     min-width: 0;
   }
-  /* Cue the group a dragged tab would drop into. */
-  .group.droptarget {
-    outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
-    outline-offset: -2px;
-  }
   .tabstrip {
     display: flex;
     align-items: stretch;
-    justify-content: space-between;
     border-bottom: 1px solid var(--border);
     min-height: 2rem;
+  }
+  /* The empty strip space after the tabs (before the controls); it grows to push
+     the controls to the right. */
+  .dropzone {
+    flex: 1;
+  }
+  /* Drag cue (T7.13): while a tab is dragged, highlight only this open space —
+     where the tab would land — not the existing tabs, the view body, or the whole
+     group. A translucent accent wash plus an accent bottom edge. */
+  .dropzone.droptarget {
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    box-shadow: inset 0 -1px 0 var(--accent);
   }
   .tabs {
     display: flex;

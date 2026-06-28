@@ -592,4 +592,29 @@ describe("Workspace chrome", () => {
     ptr(renderTab, "pointerup", 150);
     expect(container.querySelectorAll(".group")).toHaveLength(2);
   });
+
+  it("cues only the target group's open tab space while dragging a tab over it (T7.13)", async () => {
+    const { container } = mountShell();
+    const groups = container.querySelectorAll(".group");
+    (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
+    (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
+    const renderTab = [...container.querySelectorAll(".tab")].find((t) =>
+      t.textContent?.includes("Render"),
+    )!;
+    // Press on the render tab (g2 at x150) and drag left over the editor group.
+    ptr(renderTab, "pointerdown", 150);
+    ptr(renderTab, "pointermove", 50);
+    await tick();
+
+    // Only the hovered group's open drop space is highlighted — not the other
+    // group, not the strip behind the tabs, the view body, or the whole group.
+    const zones = container.querySelectorAll(".dropzone");
+    expect(zones[0].classList.contains("droptarget")).toBe(true);
+    expect(zones[1].classList.contains("droptarget")).toBe(false);
+    expect(container.querySelector(".tabstrip.droptarget")).toBeNull();
+    expect(container.querySelector(".group-body.droptarget")).toBeNull();
+    expect(container.querySelector(".group.droptarget")).toBeNull();
+
+    ptr(renderTab, "pointerup", 50);
+  });
 });
