@@ -404,9 +404,18 @@ desktop / Chromium-web; uploaded/exported bundle on Firefox). Migrated T4.7 item
 - [ ] **T7.4 — Editor views + multi-file tabs.** *(document-bound)* Each open `.ctab` is an editor
       view; `import`ed files open as tabs across the groups. Depends on M5 import / multi-file;
       tab/group mechanics come from T7.1.
-- [ ] **T7.5 — Render as a document-bound view.** Make the render a document-bound view placeable
+- [x] **T7.5 — Render as a document-bound view.** Make the render a document-bound view placeable
       in any group, so "file + its render" sits side by side and file A's / file B's renders can
       coexist. Resize/reposition come from the group layout (T7.1) — no bespoke docking.
+  - *Landed:* turned on the move/split machinery T7.1 deferred, with the render as first consumer.
+    Model `workspace.ts` gains `moveTab` (drag a tab into another group; emptied groups drop; active
+    ids + a stranded maximize repaired) and `splitTab` (pop a group's active tab into a fresh group
+    beside it, halving the width). `Workspace.svelte` makes tabs draggable, every group a drop
+    target (with an accent drop cue), and adds a per-group **Split** button (keyboard-reachable,
+    shown when a group stacks >1 tab). So the render can be dragged onto the editor's group and split
+    back out — placeable in any group, resize via the existing gutters. *Multi-document coexistence
+    (file A's vs file B's renders) arrives with the second document in **T7.4**;* T7.5 is the
+    mechanism. *Deferred:* keyboard-driven tab move/merge (split covers separation by keyboard).
 - [ ] **T7.6 — Print-preview view.** *(document-bound)* The final printed (light) output regardless
       of editor theme. *Recommendation:* implement as a mode reusing the export styling (T5.3),
       **not** a separate pipeline, so it isn't duplicative of the live render.

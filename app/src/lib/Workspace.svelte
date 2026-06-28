@@ -8,6 +8,8 @@
     toggleMaximize,
     resizePair,
     pairRatio,
+    moveTab,
+    splitTab,
     viewDef,
   } from "./workspace";
   import { splitFromPointer, clampSplit } from "./split";
@@ -69,12 +71,49 @@
     if (e.key === "ArrowLeft") nudge(i, -0.02);
     else if (e.key === "ArrowRight") nudge(i, 0.02);
   }
+
+  // Tab drag-and-drop between groups (D41 "move a tab between groups"): a tab can
+  // be dragged onto any group to restack there; the split button gives a
+  // keyboard-reachable way to pop the active tab back into its own group.
+  let draggingId = $state<string | null>(null);
+  let dragOverId = $state<string | null>(null);
+
+  function onTabDragStart(id: string, e: DragEvent) {
+    draggingId = id;
+    e.dataTransfer?.setData("text/plain", id);
+    if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+  }
+  function onTabDragEnd() {
+    draggingId = null;
+    dragOverId = null;
+  }
+  function onGroupDragOver(id: string, e: DragEvent) {
+    if (draggingId === null) return; // don't hijack non-tab drags (e.g. editor text)
+    e.preventDefault();
+    dragOverId = id;
+    if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+  }
+  function onGroupDrop(id: string, e: DragEvent) {
+    if (draggingId === null) return;
+    e.preventDefault();
+    workspace = moveTab(workspace, draggingId, id);
+    draggingId = null;
+    dragOverId = null;
+  }
 </script>
 
 <div class="workspace">
   {#each visible as g, i (g.id)}
     {@const active = activeTab(g)}
-    <section class="group" bind:this={groupEls[i]} style="flex: {g.weight}">
+    <section
+      class="group"
+      class:droptarget={dragOverId === g.id && draggingId !== null}
+      bind:this={groupEls[i]}
+      style="flex: {g.weight}"
+      role="group"
+      ondragover={(e) => onGroupDragOver(g.id, e)}
+      ondrop={(e) => onGroupDrop(g.id, e)}
+    >
       <div class="tabstrip">
         <div class="tabs" role="tablist">
           {#each g.tabs as tab (tab.id)}
@@ -83,6 +122,9 @@
               class:active={tab.id === active?.id}
               role="tab"
               aria-selected={tab.id === active?.id}
+              draggable="true"
+              ondragstart={(e) => onTabDragStart(tab.id, e)}
+              ondragend={onTabDragEnd}
               onclick={() => (workspace = activateTab(workspace, g.id, tab.id))}
             >
               <span class="tab-icon" aria-hidden="true"
@@ -92,16 +134,28 @@
             </button>
           {/each}
         </div>
-        <button
-          class="maximize"
-          aria-label={workspace.maximizedId
-            ? "Restore group"
-            : "Maximize group"}
-          title={workspace.maximizedId ? "Restore" : "Maximize"}
-          onclick={() => (workspace = toggleMaximize(workspace, g.id))}
-        >
-          {workspace.maximizedId ? "▢" : "▣"}
-        </button>
+        <div class="group-actions">
+          {#if g.tabs.length > 1}
+            <button
+              class="split"
+              aria-label="Split group"
+              title="Split the active tab into its own group"
+              onclick={() => (workspace = splitTab(workspace, g.id))}
+            >
+              ◫
+            </button>
+          {/if}
+          <button
+            class="maximize"
+            aria-label={workspace.maximizedId
+              ? "Restore group"
+              : "Maximize group"}
+            title={workspace.maximizedId ? "Restore" : "Maximize"}
+            onclick={() => (workspace = toggleMaximize(workspace, g.id))}
+          >
+            {workspace.maximizedId ? "▢" : "▣"}
+          </button>
+        </div>
       </div>
       <div class="group-body">
         {#if active}{@render view(active)}{/if}
@@ -139,6 +193,11 @@
     flex-direction: column;
     min-width: 0;
   }
+  /* Cue the group a dragged tab would drop into. */
+  .group.droptarget {
+    outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent);
+    outline-offset: -2px;
+  }
   .tabstrip {
     display: flex;
     align-items: stretch;
@@ -171,6 +230,11 @@
   .tab-icon {
     font-size: 0.85rem;
   }
+  .group-actions {
+    display: flex;
+    align-items: stretch;
+  }
+  .split,
   .maximize {
     border: none;
     background: transparent;
@@ -180,6 +244,7 @@
     font-size: 0.8rem;
     line-height: 1;
   }
+  .split:hover,
   .maximize:hover {
     color: var(--fg);
   }
