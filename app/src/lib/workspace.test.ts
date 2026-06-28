@@ -309,6 +309,73 @@ describe("Workspace chrome", () => {
     expect(container.querySelectorAll(".gutter")).toHaveLength(1);
   });
 
+  // Pull the numeric flex-grow each group renders with. The shell normalizes raw
+  // model weights over the visible groups, so these always sum to ~1 and the row
+  // fills regardless of the weight churn that produced them.
+  function flexGrows(container: Element): number[] {
+    return [...container.querySelectorAll<HTMLElement>(".group")].map((g) =>
+      parseFloat(g.style.flex),
+    );
+  }
+
+  it("normalizes flex so the row fills after move→split→move churn", async () => {
+    const { container } = mountShell();
+    const groups = container.querySelectorAll(".group");
+    (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
+    (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
+    const renderTab = () =>
+      [...container.querySelectorAll(".tab")].find((t) =>
+        t.textContent?.includes("Render"),
+      )!;
+
+    // Two even groups fill the row to start.
+    expect(flexGrows(container)).toEqual([0.5, 0.5]);
+
+    // Move the render onto the editor group (stack), collapsing to one group.
+    ptr(renderTab(), "pointerdown", 150);
+    ptr(renderTab(), "pointermove", 50);
+    ptr(renderTab(), "pointerup", 50);
+    await tick();
+    // A lone group fills regardless of its raw weight.
+    expect(flexGrows(container)).toEqual([1]);
+
+    // Split the render back out — raw weights are now 0.5/0.5 (sum 0.5).
+    await fireEvent.click(container.querySelector(".split")!);
+    expect(flexGrows(container)).toEqual([0.5, 0.5]);
+
+    // Move it back onto the editor group: one group with raw weight 0.5. Without
+    // normalization its flex-grow would be 0.5 and the view would be cut off; the
+    // shell renders a full-filling 1 instead.
+    const g = container.querySelectorAll(".group");
+    (g[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
+    (g[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
+    ptr(renderTab(), "pointerdown", 150);
+    ptr(renderTab(), "pointermove", 50);
+    ptr(renderTab(), "pointerup", 50);
+    await tick();
+    expect(flexGrows(container)).toEqual([1]);
+  });
+
+  it("fills a maximized sub-1-weight group", async () => {
+    const { container, getAllByLabelText } = mountShell();
+    const groups = container.querySelectorAll(".group");
+    (groups[0] as HTMLElement).getBoundingClientRect = rect(0, 100);
+    (groups[1] as HTMLElement).getBoundingClientRect = rect(100, 200);
+    // Stack then split so a group carries weight 0.5, then maximize it alone.
+    const renderTab = () =>
+      [...container.querySelectorAll(".tab")].find((t) =>
+        t.textContent?.includes("Render"),
+      )!;
+    ptr(renderTab(), "pointerdown", 150);
+    ptr(renderTab(), "pointermove", 50);
+    ptr(renderTab(), "pointerup", 50);
+    await tick();
+    await fireEvent.click(container.querySelector(".split")!);
+    await fireEvent.click(getAllByLabelText("Maximize group")[1]);
+    // Only the weight-0.5 group shows, and it fills.
+    expect(flexGrows(container)).toEqual([1]);
+  });
+
   it("treats a pointer press without movement as a click, not a drag", () => {
     const { container } = mountShell();
     const groups = container.querySelectorAll(".group");

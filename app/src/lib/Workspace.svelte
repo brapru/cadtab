@@ -41,6 +41,16 @@
       : workspace.groups,
   );
 
+  // Normalize each group's flex-grow over the visible set so the row always
+  // fills. Raw weights can sum to under 1 after move→split→move churn (or when a
+  // sub-1 group is maximized alone), and a `flex-grow` total below 1 leaves the
+  // rest of the row empty — cutting the view off. Dividing by the total keeps the
+  // groups' relative proportions while making the grows sum to 1.
+  const totalWeight = $derived(visible.reduce((sum, g) => sum + g.weight, 0));
+  function flexGrow(weight: number): number {
+    return totalWeight > 0 ? weight / totalWeight : 1;
+  }
+
   // Group DOM elements by index, so a gutter drag can measure the pair it splits
   // (correct for any number of groups, not just the N=2 case).
   let groupEls = $state<HTMLElement[]>([]);
@@ -152,7 +162,7 @@
       class="group"
       class:droptarget={dragOverId === g.id && draggingId !== null}
       bind:this={groupEls[i]}
-      style="flex: {g.weight}"
+      style="flex: {flexGrow(g.weight)}"
       role="group"
     >
       <div class="tabstrip">

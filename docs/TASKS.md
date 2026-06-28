@@ -458,11 +458,14 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Bugs (broken now, no upstream deps):*
 
-- [ ] **T7.7 — Fix: group sizing after move→split→move.** Repro: launch (editor|render split); move
+- [x] **T7.7 — Fix: group sizing after move→split→move.** Repro: launch (editor|render split); move
       the render tab onto the editor group (stack); Split; move render beside editor again — the
-      render (then the editor on tab switch) no longer fills its group and gets cut off. Group flex
-      weights aren't renormalized across move/split churn. Fix the weight bookkeeping in `workspace.ts`
-      (`moveTab`/`splitTab`) and/or the flex sizing in `Workspace.svelte`. *(NOTES #18.)*
+      render (then the editor on tab switch) no longer fills its group and gets cut off. *Cause:* the
+      shell rendered each group with `flex: {rawWeight}`, and after move→split→move (or maximizing a
+      sub-1-weight group) the visible groups' weights summed to under 1 — and a `flex-grow` total
+      below 1 leaves the rest of the row empty. *Fix:* `Workspace.svelte` now normalizes `flex-grow`
+      over the visible groups (`weight / totalWeight`), so it always sums to 1 and the row fills while
+      ratios are preserved — independent of the raw-weight churn in `moveTab`/`splitTab`. *(NOTES #18.)*
 - [ ] **T7.8 — Fix: opening a project clears the previous one.** Opening a new project leaves the old
       project's documents, tabs, and renders open, so a stale render lingers. Opening a project (single
       score, bundle, or folder) should close the prior project's docs/tabs and reset
