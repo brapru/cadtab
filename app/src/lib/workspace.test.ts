@@ -403,6 +403,21 @@ describe("Workspace chrome", () => {
     expect(onNew).toHaveBeenCalledWith("blank");
   });
 
+  it("maximizes a group by double-clicking its tab, and restores on a second", async () => {
+    const { container } = mountShell();
+    const editorTab = () =>
+      [...container.querySelectorAll<HTMLElement>(".tab")].find((t) =>
+        t.textContent?.includes("Editor"),
+      )!;
+    // Double-clicking the editor tab maximizes its group (the render hides).
+    await fireEvent.dblClick(editorTab());
+    expect(container.querySelectorAll(".group")).toHaveLength(1);
+    expect(container.querySelector(".stub")?.textContent).toBe("editor");
+    // A second double-click on the maximized tab restores the row.
+    await fireEvent.dblClick(editorTab());
+    expect(container.querySelectorAll(".group")).toHaveLength(2);
+  });
+
   it("offers Fit only on a group showing a render, and reports it", async () => {
     const onFit = vi.fn();
     const { container, getByLabelText } = render(Workspace, {

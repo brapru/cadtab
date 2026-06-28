@@ -261,6 +261,7 @@
                 onpointermove={onTabPointerMove}
                 onpointerup={onTabPointerUp}
                 onclick={() => onTabClick(g.id, tab)}
+                ondblclick={() => (workspace = toggleMaximize(workspace, g.id))}
               >
                 <span class="tab-icon" aria-hidden="true"
                   >{viewDef(tab.type)?.icon}</span
