@@ -23,12 +23,25 @@
     view,
     onActivateView,
     onCloseTab,
+    onOpenRender,
   }: {
     workspace: Workspace;
     view: Snippet<[ViewInstance]>;
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
+    onOpenRender?: (docId: string) => void;
   } = $props();
+
+  // Whether a document already has an open view of `type` anywhere in the layout
+  // — drives the editor tab's render launcher (spawn vs. jump-to).
+  function hasView(type: string, docId: string | null): boolean {
+    return (
+      docId !== null &&
+      workspace.groups.some((g) =>
+        g.tabs.some((t) => t.type === type && t.docId === docId),
+      )
+    );
+  }
 
   function activate(groupId: string, tab: ViewInstance) {
     workspace = activateTab(workspace, groupId, tab.id);
@@ -188,6 +201,20 @@
                 >
                 <span class="tab-title">{viewDef(tab.type)?.title}</span>
               </button>
+              {#if tab.type === "editor"}
+                {@const open = hasView("render", tab.docId)}
+                <!-- Reopen a closed render (T7.12): spawns this doc's render tab,
+                     or jumps to it when already open. -->
+                <button
+                  class="tab-launch"
+                  class:open
+                  aria-label={open ? "Go to render" : "Open render"}
+                  title={open ? "Go to render" : "Open render"}
+                  onclick={() => tab.docId && onOpenRender?.(tab.docId)}
+                >
+                  <Icon name="music_note" size={14} fill={open} />
+                </button>
+              {/if}
               <button
                 class="tab-close"
                 aria-label="Close {viewDef(tab.type)?.title}"
@@ -296,9 +323,14 @@
     /* Pointer-driven drag: keep touch gestures from scrolling mid-drag. */
     touch-action: none;
   }
-  .tab.active,
-  .tab.active + .tab-close {
+  .tab.active {
     color: var(--fg);
+  }
+  /* The active tint covers the tab and its trailing control buttons (launch,
+     close) so the whole cell reads as one active tab. */
+  .tab.active,
+  .tab.active ~ .tab-launch,
+  .tab.active ~ .tab-close {
     background: color-mix(in srgb, var(--fg) 6%, transparent);
   }
   .tab.dragging {
@@ -307,6 +339,7 @@
   .tab-icon {
     font-size: 0.85rem;
   }
+  .tab-launch,
   .tab-close {
     display: flex;
     align-items: center;
@@ -317,10 +350,16 @@
     cursor: pointer;
     opacity: 0.6;
   }
+  .tab-launch:hover,
   .tab-close:hover {
     opacity: 1;
     color: var(--fg);
     background: color-mix(in srgb, var(--fg) 12%, transparent);
+  }
+  /* When the render is already open, the launcher reads as an active toggle. */
+  .tab-launch.open {
+    opacity: 1;
+    color: var(--accent);
   }
   .group-actions {
     display: flex;

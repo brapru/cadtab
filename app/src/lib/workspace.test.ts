@@ -312,6 +312,32 @@ describe("Workspace chrome", () => {
     ).toEqual(["Editor", "Render"]);
   });
 
+  it("offers a render launcher on editor tabs only, reflecting open state", async () => {
+    const onOpenRender = vi.fn();
+    // Render closed: the editor tab's launcher invites opening it.
+    const { getByLabelText, queryByLabelText } = render(Workspace, {
+      workspace: closeTab(defaultWorkspace("doc"), "render:doc"),
+      view: stubView,
+      onOpenRender,
+    });
+    await fireEvent.click(getByLabelText("Open render"));
+    expect(onOpenRender).toHaveBeenCalledWith("doc");
+    // No "Go to render" while the render is closed.
+    expect(queryByLabelText("Go to render")).toBeNull();
+  });
+
+  it("marks the launcher as jump-to when the render is already open", () => {
+    const { getByLabelText, container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"), // render:doc is open in g2
+      view: stubView,
+    });
+    // The open render makes the editor tab's launcher a jump-to control.
+    expect(getByLabelText("Go to render")).toBeTruthy();
+    expect(container.querySelector(".tab-launch.open")).not.toBeNull();
+    // The render tab itself carries no launcher.
+    expect(container.querySelectorAll(".tab-launch")).toHaveLength(1);
+  });
+
   it("shows a close affordance on every tab that reports the instance closed", async () => {
     const onCloseTab = vi.fn();
     const { getByLabelText } = render(Workspace, {

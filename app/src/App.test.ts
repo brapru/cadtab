@@ -576,6 +576,28 @@ describe("App", () => {
     expect(container.querySelectorAll(".tab")).toHaveLength(0);
   });
 
+  it("reopens a closed render from the editor tab's launcher (T7.12)", async () => {
+    const { container, getByLabelText } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    // Close the render — it's gone, and the launcher now invites reopening it.
+    await fireEvent.click(getByLabelText("Close Render"));
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).toBeNull();
+      expect(getByLabelText("Open render")).toBeTruthy();
+    });
+
+    // The launcher respawns the render for the document.
+    await fireEvent.click(getByLabelText("Open render"));
+    await vi.waitFor(() => {
+      expect(container.querySelector("svg.tab")).not.toBeNull();
+      // It now reads as a jump-to control while open.
+      expect(getByLabelText("Go to render")).toBeTruthy();
+    });
+  });
+
   it("closing the editor leaves its render view open (T7.11)", async () => {
     const { container, getByLabelText } = render(App);
     await vi.waitFor(() =>

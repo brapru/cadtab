@@ -518,7 +518,11 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       only: **New ("+")** (replaces the topbar New), **maximize**, **close** (T7.11), **Fit**
       (aspect-ratio icon, moved off the render toolbar), and **split** (left/right — up/down deferred,
       D50). **Remove the render zoom toolbar** (the % field goes away; zoom lives in a command/Fit).
-      **Double-click a tab to maximize/restore.** Uses the T7.10 icons. *(NOTES #5, #6, #7, #10, #15.)*
+      **Double-click a tab to maximize/restore.** Uses the T7.10 icons.
+      **Also — reopen a closed render:** each **editor tab** carries a small render launcher (♪ icon)
+      that spawns that doc's render tab if closed, or jumps to it if already open — closing the original
+      T7.11 gap where a closed render had no way back. (Preview reopening stays on the topbar Preview
+      button.) *(NOTES #5, #6, #7, #10, #15.)*
 - [ ] **T7.13 — Drag cue: dim only the drop area.** While dragging a tab, indicate the target by
       dimming **only the drop region** (the group body) to a movable-cue colour, not outlining the
       whole field. Refines the T7.5 drop cue. *(NOTES #3.)*

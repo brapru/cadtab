@@ -283,17 +283,30 @@ score {
     compileDoc(o.id);
   }
 
-  // Open (or focus) the active document's print preview as a tab beside its
-  // render. The preview reuses that doc's compile result, so no extra compile.
-  function openPreview() {
-    if (!active) return;
+  // Open (or focus) a document-bound view as a tab beside the existing renders,
+  // and focus its document. `addTab` is idempotent, so this spawns the view when
+  // closed and jumps to it when already open. The view reuses the doc's live
+  // compile result, so no extra compile.
+  function openViewFor(docId: string, type: "render" | "preview") {
     const group =
       groupOfType(workspace, "render") ??
       groupOfType(workspace, "editor") ??
       workspace.groups[0]?.id;
     if (group) {
-      workspace = addTab(workspace, viewInstance("preview", active.id), group);
+      workspace = addTab(workspace, viewInstance(type, docId), group);
     }
+    focusDoc(docId);
+  }
+
+  // The active document's print preview, from the topbar Preview button.
+  function openPreview() {
+    if (active) openViewFor(active.id, "preview");
+  }
+
+  // Reopen a document's render from its editor tab's launcher (T7.12) — closes
+  // the T7.11 gap where a closed render had no way back.
+  function openRender(docId: string) {
+    openViewFor(docId, "render");
   }
 
   // Close a tab (T7.11). Each view closes on its own — removing just that
@@ -633,6 +646,7 @@ score {
       bind:workspace
       onActivateView={(inst) => inst.docId && focusDoc(inst.docId)}
       onCloseTab={closeView}
+      onOpenRender={openRender}
     >
       {#snippet view(instance)}
         <!-- Key by instance so switching a group to a different document's tab
