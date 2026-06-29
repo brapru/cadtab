@@ -85,4 +85,20 @@ describe("BottomBar", () => {
     expect(toggle.getAttribute("aria-label")).toBe("Format on save: on");
     expect(toggle.classList.contains("active")).toBe(true);
   });
+
+  it("shows the theme and cycles it on click", async () => {
+    const onCycleTheme = vi.fn();
+    const { container, rerender } = render(BottomBar, {
+      theme: "dark",
+      onCycleTheme,
+    });
+    const toggle = container.querySelector(".theme-toggle")!;
+    expect(toggle.getAttribute("aria-label")).toBe("Theme: dark");
+
+    await fireEvent.click(toggle);
+    expect(onCycleTheme).toHaveBeenCalledOnce();
+
+    await rerender({ theme: "light", onCycleTheme });
+    expect(toggle.getAttribute("aria-label")).toBe("Theme: light");
+  });
 });

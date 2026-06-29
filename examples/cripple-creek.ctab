@@ -1,21 +1,24 @@
-title    "Cripple Creek"
+title "Cripple Creek"
 composer "traditional"
-tempo    130
+tempo 130
 
 instrument banjo
-tuning     openG
+tuning openG
 
 // A complete, standalone single-file score (no imports). Open/Save this to test
 // single-file persistence on desktop and in the browser.
 score {
+
   time 4/4
   default 1/8
 
   // A-part
   3:0 2:0 1:0 5:0 3:0 2:0 1:0 5:0
+
   3:2 3:4 2:0 1:0 5:0 1:0 2:0 3:0
 
   // B-part
+
   [1:0 2:0 3:0] 5:0 3:2 3:0 2:0 1:0 5:0 3:0
   3:2 3:4 2:0 1:0 5:0 1:0 2:0 3:0
 }

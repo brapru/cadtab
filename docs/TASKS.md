@@ -590,9 +590,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
   - [x] T7.25b — **Format button + format-on-save toggle.** Bottom-bar **Format** action plus a
         **format-on-save** setting, both calling the core formatter via the wasm/Tauri seam. Format
         replaces the buffer in one **undoable** transaction.
-- [ ] **T7.26 — Theme switcher in the bottom bar.** Move the light / dark / system control out of the
+- [x] **T7.26 — Theme switcher in the bottom bar.** Move the light / dark / system control out of the
       topbar into the bottom status bar (T7.3) as a compact control. Folds into T7.21's toggle and the
-      T7.3 bottom-bar styling.
+      T7.3 bottom-bar styling. *(Joins the bottom-right control cluster: theme · format-on-save ·
+      autocomplete · diagnostics.)*
 
 *Diagnostics:*
 

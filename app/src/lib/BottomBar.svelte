@@ -3,6 +3,7 @@
   import { diagnosticCounts } from "./diagnostics";
   import { tooltip } from "./tooltip";
   import Icon from "./Icon.svelte";
+  import { themeIcon, type Theme } from "./theme";
 
   // The bottom status bar: a small, unobtrusive strip
   // hosting the dock toggle and a live problem indicator. It sets the
@@ -14,9 +15,11 @@
     notice = null,
     autocomplete = true,
     formatOnSave = false,
+    theme = "dark",
     onToggleDock,
     onToggleAutocomplete,
     onToggleFormatOnSave,
+    onCycleTheme,
   }: {
     diagnostics?: Diagnostic[];
     dockOpen?: boolean;
@@ -27,9 +30,12 @@
     autocomplete?: boolean;
     // Format-on-save on/off (T7.25): when lit, every save canonicalizes first.
     formatOnSave?: boolean;
+    // The colour theme (T7.26): the switcher cycles system → light → dark.
+    theme?: Theme;
     onToggleDock?: () => void;
     onToggleAutocomplete?: () => void;
     onToggleFormatOnSave?: () => void;
+    onCycleTheme?: () => void;
   } = $props();
 
   const counts = $derived(diagnosticCounts(diagnostics));
@@ -50,8 +56,16 @@
     </button>
   </div>
   <!-- The diagnostics/notice indicator stays pinned rightmost; any new control
-       (Format, the toggles, future settings) goes to its left. -->
+       (theme, the toggles, future settings) goes to its left. -->
   <div class="group">
+    <button
+      class="control theme-toggle"
+      aria-label="Theme: {theme}"
+      use:tooltip={`Theme: ${theme}`}
+      onclick={() => onCycleTheme?.()}
+    >
+      <Icon name={themeIcon(theme)} size={16} />
+    </button>
     <button
       class="control format-toggle"
       class:active={formatOnSave}

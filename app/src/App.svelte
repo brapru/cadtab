@@ -60,7 +60,7 @@
     ZOOM_STEP,
     PDF_CONTENT_WIDTH,
   } from "./lib/sizing";
-  import { nextTheme, themeIcon, type Theme } from "./lib/theme";
+  import { nextTheme, type Theme } from "./lib/theme";
   import {
     openProject,
     openFolder,
@@ -1268,15 +1268,6 @@ score {
           </div>
         {/if}
       </div>
-      <span class="sep" aria-hidden="true"></span>
-      <button
-        class="icon-btn theme-toggle"
-        onclick={cycleTheme}
-        aria-label="Theme: {theme}"
-        use:tooltip={`Theme: ${theme}`}
-      >
-        <Icon name={themeIcon(theme)} size={18} />
-      </button>
     </div>
   </header>
   <div class="body">
@@ -1364,9 +1355,11 @@ score {
     notice={exportNotice}
     {autocomplete}
     {formatOnSave}
+    {theme}
     onToggleDock={toggleDock}
     onToggleAutocomplete={toggleAutocomplete}
     onToggleFormatOnSave={toggleFormatOnSave}
+    onCycleTheme={cycleTheme}
   />
   <ConfirmDialog
     open={confirmPrompt !== null}
