@@ -116,8 +116,13 @@
         EditorView.theme({
           "&": { backgroundColor: "var(--bg)", color: "var(--fg)" },
           ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--fg)" },
+          // The active line wears a faint accent tick at its left edge rather
+          // than a full-width fill (T7.31), so the row reads without washing out
+          // the caret, selection, or token colours sitting on it.
           ".cm-activeLine": {
-            backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",
+            backgroundColor: "transparent",
+            boxShadow:
+              "inset 2px 0 0 color-mix(in srgb, var(--accent) 55%, transparent)",
           },
           // Line-number gutter: themed muted numbers on the editor background,
           // with a divider rule separating it from the code text.

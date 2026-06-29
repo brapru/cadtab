@@ -54,14 +54,17 @@ export const tokenField = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-// Token-class colours (a light, One Light-ish palette). Idents and punctuation
-// stay the default ink so the fretted positions and structure read plainly.
+// Token-class colours, drawn from the muted two-tone palette tokens in app.css
+// (T7.31) so highlighting re-themes with the rest of the UI. Keywords and
+// operators share the desaturated-blue structure tone; numbers are warm tan;
+// strings muted green; comments a gray italic. Idents and punctuation stay the
+// default ink so the fretted positions and braces read plainly.
 const tokenTheme = EditorView.baseTheme({
-  ".cm-tok-keyword": { color: "#a626a4" },
-  ".cm-tok-number": { color: "#b76b01" },
-  ".cm-tok-string": { color: "#50a14f" },
-  ".cm-tok-comment": { color: "#a0a1a7", fontStyle: "italic" },
-  ".cm-tok-operator": { color: "#0184bc" },
+  ".cm-tok-keyword": { color: "var(--syn-structure)" },
+  ".cm-tok-operator": { color: "var(--syn-structure)" },
+  ".cm-tok-number": { color: "var(--syn-number)" },
+  ".cm-tok-string": { color: "var(--syn-string)" },
+  ".cm-tok-comment": { color: "var(--syn-comment)", fontStyle: "italic" },
 });
 
 // Editor extension that paints the core's classified tokens as highlighting.

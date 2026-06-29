@@ -11,6 +11,16 @@
   --warning: #c18401;
   --info: #4078f2;
   --border: color-mix(in srgb, var(--fg) 15%, transparent);
+
+  /* Syntax-highlighting palette (T7.31): a muted two-tone scheme — desaturated
+     blue for structure (keywords + operators), warm tan for numbers — plus a
+     muted green for strings and a gray for comments. Idents/punctuation stay
+     --fg so fretted positions and braces read as plain ink. Light defaults; the
+     dark blocks restate them brighter for the dark ground. */
+  --syn-structure: #3f6e96;
+  --syn-number: #97652b;
+  --syn-string: #4e7a3e;
+  --syn-comment: #8a8a8a;
 }
 
 /* System dark mode, unless the user has forced light. */
@@ -23,6 +33,10 @@
     --error: #f0857a;
     --warning: #d6a23a;
     --info: #6fa0f5;
+    --syn-structure: #84a8c9;
+    --syn-number: #c9a578;
+    --syn-string: #8faa74;
+    --syn-comment: #767676;
   }
 }
 
@@ -35,6 +49,10 @@
   --error: #e45649;
   --warning: #c18401;
   --info: #4078f2;
+  --syn-structure: #3f6e96;
+  --syn-number: #97652b;
+  --syn-string: #4e7a3e;
+  --syn-comment: #8a8a8a;
 }
 :root[data-theme="dark"] {
   --bg: #1e1e1e;
@@ -44,6 +62,10 @@
   --error: #f0857a;
   --warning: #d6a23a;
   --info: #6fa0f5;
+  --syn-structure: #84a8c9;
+  --syn-number: #c9a578;
+  --syn-string: #8faa74;
+  --syn-comment: #767676;
 }
 
 * {
