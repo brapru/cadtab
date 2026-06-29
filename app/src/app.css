@@ -9,6 +9,7 @@
   --accent: #b4540a;
   --error: #e45649;
   --warning: #c18401;
+  --info: #4078f2;
   --border: color-mix(in srgb, var(--fg) 15%, transparent);
 }
 
@@ -21,6 +22,7 @@
     --accent: #e08a3c;
     --error: #f0857a;
     --warning: #d6a23a;
+    --info: #6fa0f5;
   }
 }
 
@@ -32,6 +34,7 @@
   --accent: #b4540a;
   --error: #e45649;
   --warning: #c18401;
+  --info: #4078f2;
 }
 :root[data-theme="dark"] {
   --bg: #1e1e1e;
@@ -40,6 +43,7 @@
   --accent: #e08a3c;
   --error: #f0857a;
   --warning: #d6a23a;
+  --info: #6fa0f5;
 }
 
 * {

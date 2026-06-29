@@ -96,17 +96,23 @@ describe("diagnosticsAt", () => {
 });
 
 describe("diagnosticTooltipDom", () => {
-  it("renders a severity-classed row per diagnostic, appending help", () => {
+  it("renders a severity-classed row per diagnostic, with message and dimmed help", () => {
     const dom = diagnosticTooltipDom([
       { from: 0, to: 5, severity: "error", message: "bad", help: "fix it" },
       { from: 6, to: 9, severity: "warning", message: "iffy", help: null },
     ]);
     const rows = dom.querySelectorAll(".cm-diag-row");
     expect(rows).toHaveLength(2);
-    expect(rows[0].className).toContain("cm-diag-error");
-    expect(rows[0].textContent).toBe("bad — fix it");
-    expect(rows[1].className).toContain("cm-diag-warning");
-    expect(rows[1].textContent).toBe("iffy");
+
+    // First row: severity-keyed class, message + help on separate lines.
+    expect(rows[0].className).toContain("cm-diag-row-error");
+    expect(rows[0].querySelector(".cm-diag-msg")?.textContent).toBe("bad");
+    expect(rows[0].querySelector(".cm-diag-help")?.textContent).toBe("fix it");
+
+    // Second row: no help → no help line, just the message.
+    expect(rows[1].className).toContain("cm-diag-row-warning");
+    expect(rows[1].querySelector(".cm-diag-msg")?.textContent).toBe("iffy");
+    expect(rows[1].querySelector(".cm-diag-help")).toBeNull();
   });
 });
 

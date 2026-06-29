@@ -112,14 +112,29 @@ export const diagnosticsField = StateField.define<PlacedDiagnostic[]>({
   provide: (f) => EditorView.decorations.from(f, decorations),
 });
 
-// Build the tooltip body: one row per diagnostic, message with help appended.
+// Build the tooltip body: one row per diagnostic. Each row carries a
+// severity-coloured left accent, the message in the foreground ink, and the help
+// (when present) on a dimmed line below — distinct from the squiggle classes so
+// the tooltip text is never itself underlined.
 export function diagnosticTooltipDom(hits: PlacedDiagnostic[]): HTMLElement {
   const dom = document.createElement("div");
   dom.className = "cm-diag-tooltip";
   for (const h of hits) {
     const row = document.createElement("div");
-    row.className = `cm-diag-row cm-diag-${h.severity}`;
-    row.textContent = h.help ? `${h.message} — ${h.help}` : h.message;
+    row.className = `cm-diag-row cm-diag-row-${h.severity}`;
+
+    const msg = document.createElement("div");
+    msg.className = "cm-diag-msg";
+    msg.textContent = h.message;
+    row.appendChild(msg);
+
+    if (h.help) {
+      const help = document.createElement("div");
+      help.className = "cm-diag-help";
+      help.textContent = h.help;
+      row.appendChild(help);
+    }
+
     dom.appendChild(row);
   }
   return dom;
@@ -149,13 +164,54 @@ const diagnosticTheme = EditorView.baseTheme({
   ".cm-diag-error": wavy("#e45649"),
   ".cm-diag-warning": wavy("#c18401"),
   ".cm-diag-info": wavy("#4078f2"),
-  ".cm-diag-tooltip": {
-    padding: "3px 7px",
-    maxWidth: "320px",
-    fontSize: "90%",
+});
+
+// Re-skin the hover tooltip to the app's semantic tokens. CodeMirror's default
+// `.cm-tooltip` is a fixed light-grey chip that ignores our CSS-var theme, so in
+// the dark theme it rendered light `--fg` text on a light chip — invisible until
+// selected (T7.27). An `EditorView.theme` (not baseTheme) outweighs CM's default,
+// and the `var(...)` cascade resolves to the active theme; backgrounds/borders
+// need no WKWebView prefixing. Mirrors the completion popup's chrome.
+const diagnosticTooltipTheme = EditorView.theme({
+  ".cm-tooltip.cm-tooltip-hover": {
+    background: "var(--bg)",
+    color: "var(--fg)",
+    border: "1px solid var(--border)",
+    borderRadius: "0.4rem",
+    boxShadow: "0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent)",
+    overflow: "hidden",
   },
-  ".cm-diag-row + .cm-diag-row": { marginTop: "3px" },
+  ".cm-diag-tooltip": {
+    padding: "5px 0",
+    maxWidth: "340px",
+    fontSize: "90%",
+    fontFamily: "inherit",
+  },
+  ".cm-diag-row": {
+    padding: "2px 10px 2px 9px",
+    borderLeft: "3px solid transparent",
+    lineHeight: "1.4",
+  },
+  ".cm-diag-row + .cm-diag-row": {
+    marginTop: "3px",
+    borderTop: "1px solid var(--border)",
+    paddingTop: "5px",
+  },
+  ".cm-diag-row-error": { borderLeftColor: "var(--error)" },
+  ".cm-diag-row-warning": { borderLeftColor: "var(--warning)" },
+  ".cm-diag-row-info": { borderLeftColor: "var(--info)" },
+  ".cm-diag-msg": { color: "var(--fg)" },
+  ".cm-diag-help": {
+    color: "var(--muted)",
+    marginTop: "1px",
+    fontSize: "92%",
+  },
 });
 
 // Editor extension that underlines the core's diagnostics and shows them on hover.
-export const diagnostics = [diagnosticsField, diagnosticHover, diagnosticTheme];
+export const diagnostics = [
+  diagnosticsField,
+  diagnosticHover,
+  diagnosticTheme,
+  diagnosticTooltipTheme,
+];
