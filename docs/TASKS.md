@@ -606,7 +606,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Help & desktop:*
 
-- [ ] **T7.29 — Help view.** A **help** button in the bottom bar opens a how-to-use-the-app tab (a
+- [x] **T7.29 — Help view.** A **help** button in the bottom bar opens a how-to-use-the-app tab (a
       global-singleton view with getting-started content: syntax basics, shortcuts, the workspace).
       Overlaps M8's T8.3 content. *(NOTES #11.)*
 - [ ] **T7.30 — Native desktop menu bar (Tauri, D48).** Wire the desktop app's native top-bar menu so

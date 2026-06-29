@@ -16,6 +16,7 @@
     isTauri,
   } from "./lib/core";
   import { emptyCompletions } from "./lib/completion";
+  import { installAppMenu, isMac, type MenuHandlers } from "./lib/menu";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
   import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
@@ -555,7 +556,10 @@ score {
   const toggleDock = () => (dockOpen = !dockOpen);
 
   // Cmd/Ctrl-B toggles the dock, overriding the browser's default for the key.
+  // Desktop routes this through the native menu's accelerator instead (T7.30),
+  // so the handler is web-only there — no double-dispatch.
   function onDockKey(e: KeyboardEvent) {
+    if (desktop) return;
     if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
     if (e.key.toLowerCase() !== "b") return;
     toggleDock();
@@ -585,6 +589,7 @@ score {
     if (focused) void closeView(focused);
   }
   function onCloseTabKey(e: KeyboardEvent) {
+    if (desktop) return; // native menu owns Cmd/Ctrl-W on desktop (T7.30)
     if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
     if (e.key.toLowerCase() !== "w") return;
     e.preventDefault();
@@ -1189,6 +1194,7 @@ score {
   // Cmd/Ctrl+O opens a file/bundle; Cmd/Ctrl+Shift+O opens a folder (desktop —
   // a no-op elsewhere); Cmd/Ctrl+S saves the active file.
   function onIOKey(e: KeyboardEvent) {
+    if (desktop) return; // native menu owns Open/Save accelerators on desktop (T7.30)
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
     const key = e.key.toLowerCase();
     if (key === "o" && e.shiftKey) {
@@ -1202,6 +1208,31 @@ score {
   $effect(() => {
     window.addEventListener("keydown", onIOKey);
     return () => window.removeEventListener("keydown", onIOKey);
+  });
+
+  // The native desktop menu (T7.30, D48): each item dispatches the same App
+  // handler the in-app controls use, so the two never diverge. Built once on
+  // desktop; a no-op on web. The export/save/open actions are voided (they're
+  // async); the rest run synchronously.
+  const menuHandlers: MenuHandlers = {
+    open: () => void openFile(),
+    openFolder: () => void openFolderFlow(),
+    save: () => void saveFile(),
+    closeTab: () => closeFocusedTab(),
+    exportSvg: () => void exportSvg(),
+    exportPng: () => void exportPng(),
+    exportPdf: () => void exportPdf(),
+    exportBundle: () => void exportBundle(),
+    zoomIn,
+    zoomOut,
+    zoomReset: zoomFit,
+    toggleDock,
+    help: openHelp,
+    newTemplate: (id) => newFromTemplate(id),
+  };
+  $effect(() => {
+    if (!desktop) return;
+    void installAppMenu(menuHandlers, { mac: isMac(), templates: TEMPLATES });
   });
 
   compileDoc(initialId);
