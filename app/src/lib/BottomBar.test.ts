@@ -43,4 +43,26 @@ describe("BottomBar", () => {
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(toggle.classList.contains("active")).toBe(true);
   });
+
+  it("reflects the autocomplete setting and fires its toggle on click", async () => {
+    const onToggleAutocomplete = vi.fn();
+    const { container, rerender } = render(BottomBar, {
+      autocomplete: true,
+      onToggleAutocomplete,
+    });
+    const toggle = container.querySelector(".autocomplete-toggle")!;
+    // On by default: lit (active) and announced as pressed.
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.getAttribute("aria-label")).toBe("Autocomplete: on");
+    expect(toggle.classList.contains("active")).toBe(true);
+
+    await fireEvent.click(toggle);
+    expect(onToggleAutocomplete).toHaveBeenCalledOnce();
+
+    // Off reads muted (not active) and updates its label.
+    await rerender({ autocomplete: false, onToggleAutocomplete });
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.getAttribute("aria-label")).toBe("Autocomplete: off");
+    expect(toggle.classList.contains("active")).toBe(false);
+  });
 });

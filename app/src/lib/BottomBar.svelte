@@ -2,6 +2,7 @@
   import type { Diagnostic } from "./types";
   import { diagnosticCounts } from "./diagnostics";
   import { tooltip } from "./tooltip";
+  import Icon from "./Icon.svelte";
 
   // The bottom status bar: a small, unobtrusive strip
   // hosting the dock toggle and a live problem indicator. It sets the
@@ -11,14 +12,19 @@
     diagnostics = [],
     dockOpen = false,
     notice = null,
+    autocomplete = true,
     onToggleDock,
+    onToggleAutocomplete,
   }: {
     diagnostics?: Diagnostic[];
     dockOpen?: boolean;
     // A transient status flash (e.g. "Exported tune.pdf"); when set it takes the
     // diagnostics slot for a few seconds, then the caller clears it.
     notice?: string | null;
+    // Editor autocomplete on/off (T7.24c): lit when on, muted when off.
+    autocomplete?: boolean;
     onToggleDock?: () => void;
+    onToggleAutocomplete?: () => void;
   } = $props();
 
   const counts = $derived(diagnosticCounts(diagnostics));
@@ -38,7 +44,19 @@
       <span aria-hidden="true">◧</span>
     </button>
   </div>
+  <!-- The diagnostics/notice indicator stays pinned rightmost; any new control
+       (the autocomplete toggle, future settings) goes to its left. -->
   <div class="group">
+    <button
+      class="control autocomplete-toggle"
+      class:active={autocomplete}
+      aria-label="Autocomplete: {autocomplete ? 'on' : 'off'}"
+      aria-pressed={autocomplete}
+      use:tooltip={`Autocomplete: ${autocomplete ? "on" : "off"}`}
+      onclick={() => onToggleAutocomplete?.()}
+    >
+      <Icon name="prompt_suggestion" size={16} />
+    </button>
     {#if notice}
       <!-- A transient export/success flash, taking the diagnostics slot. -->
       <div class="notice" role="status">

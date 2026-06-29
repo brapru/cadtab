@@ -1226,19 +1226,6 @@ score {
       </div>
       <span class="sep" aria-hidden="true"></span>
       <button
-        class="icon-btn autocomplete-toggle"
-        class:toggle-off={!autocomplete}
-        onclick={toggleAutocomplete}
-        aria-label="Autocomplete: {autocomplete ? 'on' : 'off'}"
-        aria-pressed={autocomplete}
-        use:tooltip={`Autocomplete: ${autocomplete ? "on" : "off"}`}
-      >
-        <Icon
-          name={autocomplete ? "auto_fix_high" : "auto_fix_off"}
-          size={18}
-        />
-      </button>
-      <button
         class="icon-btn theme-toggle"
         onclick={cycleTheme}
         aria-label="Theme: {theme}"
@@ -1330,7 +1317,9 @@ score {
     diagnostics={activeResult?.diagnostics ?? []}
     {dockOpen}
     notice={exportNotice}
+    {autocomplete}
     onToggleDock={toggleDock}
+    onToggleAutocomplete={toggleAutocomplete}
   />
   <ConfirmDialog
     open={confirmPrompt !== null}
@@ -1412,10 +1401,6 @@ score {
   }
   .icon-btn:hover {
     background: color-mix(in srgb, var(--fg) 8%, transparent);
-  }
-  /* A toggle in its off state reads muted, so on/off is legible at a glance. */
-  .icon-btn.toggle-off {
-    color: var(--muted);
   }
   /* The Export control anchors its SVG/PNG menu just below the download icon. */
   .export-wrap {
