@@ -1,7 +1,14 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import Editor from "./Editor.svelte";
-import type { Token, Diagnostic } from "./types";
+import type { Token, Diagnostic, Completions } from "./types";
+
+const vocab: Completions = {
+  keywords: [
+    { name: "instrument", operand: "values", values: ["banjo", "guitar"] },
+  ],
+  identifiers: ["forward_roll"],
+};
 
 describe("Editor highlighting", () => {
   it("decorates tokens pushed in via the tokens prop", async () => {
@@ -110,6 +117,43 @@ describe("Editor highlighting", () => {
       expect(last).toBeDefined();
       expect(last).not.toBe("x");
       expect(/^\s/.test(last!)).toBe(true);
+    });
+  });
+
+  it("completes a value-set operand and accepts it with Tab", async () => {
+    const onChange = vi.fn();
+    const { container } = render(Editor, {
+      props: {
+        doc: "instrument ",
+        completions: vocab,
+        selection: { from: 11, to: 11 },
+        onChange,
+      },
+    });
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    // Explicitly open completion (Ctrl-Space) in the `instrument` operand slot:
+    // the core-sourced value set (banjo/guitar) appears in the popup.
+    await fireEvent.keyDown(content, { key: " ", ctrlKey: true });
+    await vi.waitFor(() => {
+      const list = container.querySelector(".cm-tooltip-autocomplete");
+      expect(list).not.toBeNull();
+      expect(list?.textContent).toContain("banjo");
+    });
+
+    // Past CodeMirror's interaction delay (which guards against accepting the
+    // instant the popup opens), Tab accepts the first option, inserting it after
+    // the keyword.
+    await new Promise((r) => setTimeout(r, 120));
+    await fireEvent.keyDown(content, { key: "Tab" });
+    await vi.waitFor(() => {
+      const last = onChange.mock.calls.at(-1)?.[0] as string | undefined;
+      expect(last).toBe("instrument banjo");
     });
   });
 

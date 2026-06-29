@@ -24,7 +24,13 @@
     diagnostics as diagnosticsExtension,
     setDiagnostics,
   } from "./diagnostics";
-  import type { Token, Diagnostic } from "./types";
+  import {
+    completion as completionExtension,
+    setCompletions,
+    acceptCompletion,
+    emptyCompletions,
+  } from "./completion";
+  import type { Token, Diagnostic, Completions } from "./types";
 
   let {
     doc = "",
@@ -33,6 +39,7 @@
     onFocus,
     tokens = [],
     diagnostics = [],
+    completions = emptyCompletions,
     selection = null,
     loadRequest = null,
     zoom = 1,
@@ -43,6 +50,7 @@
     onFocus?: () => void;
     tokens?: Token[];
     diagnostics?: Diagnostic[];
+    completions?: Completions;
     selection?: { from: number; to: number } | null;
     loadRequest?: { content: string; token: number } | null;
     zoom?: number;
@@ -84,12 +92,15 @@
         drawSelection(),
         dropCursor(),
         highlightActiveLine(),
-        // Tab inserts indentation rather than moving focus out; Cmd/Ctrl-L
-        // selects the whole line (Mod maps to Cmd on macOS, Ctrl elsewhere).
+        // Tab accepts an open completion (T7.24), else inserts indentation
+        // rather than moving focus out; Cmd/Ctrl-L selects the whole line (Mod
+        // maps to Cmd on macOS, Ctrl elsewhere). The accept binding precedes
+        // `indentWithTab`, and is a no-op when no completion is open.
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
           ...foldKeymap,
+          { key: "Tab", run: acceptCompletion },
           indentWithTab,
           { key: "Mod-l", run: selectLine },
         ]),
@@ -152,6 +163,8 @@
         }),
         syntaxHighlighting,
         diagnosticsExtension,
+        // Core-driven autocomplete + inline operand hints (T7.24).
+        completionExtension,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChange?.(update.state.doc.toString());
@@ -181,6 +194,12 @@
   // Likewise for diagnostics: underline squiggles + hover tooltips.
   $effect(() => {
     view?.dispatch({ effects: setDiagnostics.of(diagnostics) });
+  });
+
+  // And the completion vocabulary: the source reads it synchronously, so a fresh
+  // compile's keyword/identifier set is in place before the next keystroke.
+  $effect(() => {
+    view?.dispatch({ effects: setCompletions.of(completions) });
   });
 
   // Swap in a freshly-built state when a new load is requested (opening a file).

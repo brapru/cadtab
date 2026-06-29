@@ -7,7 +7,13 @@
   import Dock from "./lib/Dock.svelte";
   import ConfirmDialog from "./lib/ConfirmDialog.svelte";
   import Icon from "./lib/Icon.svelte";
-  import { compile, paginate, isTauri } from "./lib/core";
+  import {
+    compile,
+    paginate,
+    completions as fetchCompletions,
+    isTauri,
+  } from "./lib/core";
+  import { emptyCompletions } from "./lib/completion";
   import { createLiveCompiler } from "./lib/live";
   import { debounce } from "./lib/debounce";
   import { byteToCharIndex, charToByteIndex, spanToRange } from "./lib/spans";
@@ -77,7 +83,7 @@
   import { svgToPngBlob } from "./lib/png";
   import { tooltip } from "./lib/tooltip";
   import { TEMPLATES, templateById } from "./lib/templates";
-  import type { CompileResult, Span } from "./lib/types";
+  import type { CompileResult, Completions, Span } from "./lib/types";
 
   // A feature-rich starter so the app opens showing the header details row,
   // a time signature, beamed rhythms, and barlined measures end to end.
@@ -103,6 +109,9 @@ score {
   // several files' editors and renders coexist independently. Reassigned (not
   // mutated) so Svelte tracks the change.
   let results = $state<Record<string, CompileResult>>({});
+  // Per-document completion vocabulary (T7.24), refreshed alongside compile so
+  // the editor's autocomplete tracks the doc's own/imported defs as they change.
+  let completionsByDoc = $state<Record<string, Completions>>({});
   let errors = $state<Record<string, string>>({});
   let selections = $state<Record<string, { from: number; to: number } | null>>(
     {},
@@ -218,7 +227,8 @@ score {
     return lc;
   }
 
-  // Compile one document at its own pane width and the shared project context.
+  // Compile one document at its own pane width and the shared project context,
+  // and refresh its completion vocabulary from the same source + context.
   function compileDoc(id: string) {
     const doc = docFor(id);
     if (!doc) return;
@@ -227,6 +237,27 @@ score {
       { width: layoutWidths[id] ?? 66 },
       { basePath: doc.path, files: projectFiles },
     );
+    refreshCompletions(id);
+  }
+
+  // Latest-wins completion-vocabulary fetch per document: a stale resolution
+  // (e.g. from an earlier keystroke) never clobbers a newer one, and a backend
+  // error just leaves the previous vocabulary in place.
+  const completionSeq: Record<string, number> = {};
+  function refreshCompletions(id: string) {
+    const doc = docFor(id);
+    if (!doc) return;
+    const mine = (completionSeq[id] = (completionSeq[id] ?? 0) + 1);
+    void fetchCompletions(doc.content, {
+      basePath: doc.path,
+      files: projectFiles,
+    })
+      .then((c) => {
+        if (mine === completionSeq[id]) {
+          completionsByDoc = { ...completionsByDoc, [id]: c };
+        }
+      })
+      .catch(() => {});
   }
 
   // Editing updates that document's buffer (dirty derives) and recompiles it. A
@@ -318,6 +349,7 @@ score {
   // on its compile.
   function resetDocState() {
     results = {};
+    completionsByDoc = {};
     errors = {};
     selections = {};
     activeSpans = {};
@@ -336,6 +368,7 @@ score {
   }
   function cleanupDoc(id: string) {
     results = without(results, id);
+    completionsByDoc = without(completionsByDoc, id);
     errors = without(errors, id);
     selections = without(selections, id);
     activeSpans = without(activeSpans, id);
@@ -1244,6 +1277,8 @@ score {
                 loadRequest={loadRequests[instance.docId ?? ""] ?? null}
                 tokens={results[instance.docId ?? ""]?.tokens ?? []}
                 diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
+                completions={completionsByDoc[instance.docId ?? ""] ??
+                  emptyCompletions}
               />
             </div>
           {:else if instance.type === "render"}
