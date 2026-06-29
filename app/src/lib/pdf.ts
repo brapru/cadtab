@@ -1,6 +1,13 @@
 import type { PDFDocument, PDFFont, PDFPage, RGB } from "pdf-lib";
 import type { PaginatedTree, Page, Primitive, TextRole } from "./types";
-import { TEXT_STYLE, textAnchor, isMuted, PATH_STROKE_WIDTH } from "./tabStyle";
+import {
+  TEXT_STYLE,
+  textAnchor,
+  isMuted,
+  PATH_STROKE_WIDTH,
+  TEMPO_NOTE_BOOST,
+  TEMPO_NOTE,
+} from "./tabStyle";
 
 // Vector PDF export (T7.19b): paint a `PaginatedTree` straight into a PDF with
 // real text and vector strokes — crisp at any zoom, small files, identical on
@@ -278,7 +285,7 @@ function drawTempo(
   color: RGB,
 ): void {
   const chars = [...content];
-  if (chars[0] !== "♩") {
+  if (chars[0] !== TEMPO_NOTE) {
     drawCentral(
       pdfPage,
       content,
@@ -292,14 +299,17 @@ function drawTempo(
     return;
   }
   const rest = chars.slice(1).join("");
+  // The note glyph renders small for its em, so boost it to read with the text.
+  // Each piece is vertically centred on `centerY` (its own cap-centre offset).
+  const noteSize = size * TEMPO_NOTE_BOOST;
   // Centre the whole "♩…" string on x: measure the note (music font) + rest (serif).
-  const noteW = safeWidth(fonts.music, "♩", size);
+  const noteW = safeWidth(fonts.music, TEMPO_NOTE, noteSize);
   const restW = safeWidth(fonts.regular, rest, size);
   let cursor = x - (noteW + restW) / 2;
-  pdfPage.drawText("♩", {
+  pdfPage.drawText(TEMPO_NOTE, {
     x: cursor,
-    y: centerY - CAP_CENTER * size,
-    size,
+    y: centerY - CAP_CENTER * noteSize,
+    size: noteSize,
     font: fonts.music,
     color,
   });

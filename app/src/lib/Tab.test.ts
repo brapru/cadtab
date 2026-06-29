@@ -81,7 +81,7 @@ describe("Tab painter", () => {
 
     const title = container.querySelector('text[data-role="title"]');
     expect(title?.textContent).toBe("Cripple Creek");
-    expect(title?.getAttribute("font-size")).toBe("1.5");
+    expect(title?.getAttribute("font-size")).toBe("2.2");
     expect(title?.getAttribute("font-weight")).toBe("600");
 
     // Distinct roles get distinct sizes so the painter can differentiate them.

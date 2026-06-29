@@ -858,13 +858,15 @@ describe("App", () => {
     await fireEvent.click(getByText("Export SVG"));
 
     await vi.waitFor(() => expect(saveSvgMock).toHaveBeenCalled());
-    const [svg, target] = saveSvgMock.mock.calls[0] as [
-      string,
-      { path: string | null; suggestedName: string },
-    ];
-    // The real serializer ran on the current render tree.
+    const [svg, name] = saveSvgMock.mock.calls[0] as [string, string];
+    // The real serializer ran on the current render tree; the io seam swaps the
+    // .ctab base name for .svg.
     expect(svg).toContain("<svg");
-    expect(target).toEqual({ path: null, suggestedName: "untitled.ctab" });
+    expect(name).toBe("untitled.ctab");
+    // The bottom bar flashes the export-success notice.
+    await vi.waitFor(() =>
+      expect(screen.getByText("Exported untitled.svg")).toBeTruthy(),
+    );
   });
 
   it("exports the rendered tab as a PNG via the rasterizer", async () => {
@@ -882,8 +884,9 @@ describe("App", () => {
     await vi.waitFor(() => expect(savePngMock).toHaveBeenCalled());
     // The SVG was rasterized to a blob before saving.
     expect(svgToPngBlobMock).toHaveBeenCalled();
-    const [blob] = savePngMock.mock.calls[0] as [Blob];
+    const [blob, name] = savePngMock.mock.calls[0] as [Blob, string];
     expect(blob.type).toBe("image/png");
+    expect(name).toBe("untitled.ctab");
   });
 
   it("exports the document as a paginated PDF", async () => {
@@ -903,12 +906,14 @@ describe("App", () => {
     // The document was paginated, then painted to PDF bytes before saving.
     expect(wasmPaginateMock).toHaveBeenCalled();
     expect(paginatedTreeToPdfMock).toHaveBeenCalled();
-    const [bytes, target] = savePdfMock.mock.calls[0] as [
-      Uint8Array,
-      { path: string | null; suggestedName: string },
-    ];
+    const [bytes, name] = savePdfMock.mock.calls[0] as [Uint8Array, string];
     expect(bytes).toBeInstanceOf(Uint8Array);
-    expect(target).toEqual({ path: null, suggestedName: "untitled.ctab" });
+    expect(name).toBe("untitled.ctab");
+    // The bottom bar flashes the export-success notice (the only feedback now
+    // that exports skip the save dialog).
+    await vi.waitFor(() =>
+      expect(screen.getByText("Exported untitled.pdf")).toBeTruthy(),
+    );
   });
 
   it("opens and dismisses the topbar Export menu", async () => {

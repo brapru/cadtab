@@ -47,7 +47,12 @@
     type PendingEdit,
   } from "./lib/project";
   import { reconcileScan, type FolderScan } from "./lib/watch";
-  import { layoutWidthForPx, clampZoom, ZOOM_STEP } from "./lib/sizing";
+  import {
+    layoutWidthForPx,
+    clampZoom,
+    ZOOM_STEP,
+    PDF_CONTENT_WIDTH,
+  } from "./lib/sizing";
   import { nextTheme, themeIcon, type Theme } from "./lib/theme";
   import {
     openProject,
@@ -1018,19 +1023,26 @@ score {
   // Export the current render as SVG, or as a PNG raster of that SVG. Exports are
   // derived artifacts, so they always prompt for a destination (path: null). Both
   // live behind the topbar Export menu.
+  // A transient export-success flash in the bottom bar (the only feedback that an
+  // export landed, since it now writes straight to Downloads without a dialog).
+  let exportNotice = $state<string | null>(null);
+  let noticeTimer: ReturnType<typeof setTimeout> | undefined;
+  function notifyExport(name: string) {
+    exportNotice = `Exported ${name}`;
+    clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(() => (exportNotice = null), 3000);
+  }
+
   async function exportSvg() {
     if (!activeResult) return;
     const svg = renderTreeToSvg(activeResult.renderTree);
-    await saveSvg(svg, { path: null, suggestedName: exportName() });
+    notifyExport((await saveSvg(svg, exportName())).name);
   }
   async function exportPng() {
     if (!activeResult) return;
     const blob = await svgToPngBlob(renderTreeToSvg(activeResult.renderTree));
-    await savePng(blob, { path: null, suggestedName: exportName() });
+    notifyExport((await savePng(blob, exportName())).name);
   }
-  // Logical units across a printable page's content area; sets PDF measures-per-
-  // line density (provisional — eyeballed against a Letter page).
-  const PDF_CONTENT_WIDTH = 80;
   // Export the current document as a paginated, print-ready PDF: paginate it into
   // fixed Letter pages in the core, paint the vector PDF, and save the bytes.
   async function exportPdf() {
@@ -1042,7 +1054,7 @@ score {
     );
     const { paginatedTreeToPdf } = await import("./lib/pdf");
     const bytes = await paginatedTreeToPdf(tree);
-    await savePdf(bytes, { path: null, suggestedName: exportName() });
+    notifyExport((await savePdf(bytes, exportName())).name);
   }
   // The base name to seed an export with; the save helpers swap the extension.
   const exportName = () => currentName ?? defaultDocName(source);
@@ -1246,8 +1258,11 @@ score {
               onActivate={() => focusView(instance)}
             />
           {:else if instance.type === "preview"}
+            {@const previewDoc = docFor(instance.docId ?? "")}
             <PreviewView
-              result={results[instance.docId ?? ""] ?? null}
+              source={previewDoc?.content ?? ""}
+              basePath={previewDoc?.path ?? null}
+              files={projectFiles}
               error={errors[instance.docId ?? ""] ?? ""}
               onActivate={() => focusView(instance)}
             />
@@ -1259,6 +1274,7 @@ score {
   <BottomBar
     diagnostics={activeResult?.diagnostics ?? []}
     {dockOpen}
+    notice={exportNotice}
     onToggleDock={toggleDock}
   />
   <ConfirmDialog

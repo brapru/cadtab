@@ -1,31 +1,71 @@
 <script lang="ts">
-  import { renderTreeToSvg } from "./svg";
-  import type { CompileResult } from "./types";
+  import { paginate } from "./core";
+  import { renderPageToSvg } from "./svg";
+  import { PDF_CONTENT_WIDTH } from "./sizing";
+  import { debounce } from "./debounce";
+  import type { Page } from "./types";
 
-  // Print preview: the final printed output of a document — the same
-  // light, self-contained SVG the export produces, shown inline. Reuses
-  // the live render tree via the export serializer, so it is never a second
-  // layout pipeline; always light, regardless of the app theme.
+  // Print preview: the document's actual paginated print output — the same pages
+  // the PDF export produces, rendered as light sheets. This paginates through the
+  // core seam (a real second layout pass, not the screen render tree), so the
+  // print top margin, header indent, and page breaks match the exported PDF.
+  // Always light, regardless of the app theme.
   let {
-    result = null,
+    source = "",
+    basePath = null,
+    files = {},
     error = "",
     onActivate,
   }: {
-    result?: CompileResult | null;
+    source?: string;
+    basePath?: string | null;
+    files?: Record<string, string>;
     error?: string;
     onActivate?: () => void;
   } = $props();
 
-  const svg = $derived(result ? renderTreeToSvg(result.renderTree) : "");
+  type Ctx = { basePath: string | null; files: Record<string, string> };
+
+  let pages = $state<Page[]>([]);
+  // Latest-wins guard: a slow paginate must not clobber a newer one's pages.
+  let seq = 0;
+
+  async function repaginate(src: string, ctx: Ctx) {
+    const mySeq = ++seq;
+    try {
+      const tree = await paginate(
+        src,
+        { size: "letter", contentWidth: PDF_CONTENT_WIDTH },
+        ctx,
+      );
+      if (mySeq === seq) pages = tree.pages;
+    } catch {
+      if (mySeq === seq) pages = [];
+    }
+  }
+
+  const debounced = debounce(
+    (src: string, ctx: Ctx) => void repaginate(src, ctx),
+    150,
+  );
+
+  $effect(() => {
+    // Re-paginate (debounced) whenever the source or project context changes.
+    debounced(source, { basePath, files });
+  });
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div class="preview" onpointerdown={() => onActivate?.()}>
-  {#if result}
-    <div class="sheet">
-      <!-- Our own serializer output (text escaped in svg.ts), not user HTML. -->
-      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-      {@html svg}
+  {#if pages.length > 0}
+    <div class="pages">
+      {#each pages as page, i (i)}
+        <div class="sheet">
+          <!-- Our own serializer output (text escaped in svg.ts), not user HTML. -->
+          <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+          {@html renderPageToSvg(page)}
+        </div>
+      {/each}
     </div>
   {:else if error}
     <p class="error">{error}</p>
@@ -33,9 +73,8 @@
 </div>
 
 <style>
-  /* The page (.sheet) stays white — it's the printed output — but the surrounding
-     backdrop tracks the theme: a light gray in light mode (~#d9d9d9), a dark gray
-     in dark mode, so the sheet isn't a harsh bright panel against a dark UI. */
+  /* The sheets (.sheet) stay white — they are the printed output — but the
+     surrounding backdrop tracks the theme so they aren't a harsh bright panel. */
   .preview {
     flex: 1;
     min-height: 0;
@@ -47,12 +86,21 @@
     justify-content: center;
     align-items: flex-start;
   }
+  /* Pages stack down the pane, each a discrete sheet. */
+  .pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    width: 100%;
+  }
   .sheet {
     background: #ffffff;
     box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
-    max-width: 100%;
+    width: 100%;
+    max-width: 720px;
   }
-  /* Scale the exported SVG to the page width while keeping its aspect ratio. */
+  /* Scale each page SVG to the sheet width while keeping its aspect ratio. */
   .sheet :global(svg) {
     display: block;
     width: 100%;

@@ -24,6 +24,13 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   remove: (...args: unknown[]) => removeMock(...args),
   rename: (...args: unknown[]) => renameMock(...args),
 }));
+// Exports write into the OS Downloads dir (no dialog) on desktop.
+const downloadDirMock = vi.fn(async () => "/Users/x/Downloads");
+const joinMock = vi.fn((a: string, b: string) => Promise.resolve(`${a}/${b}`));
+vi.mock("@tauri-apps/api/path", () => ({
+  downloadDir: () => downloadDirMock(),
+  join: (a: string, b: string) => joinMock(a, b),
+}));
 
 import {
   basename,
@@ -365,20 +372,25 @@ describe("io desktop (Tauri) backend", () => {
     });
   });
 
-  it("exports an SVG through the text writer", async () => {
-    writeTextFileMock.mockReset();
-    writeTextFileMock.mockResolvedValue(undefined);
+  it("exports an SVG into Downloads, no prompt, swapping .ctab → .svg", async () => {
+    writeFileMock.mockReset();
+    writeFileMock.mockResolvedValue(undefined);
 
-    const result = await saveSvg("<svg/>", {
-      path: "/x/tab.svg",
-      suggestedName: "tab.svg",
+    const result = await saveSvg("<svg/>", "tune.ctab");
+
+    // No save dialog; written straight into the Downloads dir under the swapped
+    // name.
+    expect(saveMock).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      path: "/Users/x/Downloads/tune.svg",
+      name: "tune.svg",
     });
-
-    expect(result).toEqual({ path: "/x/tab.svg", name: "tab.svg" });
-    expect(writeTextFileMock).toHaveBeenCalledWith("/x/tab.svg", "<svg/>");
+    const [path, bytes] = writeFileMock.mock.calls[0] as [string, Uint8Array];
+    expect(path).toBe("/Users/x/Downloads/tune.svg");
+    expect(new TextDecoder().decode(bytes)).toBe("<svg/>");
   });
 
-  it("exports a PNG through the binary writer", async () => {
+  it("exports a PNG into Downloads, swapping .ctab → .png", async () => {
     writeFileMock.mockReset();
     writeFileMock.mockResolvedValue(undefined);
     // jsdom's Blob has no arrayBuffer(); stub the bytes the writer reads.
@@ -387,29 +399,30 @@ describe("io desktop (Tauri) backend", () => {
       arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
     } as unknown as Blob;
 
-    const result = await savePng(blob, {
-      path: "/x/tab.png",
-      suggestedName: "tab.png",
-    });
+    const result = await savePng(blob, "tune.ctab");
 
-    expect(result).toEqual({ path: "/x/tab.png", name: "tab.png" });
+    expect(result).toEqual({
+      path: "/Users/x/Downloads/tune.png",
+      name: "tune.png",
+    });
     const [path, bytes] = writeFileMock.mock.calls[0] as [string, Uint8Array];
-    expect(path).toBe("/x/tab.png");
+    expect(path).toBe("/Users/x/Downloads/tune.png");
     expect(Array.from(bytes)).toEqual([1, 2, 3]);
   });
 
-  it("exports a PDF through the binary writer", async () => {
+  it("exports a PDF into Downloads, swapping .ctab → .pdf", async () => {
     writeFileMock.mockReset();
     writeFileMock.mockResolvedValue(undefined);
 
-    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), {
-      path: "/x/tab.pdf",
-      suggestedName: "tab.pdf",
-    });
+    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), "tune.ctab");
 
-    expect(result).toEqual({ path: "/x/tab.pdf", name: "tab.pdf" });
+    expect(saveMock).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      path: "/Users/x/Downloads/tune.pdf",
+      name: "tune.pdf",
+    });
     const [path, bytes] = writeFileMock.mock.calls[0] as [string, Uint8Array];
-    expect(path).toBe("/x/tab.pdf");
+    expect(path).toBe("/Users/x/Downloads/tune.pdf");
     expect(Array.from(bytes)).toEqual([37, 80, 68, 70]);
   });
 
@@ -606,10 +619,7 @@ describe("io web backend", () => {
       anchor as unknown as HTMLElement,
     );
 
-    const result = await saveSvg("<svg/>", {
-      path: null,
-      suggestedName: "tune.ctab",
-    });
+    const result = await saveSvg("<svg/>", "tune.ctab");
 
     expect(result).toEqual({ path: null, name: "tune.svg" });
     expect(anchor.download).toBe("tune.svg");
@@ -624,12 +634,13 @@ describe("io web backend", () => {
     vi.spyOn(document, "createElement").mockReturnValue(
       anchor as unknown as HTMLElement,
     );
-    const blob = new Blob([new Uint8Array([1])], { type: "image/png" });
+    // jsdom's Blob has no arrayBuffer(); stub the bytes the exporter reads.
+    const blob = {
+      type: "image/png",
+      arrayBuffer: async () => new Uint8Array([1]).buffer,
+    } as unknown as Blob;
 
-    const result = await savePng(blob, {
-      path: null,
-      suggestedName: "tune.ctab",
-    });
+    const result = await savePng(blob, "tune.ctab");
 
     expect(result).toEqual({ path: null, name: "tune.png" });
     expect(anchor.download).toBe("tune.png");
@@ -645,10 +656,7 @@ describe("io web backend", () => {
       anchor as unknown as HTMLElement,
     );
 
-    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), {
-      path: null,
-      suggestedName: "tune.ctab",
-    });
+    const result = await savePdf(new Uint8Array([37, 80, 68, 70]), "tune.ctab");
 
     expect(result).toEqual({ path: null, name: "tune.pdf" });
     expect(anchor.download).toBe("tune.pdf");

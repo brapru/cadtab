@@ -1,46 +1,64 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import PreviewView from "./PreviewView.svelte";
-import type { CompileResult } from "./types";
+import type { PaginatedTree } from "./types";
 
-const result: CompileResult = {
-  renderTree: {
-    meta: { width: 12, height: 4 },
-    header: [
-      {
-        kind: "text",
-        x: 1,
-        y: 1,
-        content: "Cripple Creek",
-        role: "title",
-        span: null,
-      },
-    ],
-    systems: [],
-  },
-  diagnostics: [],
-  tokens: [],
+// PreviewView paginates its source through the core seam; mock that so the test
+// drives the rendered pages directly.
+const fakeTree: PaginatedTree = {
+  pageWidth: 80,
+  pageHeight: 103.5,
+  pages: [
+    {
+      bounds: { x: 0, y: 0, w: 80, h: 103.5 },
+      header: [
+        {
+          kind: "text",
+          x: 1,
+          y: 1,
+          content: "Cripple Creek",
+          role: "title",
+          span: null,
+        },
+      ],
+      systems: [],
+    },
+  ],
 };
+const paginateMock = vi.fn(async (..._args: unknown[]) => fakeTree);
+vi.mock("./core", () => ({
+  paginate: (...args: unknown[]) => paginateMock(...args),
+}));
 
 describe("PreviewView", () => {
-  it("renders the export SVG (light sheet) for a compiled result", () => {
-    const { container } = render(PreviewView, { result });
-    const svg = container.querySelector(".sheet svg");
-    expect(svg).not.toBeNull();
-    // The export bakes a white page background and the document's title text.
+  it("paginates the source and renders each page as a light sheet", async () => {
+    const { container } = render(PreviewView, { source: "score { 3:0 }" });
+
+    await vi.waitFor(() =>
+      expect(container.querySelector(".sheet svg")).not.toBeNull(),
+    );
+    // Each page bakes a white sheet background and the document's header text.
     expect(
       container.querySelector('.sheet svg rect[fill="#ffffff"]'),
     ).not.toBeNull();
     expect(container.querySelector(".sheet svg text")?.textContent).toBe(
       "Cripple Creek",
     );
+    // It paginated to the print page (Letter), not the screen layout.
+    const [, config] = paginateMock.mock.calls[0] as [
+      string,
+      { size: string; contentWidth: number },
+    ];
+    expect(config.size).toBe("letter");
   });
 
-  it("shows the error when there is no result", () => {
+  it("shows the error when there are no pages to show", async () => {
+    paginateMock.mockRejectedValueOnce(new Error("no backend"));
     const { container } = render(PreviewView, {
-      result: null,
+      source: "x",
       error: "core unavailable",
     });
+    // No pages → the backend error is surfaced instead.
     expect(container.querySelector(".sheet")).toBeNull();
     expect(container.querySelector(".error")?.textContent).toBe(
       "core unavailable",
@@ -49,7 +67,7 @@ describe("PreviewView", () => {
 
   it("fires onActivate on pointerdown (active-follows-focus)", async () => {
     const onActivate = vi.fn();
-    const { container } = render(PreviewView, { result, onActivate });
+    const { container } = render(PreviewView, { source: "x", onActivate });
     await fireEvent.pointerDown(container.querySelector(".preview")!);
     expect(onActivate).toHaveBeenCalled();
   });

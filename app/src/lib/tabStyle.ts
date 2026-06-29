@@ -7,12 +7,12 @@ import type { TextRole } from "./types";
 export type TextStyle = { size: number; weight?: number; italic?: boolean };
 
 export const TEXT_STYLE: Record<TextRole, TextStyle> = {
-  title: { size: 1.5, weight: 600 },
-  composer: { size: 1.0, weight: 700 },
-  tuningName: { size: 0.85 },
-  tuningString: { size: 0.85 },
-  tempo: { size: 0.9, weight: 700 },
-  capo: { size: 0.85 },
+  title: { size: 2.2, weight: 600 },
+  composer: { size: 1.5, weight: 700 },
+  tuningName: { size: 1.2 },
+  tuningString: { size: 1.2 },
+  tempo: { size: 1.2, weight: 700 },
+  capo: { size: 1.2 },
   fretNumber: { size: 1.3 },
   stringLabel: { size: 1.1 },
   timeSig: { size: 1.4, weight: 600 },
@@ -23,7 +23,7 @@ export const TEXT_STYLE: Record<TextRole, TextStyle> = {
   rest: { size: 1.5 },
   sectionLabel: { size: 1.2, weight: 700 },
   chordSymbol: { size: 1.05, weight: 600 },
-  barNumber: { size: 0.75 },
+  barNumber: { size: 1.0 },
   defHeading: { size: 1.1, weight: 700 },
   defNote: { size: 0.8, italic: true },
   pageNumber: { size: 0.8 },
@@ -43,15 +43,13 @@ const START_ANCHORED: ReadonlySet<TextRole> = new Set([
 // The folio page number (T7.19) sits flush against the right margin.
 const END_ANCHORED: ReadonlySet<TextRole> = new Set(["pageNumber"]);
 
-// Hand/technique annotations and the header tuning block read as secondary ink.
+// Hand/technique annotations and small above-staff marks read as secondary ink.
+// The header block (tuning name, string grid, capo) is primary ink — full black.
 const MUTED_ROLES: ReadonlySet<TextRole> = new Set([
   "finger",
   "technique",
   "strum",
   "ending",
-  "tuningName",
-  "tuningString",
-  "capo",
   "barNumber",
   "defNote",
   "pageNumber",
@@ -68,6 +66,12 @@ export function isMuted(role: TextRole): boolean {
 
 // Open curves (ties, slides, bends, choke arcs) stroke at a hairline weight.
 export const PATH_STROKE_WIDTH = 0.07;
+
+// The tempo mark's leading note glyph (♩) renders smaller than its em, so the
+// painters draw it at this multiple of the tempo text size to match the "= NNN"
+// visually. Shared by svg.ts (screen/preview) and pdf.ts (export).
+export const TEMPO_NOTE_BOOST = 1.6;
+export const TEMPO_NOTE = "♩";
 
 // The engraved-sheet serif stack used across all rendered text. Source Serif 4 is
 // self-hosted (app.css) and the same family is embedded into PDF exports, so the

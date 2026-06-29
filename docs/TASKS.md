@@ -555,9 +555,11 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
   - [x] T7.19b — **PDF emission.** Serialize the paginated tree to valid PDF bytes. *Tests:* valid PDF
         bytes (header + page count).
   - [x] T7.19c — **Save via the io seam.** Binary write on desktop, download on web.
-- [ ] **T7.20 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and the
+- [x] **T7.20 — Unified export control (SVG/PNG/PDF, D48).** Fold M5's separate export buttons and the
       PDF export (T7.19) into a single **Export** button with a format picker (SVG / PNG / PDF). One
       control, one dropdown; reuses the io seam. Depends on T7.19; pairs with the cohesion pass (T7.34).
+      *Already satisfied (no new code):* M5's separate SVG/PNG buttons were folded into the single
+      download-icon Export dropdown during the iconify pass; **T7.19c** added PDF, completing the picker.
 
 *Editor tooling:*
 

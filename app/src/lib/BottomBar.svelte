@@ -10,10 +10,14 @@
   let {
     diagnostics = [],
     dockOpen = false,
+    notice = null,
     onToggleDock,
   }: {
     diagnostics?: Diagnostic[];
     dockOpen?: boolean;
+    // A transient status flash (e.g. "Exported tune.pdf"); when set it takes the
+    // diagnostics slot for a few seconds, then the caller clears it.
+    notice?: string | null;
     onToggleDock?: () => void;
   } = $props();
 
@@ -35,28 +39,36 @@
     </button>
   </div>
   <div class="group">
-    <!-- Live problem counts. -->
-    <div
-      class="diagnostics"
-      class:clean
-      use:tooltip={clean
-        ? "No problems"
-        : `${counts.errors} error(s), ${counts.warnings} warning(s)`}
-    >
-      {#if clean}
+    {#if notice}
+      <!-- A transient export/success flash, taking the diagnostics slot. -->
+      <div class="notice" role="status">
         <span class="ok" aria-hidden="true">✓</span>
-        <span class="text">No problems</span>
-      {:else}
-        <span class="count error">
-          <span class="dot" aria-hidden="true">●</span>
-          <span class="num">{counts.errors}</span>
-        </span>
-        <span class="count warning">
-          <span class="dot" aria-hidden="true">▲</span>
-          <span class="num">{counts.warnings}</span>
-        </span>
-      {/if}
-    </div>
+        <span class="text">{notice}</span>
+      </div>
+    {:else}
+      <!-- Live problem counts. -->
+      <div
+        class="diagnostics"
+        class:clean
+        use:tooltip={clean
+          ? "No problems"
+          : `${counts.errors} error(s), ${counts.warnings} warning(s)`}
+      >
+        {#if clean}
+          <span class="ok" aria-hidden="true">✓</span>
+          <span class="text">No problems</span>
+        {:else}
+          <span class="count error">
+            <span class="dot" aria-hidden="true">●</span>
+            <span class="num">{counts.errors}</span>
+          </span>
+          <span class="count warning">
+            <span class="dot" aria-hidden="true">▲</span>
+            <span class="num">{counts.warnings}</span>
+          </span>
+        {/if}
+      </div>
+    {/if}
   </div>
 </footer>
 
@@ -102,6 +114,35 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0 0.4rem;
+  }
+  /* The export-success flash: the check reads as confirmation, the text in
+     full-strength ink, fading in so the change registers. */
+  .notice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0 0.4rem;
+    color: var(--fg);
+    animation: notice-in 0.18s ease-out;
+  }
+  .notice .ok {
+    color: var(--ok, #3fa45b);
+    font-weight: 700;
+  }
+  @keyframes notice-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .notice {
+      animation: none;
+    }
   }
   .diagnostics.clean .ok {
     color: var(--muted);

@@ -67,12 +67,15 @@ pub struct PageConfig {
 
 // Vertical metrics (logical units; 1 unit = string spacing).
 const TOP_MARGIN: f32 = 0.5;
-const TITLE_H: f32 = 2.0;
-const COMPOSER_H: f32 = 1.2;
-const META_LINE_H: f32 = 1.0;
+// Header row heights — reserve room for each block's text (set in tabStyle.ts:
+// title 2.2, composer 1.5, the tuning/tempo/capo details 1.2) plus breathing
+// space, so larger header type doesn't crowd the rows below it.
+const TITLE_H: f32 = 2.8;
+const COMPOSER_H: f32 = 1.9;
+const META_LINE_H: f32 = 1.5;
 const HEADER_GAP: f32 = 1.0;
 // Column width for one cell of the header tuning grid (e.g. "①=D").
-const TUNING_COL_W: f32 = 2.8;
+const TUNING_COL_W: f32 = 3.4;
 const STRING_SPACING: f32 = 1.0;
 const BOTTOM_MARGIN: f32 = 2.8;
 // Vertical gap between stacked systems (room below the numbers for stems/marks).
@@ -80,6 +83,13 @@ const SYSTEM_GAP: f32 = 3.5;
 // Vertical room a continuation page (T7.19, page 2+) reserves at the top for its
 // folio number, before the first system. Page one uses its title block instead.
 const FOLIO_SPACE: f32 = 1.4;
+// Print-page header spacing (T7.19, PDF only). The screen render keeps its tight
+// TOP/LEFT margins; only `paginate` applies these. The staff/stanzas keep their
+// original position (the page is the content-frame width, content at LEFT_MARGIN)
+// — only the title gets top breathing room and the header's left block gets
+// indented in from the edge.
+const PRINT_MARGIN_TOP: f32 = 7.0;
+const PRINT_HEADER_INDENT: f32 = 4.0;
 // Vertical room reserved above the staff for volta brackets, when any exist.
 const VOLTA_SPACE: f32 = 1.2;
 const VOLTA_GAP: f32 = 0.8;
@@ -90,8 +100,8 @@ const SECTION_SPACE: f32 = 1.4;
 // carries one. It sits below the section-label row and above any voltas.
 const CHORD_SPACE: f32 = 1.3;
 // Vertical room reserved above the staff for measure numbers, when numbering is
-// on. It sits at the very top of the above-staff band.
-const BARNUM_SPACE: f32 = 0.9;
+// on. It sits at the very top of the above-staff band. (Bar number text is 1.0.)
+const BARNUM_SPACE: f32 = 1.3;
 // Def-gallery (D49) metrics. The signature heading's row height, the gap from
 // the heading down to the staff it labels, and the gap between one card and the
 // next.
@@ -288,7 +298,7 @@ fn band_above(measures: &[Measure], has_barnum: bool) -> f32 {
 /// stacked systems no wider than `config.width`.
 pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
     let prep = prepare(score, config);
-    let (header, header_bottom) = build_header(score, prep.width, TOP_MARGIN);
+    let (header, header_bottom) = build_header(score, prep.width, TOP_MARGIN, 0.0);
 
     // Stack the systems vertically, each restating the staff lines.
     let mut systems = Vec::with_capacity(prep.groups.len());
@@ -339,16 +349,17 @@ struct PageGeometry {
     bottom_limit: f32,
 }
 
-/// Resolve a page's logical box from its size and the pinned content width. The
-/// page is `width` wide (the content already inset by LEFT/RIGHT_MARGIN within
-/// it) and takes the size's portrait aspect ratio for its height.
-fn page_geometry(config: PageConfig, width: f32) -> PageGeometry {
+/// Resolve a page's logical box from its size and the content-frame width. The
+/// page is the frame width (the staff keeps its on-screen position) and takes the
+/// size's portrait aspect ratio for its height; only the top margin is enlarged
+/// for print so the title isn't jammed to the sheet's top edge.
+fn page_geometry(config: PageConfig, frame_width: f32) -> PageGeometry {
     let (w_in, h_in) = config.size.inches();
-    let page_height = width * (h_in / w_in);
+    let page_height = frame_width * (h_in / w_in);
     PageGeometry {
-        page_width: width,
+        page_width: frame_width,
         page_height,
-        top: TOP_MARGIN,
+        top: PRINT_MARGIN_TOP,
         bottom_limit: page_height - BOTTOM_MARGIN,
     }
 }
@@ -374,8 +385,10 @@ pub fn paginate(score: &Score, config: PageConfig) -> PaginatedTree {
         h: geom.page_height,
     };
 
-    // Page one carries the full title block, laid out from the top margin.
-    let (title_block, title_bottom) = build_header(score, prep.width, TOP_MARGIN);
+    // Page one carries the full title block, laid out from the print top margin
+    // with its left block indented in from the edge.
+    let (title_block, title_bottom) =
+        build_header(score, prep.width, geom.top, PRINT_HEADER_INDENT);
 
     let mut pages: Vec<Page> = Vec::new();
     let mut i = 0;
@@ -1258,8 +1271,13 @@ fn bar_numbers(
 /// Build the header block: a centred title/composer at the top, then a
 /// left-aligned tuning block (tuning name over a circled-number string grid), a
 /// tempo line, and a capo line. Returns the primitives and the y it ends at.
-fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
+fn build_header(score: &Score, width: f32, top: f32, left_indent: f32) -> (Vec<Primitive>, f32) {
+    // The title/composer/tempo stay centred on the `width` frame; `left_indent`
+    // pushes only the left-anchored block (tuning name, the string grid, capo) in
+    // from the edge — 0 on screen, a print indent when paginated (so the header
+    // isn't jammed against the page's left margin while the staff stays put).
     let cx = width / 2.0;
+    let lm = LEFT_MARGIN + left_indent;
     let mut prims = Vec::new();
     let mut y = top;
     let line =
@@ -1302,7 +1320,7 @@ fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
     if let Some(name) = &score.instrument.tuning {
         line(
             &mut prims,
-            LEFT_MARGIN,
+            lm,
             y + META_LINE_H / 2.0,
             name.clone(),
             TextRole::TuningName,
@@ -1314,7 +1332,7 @@ fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
     let cols = n.div_ceil(2);
     let grid_top = y;
     for col in 0..cols {
-        let col_x = LEFT_MARGIN + col as f32 * TUNING_COL_W;
+        let col_x = lm + col as f32 * TUNING_COL_W;
         let top = 2 * col + 1;
         let bottom = 2 * col + 2;
         prims.push(tuning_cell(
@@ -1336,7 +1354,7 @@ fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
 
     // Tempo, centred under the grid.
     if let Some(tempo) = score.meta.tempo {
-        let grid_cx = LEFT_MARGIN + cols as f32 * TUNING_COL_W / 2.0;
+        let grid_cx = lm + cols as f32 * TUNING_COL_W / 2.0;
         line(
             &mut prims,
             grid_cx,
@@ -1350,7 +1368,7 @@ fn build_header(score: &Score, width: f32, top: f32) -> (Vec<Primitive>, f32) {
     if !score.capo.is_empty() {
         line(
             &mut prims,
-            LEFT_MARGIN,
+            lm,
             y + META_LINE_H / 2.0,
             format!("Capo {}", score.capo.join(", ")),
             TextRole::Capo,

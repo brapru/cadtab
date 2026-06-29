@@ -1,16 +1,19 @@
-import type { RenderTree, Primitive } from "./types";
+import type { RenderTree, Page, Primitive, System } from "./types";
 import {
   TEXT_STYLE,
   textAnchor,
   isMuted,
   PATH_STROKE_WIDTH,
   FONT_FAMILY,
+  TEMPO_NOTE_BOOST,
+  TEMPO_NOTE,
 } from "./tabStyle";
 
-// Serialize a render tree to a standalone SVG string for export: self-contained
-// (concrete colours and inline styles, no CSS variables or external sheet) so it
-// renders the same wherever it is opened or rasterized. The live painter
-// (Tab.svelte) shares the role styling via tabStyle.ts, so export matches screen.
+// Serialize a render tree (or a paginated page) to a standalone SVG string for
+// export and the print preview: self-contained (concrete colours and inline
+// styles, no CSS variables or external sheet) so it renders the same wherever it
+// is opened or rasterized. The live painter (Tab.svelte) shares the role styling
+// via tabStyle.ts, so export matches screen.
 
 // A printable sheet: dark ink on white, secondary ink for annotations. Fixed
 // rather than themed — an export is a shareable artifact, not the live UI.
@@ -33,6 +36,19 @@ function esc(s: string): string {
 // Round to 3 decimals to drop f32 serialization noise and keep the SVG compact.
 function num(n: number): string {
   return String(Math.round(n * 1000) / 1000);
+}
+
+// The inner text of a glyph run. The tempo mark's leading note (♩) is boosted to
+// a larger tspan so it reads at the same visual weight as the "= NNN" beside it.
+function textInner(p: Extract<Primitive, { kind: "text" }>): string {
+  if (p.role === "tempo" && p.content.startsWith(TEMPO_NOTE)) {
+    const big = num(TEXT_STYLE[p.role].size * TEMPO_NOTE_BOOST);
+    return (
+      `<tspan font-size="${big}">${TEMPO_NOTE}</tspan>` +
+      `<tspan>${esc(p.content.slice(TEMPO_NOTE.length))}</tspan>`
+    );
+  }
+  return esc(p.content);
 }
 
 function primitiveToSvg(p: Primitive): string {
@@ -61,20 +77,25 @@ function primitiveToSvg(p: Primitive): string {
   ]
     .filter(Boolean)
     .join(" ");
-  return `<text ${attrs}>${esc(p.content)}</text>`;
+  return `<text ${attrs}>${textInner(p)}</text>`;
 }
 
-/// Render `tree` to a complete, standalone SVG document string.
-export function renderTreeToSvg(tree: RenderTree): string {
-  const { width: w, height: h } = tree.meta;
+// Paint a header + systems block to a flat list of SVG primitive strings.
+function bodyToSvg(header: Primitive[], systems: System[]): string[] {
   const body: string[] = [];
-  for (const p of tree.header) body.push(primitiveToSvg(p));
-  for (const system of tree.systems) {
+  for (const p of header) body.push(primitiveToSvg(p));
+  for (const system of systems) {
     for (const p of system.prims) body.push(primitiveToSvg(p));
     for (const measure of system.measures) {
       for (const p of measure.prims) body.push(primitiveToSvg(p));
     }
   }
+  return body;
+}
+
+// Wrap a painted body in a complete, standalone SVG document sized to `w`×`h`
+// logical units (scaled to pixels for legibility; the viewBox keeps the units).
+function wrapSvg(w: number, h: number, body: string[]): string {
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${num(w)} ${num(h)}"` +
       ` width="${num(w * EXPORT_SCALE)}" height="${num(h * EXPORT_SCALE)}"` +
@@ -84,4 +105,23 @@ export function renderTreeToSvg(tree: RenderTree): string {
     ...body,
     `</svg>`,
   ].join("\n");
+}
+
+/// Render `tree` to a complete, standalone SVG document string.
+export function renderTreeToSvg(tree: RenderTree): string {
+  return wrapSvg(
+    tree.meta.width,
+    tree.meta.height,
+    bodyToSvg(tree.header, tree.systems),
+  );
+}
+
+/// Render one paginated page to a standalone SVG sized to its page box — the
+/// print preview draws these so it matches the PDF export exactly.
+export function renderPageToSvg(page: Page): string {
+  return wrapSvg(
+    page.bounds.w,
+    page.bounds.h,
+    bodyToSvg(page.header, page.systems),
+  );
 }

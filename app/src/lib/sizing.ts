@@ -5,6 +5,11 @@
 export const PX_PER_UNIT = 12;
 export const MIN_LAYOUT_WIDTH = 12;
 
+// Logical units across a printable page's content area — the justify target for
+// PDF export and the print preview (both paginate to this so they match). Sets
+// the measures-per-line density; provisional, eyeballed against a Letter page.
+export const PDF_CONTENT_WIDTH = 80;
+
 export function layoutWidthForPx(px: number, pxPerUnit = PX_PER_UNIT): number {
   return Math.max(MIN_LAYOUT_WIDTH, px / pxPerUnit);
 }

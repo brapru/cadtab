@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderTreeToSvg } from "./svg";
+import { renderTreeToSvg, renderPageToSvg } from "./svg";
 import type { RenderTree, Primitive } from "./types";
 
 function tree(prims: Primitive[]): RenderTree {
@@ -55,12 +55,13 @@ describe("renderTreeToSvg", () => {
     expect(svg).toContain(">7</text>");
   });
 
-  it("draws muted, start-anchored header text for the tuning block", () => {
+  it("draws full-ink, start-anchored header text for the tuning block", () => {
     const svg = renderTreeToSvg(
       tree([text({ content: "Open G", role: "tuningName" })]),
     );
     expect(svg).toContain('text-anchor="start"');
-    expect(svg).toContain('fill="#6b6b6b"');
+    // The header block is primary ink (black), not muted.
+    expect(svg).toContain('fill="#1a1a1a"');
   });
 
   it("draws a def-gallery card: a bold start-anchored heading over a muted note", () => {
@@ -137,5 +138,30 @@ describe("renderTreeToSvg", () => {
     const svg = renderTreeToSvg(t);
     expect(svg).toContain(">Title</text>");
     expect(svg).toContain(">g</text>");
+  });
+
+  it("boosts the tempo note glyph above the rest of the mark", () => {
+    const svg = renderTreeToSvg(
+      tree([text({ content: "♩ = 120", role: "tempo" })]),
+    );
+    // The leading ♩ gets its own larger tspan; the "= 120" stays at tempo size.
+    expect(svg).toContain('<tspan font-size="1.92">♩</tspan>');
+    expect(svg).toContain("<tspan> = 120</tspan>");
+  });
+});
+
+describe("renderPageToSvg", () => {
+  it("renders a paginated page sized to its page box", () => {
+    const page = {
+      bounds: { x: 0, y: 0, w: 80, h: 103.5 },
+      header: [text({ content: "Cripple Creek", role: "title" as const })],
+      systems: [],
+    };
+    const svg = renderPageToSvg(page);
+    expect(svg).toContain('viewBox="0 0 80 103.5"');
+    expect(svg).toContain(
+      '<rect x="0" y="0" width="80" height="103.5" fill="#ffffff"/>',
+    );
+    expect(svg).toContain(">Cripple Creek</text>");
   });
 });
