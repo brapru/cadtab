@@ -44,6 +44,34 @@ describe("Editor highlighting", () => {
     });
   });
 
+  it("renders a fold marker on a brace-opening line and folds on click", async () => {
+    const { container } = render(Editor, {
+      props: { doc: "score {\n  3:0\n}" },
+    });
+
+    // The foldable line shows a down chevron (the gutter also keeps an always-
+    // closed sizing spacer, so target the real marker by its glyph).
+    const downChevron = () =>
+      Array.from(
+        container.querySelectorAll<HTMLElement>(".cm-foldMarker"),
+      ).find((m) => m.textContent === "keyboard_arrow_down");
+
+    let marker!: HTMLElement;
+    await vi.waitFor(() => {
+      marker = downChevron()!;
+      expect(marker).toBeTruthy();
+    });
+
+    await fireEvent.click(marker);
+
+    await vi.waitFor(() => {
+      // Folded: the inner line is hidden behind a placeholder and the line's
+      // marker flips to the (accent) side arrow, so no down chevron remains.
+      expect(container.querySelector(".cm-foldPlaceholder")).not.toBeNull();
+      expect(downChevron()).toBeUndefined();
+    });
+  });
+
   it("underlines diagnostics pushed in via the diagnostics prop", async () => {
     const diagnostics: Diagnostic[] = [
       {

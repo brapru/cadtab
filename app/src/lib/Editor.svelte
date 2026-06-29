@@ -17,7 +17,9 @@
     indentWithTab,
     selectLine,
   } from "@codemirror/commands";
+  import { codeFolding, foldGutter, foldKeymap } from "@codemirror/language";
   import { syntaxHighlighting, setTokens } from "./highlight";
+  import { foldByBraces } from "./fold";
   import {
     diagnostics as diagnosticsExtension,
     setDiagnostics,
@@ -60,9 +62,23 @@
       extensions: [
         history(),
         // A line-number gutter (with the active line's number highlighted to
-        // match the active-line row).
+        // match the active-line row), and a fold gutter keyed to the DSL's brace
+        // structure: a down chevron on `{`-opening lines collapses the block.
         lineNumbers(),
         highlightActiveLineGutter(),
+        codeFolding(),
+        foldByBraces,
+        foldGutter({
+          markerDOM(open) {
+            const el = document.createElement("span");
+            el.className =
+              "material-symbols-outlined cm-foldMarker" +
+              (open ? "" : " cm-foldMarker-closed");
+            // Down chevron when expanded; a side arrow (coloured) when folded.
+            el.textContent = open ? "keyboard_arrow_down" : "chevron_right";
+            return el;
+          },
+        }),
         // CM's own caret + selection layer (the native one only shows on focus
         // and can't be themed), a drop caret, and an active-line highlight.
         drawSelection(),
@@ -73,6 +89,7 @@
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
+          ...foldKeymap,
           indentWithTab,
           { key: "Mod-l", run: selectLine },
         ]),
@@ -91,9 +108,38 @@
             color: "var(--muted)",
             borderRight: "1px solid var(--border)",
           },
-          // Breathing room in the number column: 2x left, 1x right.
+          // Gutter spacing reads symmetric: more outer-left on the (right-
+          // aligned) numbers, a 6+6px gap to the fold arrows, and less outer-
+          // right on the arrows by the divider, so both edges look evenly inset.
           ".cm-lineNumbers .cm-gutterElement": {
-            padding: "0 6px 0 12px",
+            padding: "0 4px 0 18px",
+          },
+          ".cm-foldGutter .cm-gutterElement": {
+            // Tight around the arrow; the right side stays small because the
+            // divider rule + the code's own left padding already sit beyond it.
+            padding: "0 2px 0 4px",
+          },
+          // Fold markers: a muted down chevron when open, the accent side arrow
+          // when collapsed, with a rounded hover shade behind the glyph.
+          ".cm-foldMarker": {
+            fontSize: "16px",
+            lineHeight: "inherit",
+            color: "var(--muted)",
+            cursor: "pointer",
+            borderRadius: "4px",
+          },
+          ".cm-foldMarker:hover": {
+            color: "var(--fg)",
+            background: "color-mix(in srgb, var(--fg) 12%, transparent)",
+          },
+          ".cm-foldMarker-closed": { color: "var(--accent)" },
+          // The collapsed `…` placeholder: themed, no default light chip.
+          ".cm-foldPlaceholder": {
+            background: "none",
+            border: "none",
+            color: "var(--muted)",
+            padding: "0 4px",
+            cursor: "pointer",
           },
           ".cm-activeLineGutter": {
             backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",

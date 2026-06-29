@@ -563,11 +563,11 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Editor tooling:*
 
-- [ ] **T7.21 — Dark theme by default.** Default the app to the dark theme (keep the light / system
+- [x] **T7.21 — Dark theme by default.** Default the app to the dark theme (keep the light / system
       toggle).
-- [ ] **T7.22 — Editor line numbers + gutter divider.** CodeMirror `lineNumbers()` gutter with a
+- [x] **T7.22 — Editor line numbers + gutter divider.** CodeMirror `lineNumbers()` gutter with a
       divider rule between the gutter and the code text.
-- [ ] **T7.23 — Editor code-folding for `{ }` blocks.** A fold control on lines opening a curly block
+- [x] **T7.23 — Editor code-folding for `{ }` blocks.** A fold control on lines opening a curly block
       (`score {`, `measure {`, `repeat {`, `def … {`): a down chevron that collapses the block's
       contents and turns into a coloured side arrow to re-expand. CodeMirror `foldGutter`/code-folding
       keyed to the brace structure. *(NOTES #14.)*
