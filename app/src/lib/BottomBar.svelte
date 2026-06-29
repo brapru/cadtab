@@ -23,6 +23,7 @@
     onToggleFormatOnSave,
     onCycleTheme,
     onJumpToDiagnostic,
+    onOpenHelp,
   }: {
     diagnostics?: Diagnostic[];
     // The active document's source, so the problems panel can show line/col and
@@ -44,6 +45,8 @@
     onCycleTheme?: () => void;
     // Jump the active editor's selection to a diagnostic's span (T7.28).
     onJumpToDiagnostic?: (span: Span) => void;
+    // Open (or focus) the Help tab (T7.29).
+    onOpenHelp?: () => void;
   } = $props();
 
   const counts = $derived(diagnosticCounts(diagnostics));
@@ -91,6 +94,14 @@
       onclick={() => onToggleDock?.()}
     >
       <span aria-hidden="true">◧</span>
+    </button>
+    <button
+      class="control help-toggle"
+      aria-label="Open help"
+      use:tooltip={"How to use cadtab"}
+      onclick={() => onOpenHelp?.()}
+    >
+      <Icon name="help" size={16} />
     </button>
   </div>
   <!-- The diagnostics/notice indicator stays pinned rightmost; any new control

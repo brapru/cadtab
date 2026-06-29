@@ -1013,6 +1013,33 @@ describe("App", () => {
     ).not.toBeNull();
   });
 
+  it("opens the help view as a singleton tab from the bottom bar", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() =>
+      expect(container.querySelector("svg.tab")).not.toBeNull(),
+    );
+
+    await fireEvent.click(screen.getByLabelText("Open help"));
+
+    // A Help tab appears (the "help" icon) and the getting-started content shows.
+    await vi.waitFor(() => {
+      const icons = [...container.querySelectorAll(".tab-icon")].map(
+        (t) => t.textContent,
+      );
+      expect(icons).toContain("help");
+      expect(container.querySelector(".help h1")?.textContent).toContain(
+        "cadtab",
+      );
+    });
+
+    // Re-opening is idempotent: still one Help tab (the singleton is reused).
+    await fireEvent.click(screen.getByLabelText("Open help"));
+    const helpTabs = [...container.querySelectorAll(".tab-title")].filter(
+      (t) => t.textContent === "Help",
+    );
+    expect(helpTabs).toHaveLength(1);
+  });
+
   it("surfaces the compile's diagnostics in the bottom bar", async () => {
     const { container } = render(App);
     // The fake compile reports one error, so the bottom bar leaves the clean

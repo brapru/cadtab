@@ -49,6 +49,14 @@ export const VIEWS: Record<string, ViewDef> = {
     icon: "info",
     kind: "global-singleton",
   },
+  // A global singleton, but unlike the bottom bar it's placed in a group as a
+  // tab (one shared instance, no document) rather than mounted as chrome.
+  help: {
+    type: "help",
+    title: "Help",
+    icon: "help",
+    kind: "global-singleton",
+  },
 };
 
 export function viewDef(type: string): ViewDef | undefined {

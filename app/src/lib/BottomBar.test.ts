@@ -70,6 +70,13 @@ describe("BottomBar", () => {
     expect(container.querySelector("button.diagnostics")).toBeNull();
   });
 
+  it("fires the help callback on click", async () => {
+    const onOpenHelp = vi.fn();
+    const { container } = render(BottomBar, { onOpenHelp });
+    await fireEvent.click(container.querySelector(".help-toggle")!);
+    expect(onOpenHelp).toHaveBeenCalledOnce();
+  });
+
   it("reflects the dock state and fires the toggle on click", async () => {
     const onToggleDock = vi.fn();
     const { container, rerender } = render(BottomBar, {

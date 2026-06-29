@@ -2,6 +2,7 @@
   import Editor from "./lib/Editor.svelte";
   import RenderView from "./lib/RenderView.svelte";
   import PreviewView from "./lib/PreviewView.svelte";
+  import HelpView from "./lib/HelpView.svelte";
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
   import Dock from "./lib/Dock.svelte";
@@ -484,6 +485,17 @@ score {
   // The active document's print preview, from the topbar Preview button.
   function openPreview() {
     if (active) openViewFor(active.id, "preview");
+  }
+
+  // Open (or focus) the Help tab from the bottom bar (T7.29). A global singleton:
+  // one shared instance with no document, placed in the editor group as a tab.
+  // `addTab` is idempotent, so a second click just jumps to the open tab.
+  function openHelp() {
+    const group = groupOfType(workspace, "editor") ?? workspace.groups[0]?.id;
+    if (!group) return;
+    const inst = viewInstance("help");
+    workspace = addTab(workspace, inst, group);
+    focusView(inst);
   }
 
   // Reopen a document's render from its editor tab's launcher — closes
@@ -1350,6 +1362,8 @@ score {
               error={errors[instance.docId ?? ""] ?? ""}
               onActivate={() => focusView(instance)}
             />
+          {:else if instance.type === "help"}
+            <HelpView onActivate={() => focusView(instance)} />
           {/if}
         {/key}
       {/snippet}
@@ -1368,6 +1382,7 @@ score {
     onToggleFormatOnSave={toggleFormatOnSave}
     onCycleTheme={cycleTheme}
     onJumpToDiagnostic={jumpToDiagnostic}
+    onOpenHelp={openHelp}
   />
   <ConfirmDialog
     open={confirmPrompt !== null}

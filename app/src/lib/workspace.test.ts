@@ -28,12 +28,14 @@ describe("view registry", () => {
     expect(viewDef("render")?.kind).toBe("document-bound");
     expect(viewDef("preview")?.kind).toBe("document-bound");
     expect(viewDef("bottomBar")?.kind).toBe("global-singleton");
+    expect(viewDef("help")?.kind).toBe("global-singleton");
     expect(viewDef("nope")).toBeUndefined();
     expect(Object.keys(VIEWS)).toEqual([
       "editor",
       "render",
       "preview",
       "bottomBar",
+      "help",
     ]);
   });
 });
