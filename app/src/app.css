@@ -21,6 +21,12 @@
   --syn-number: #97652b;
   --syn-string: #4e7a3e;
   --syn-comment: #8a8a8a;
+
+  /* Selection accent (T7.32): the calm blue marking the cursor<->render active
+     primitive, decoupled from the warm --accent so the highlight reads as
+     "selected" rather than recolouring the notation. Shares the --syn-structure
+     blue family; the dark blocks restate it brighter. */
+  --select: #3f6e96;
 }
 
 /* System dark mode, unless the user has forced light. */
@@ -37,6 +43,7 @@
     --syn-number: #c9a578;
     --syn-string: #8faa74;
     --syn-comment: #767676;
+    --select: #84a8c9;
   }
 }
 
@@ -53,6 +60,7 @@
   --syn-number: #97652b;
   --syn-string: #4e7a3e;
   --syn-comment: #8a8a8a;
+  --select: #3f6e96;
 }
 :root[data-theme="dark"] {
   --bg: #1e1e1e;
@@ -66,6 +74,7 @@
   --syn-number: #c9a578;
   --syn-string: #8faa74;
   --syn-comment: #767676;
+  --select: #84a8c9;
 }
 
 * {

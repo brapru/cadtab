@@ -23,6 +23,27 @@
   const isActive = (span: Span | null): boolean =>
     !!span && !!activeSpan && spansOverlap(span, activeSpan);
 
+  // Roles whose text anchors at its start x rather than centring (mirrors the
+  // CSS list below); their selection chip grows rightward from the anchor.
+  const START_ANCHORED = new Set([
+    "tuningName",
+    "tuningString",
+    "capo",
+    "defHeading",
+    "defNote",
+  ]);
+
+  // Geometry of the soft selection chip behind an active glyph (T7.32). The
+  // painter carries no font metrics, so the width is estimated from the glyph
+  // count and size; the generous padding absorbs that approximation.
+  function textChip(prim: Extract<Primitive, { kind: "text" }>) {
+    const { size } = TEXT_STYLE[prim.role];
+    const w = prim.content.length * size * 0.6 + 0.6;
+    const h = size * 0.95 + 0.48;
+    const x = START_ANCHORED.has(prim.role) ? prim.x - 0.3 : prim.x - w / 2;
+    return { x, y: prim.y - h / 2, w, h, r: 0.36 };
+  }
+
   // Stop the click from reaching the background handler that clears the
   // highlight, so selecting a primitive does not immediately deselect it.
   function onPrimitiveSelect(e: MouseEvent, span: Span) {
@@ -65,11 +86,26 @@
          ones (header labels) are plain, non-interactive glyphs. -->
     {#if prim.span}
       {@const span = prim.span}
+      {@const active = isActive(span)}
+      {#if active}
+        {@const chip = textChip(prim)}
+        <!-- Soft selection chip painted behind the active glyph (drawn first so
+             it sits under the ink); pointer-events off so the number stays the
+             click target. -->
+        <rect
+          class="active-chip"
+          x={chip.x}
+          y={chip.y}
+          width={chip.w}
+          height={chip.h}
+          rx={chip.r}
+        />
+      {/if}
       <text
         {...attrs}
         role="button"
         tabindex={0}
-        class:active={isActive(span)}
+        class:active
         class:clickable={true}
         onclick={(e) => onPrimitiveSelect(e, span)}
         onkeydown={(e) => onPrimitiveKey(e, span)}>{prim.content}</text
@@ -120,7 +156,7 @@
   .tab {
     --tab-ink: var(--fg);
     --tab-muted: var(--muted);
-    --tab-accent: var(--accent);
+    --tab-select: var(--select);
 
     display: block;
     width: calc(100% * var(--tab-zoom));
@@ -167,8 +203,8 @@
   .tab text[data-role="defNote"] {
     fill: var(--tab-muted);
   }
-  /* Span-bearing primitives are interactive: clickable, and accented while the
-     editor cursor sits in their source range. */
+  /* Span-bearing primitives are interactive: clickable, and highlighted while
+     the editor cursor sits in their source range. */
   .tab .clickable {
     cursor: pointer;
   }
@@ -177,10 +213,17 @@
   .tab .clickable:focus:not(:focus-visible) {
     outline: none;
   }
-  .tab text.active {
-    fill: var(--tab-accent);
+  /* The cursor<->render active primitive reads as a calm selection, not a
+     recolour (T7.32): the glyph keeps its ink and sits on a soft --select chip,
+     like highlighted text. The chip is decorative — clicks pass through to the
+     number. Open-curve paths (ties/slides/bends) have no interior to fill, so
+     they take the calm --select stroke instead. */
+  .tab .active-chip {
+    fill: color-mix(in srgb, var(--tab-select) 42%, transparent);
+    pointer-events: none;
   }
   .tab path.active {
-    stroke: var(--tab-accent);
+    stroke: var(--tab-select);
+    stroke-width: 0.1;
   }
 </style>

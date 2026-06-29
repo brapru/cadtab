@@ -616,10 +616,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Cohesion (last — styles the finished UI):*
 
-- [ ] **T7.31 — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure, warm
+- [x] **T7.31 — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure, warm
       tan numbers, muted green strings, gray italic comments); replace the dramatic full-width
       active-line bar with a faint left-edge tick so the cursor stays readable.
-- [ ] **T7.32 — Bidirectional highlight treatment.** *(open decision)* The active cursor↔primitive
+- [x] **T7.32 — Bidirectional highlight treatment.** The active cursor↔primitive
       highlight reuses the orange `--accent` and reads wrong. Pick a calmer treatment (desaturated fill
       vs underline vs halo, and which token); touches the theme accent token + `.active` styles in
       `Tab.svelte`. T7.33 reuses whatever is chosen.
