@@ -5,6 +5,7 @@ pub mod beam;
 pub mod completions;
 pub mod diagnostics;
 pub mod eval;
+pub mod fmt;
 pub mod imports;
 pub mod instrument;
 pub mod layout;

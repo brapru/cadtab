@@ -1,0 +1,38 @@
+---
+source: crates/cadtab-core/src/fmt.rs
+expression: format(SHOWCASE)
+---
+title "Syntax Showcase"
+composer "cadtab"
+tempo 130
+
+instrument banjo
+tuning openG
+capo "5th string @ 2"
+barnumbers all // number every bar (default is `lines`; `off` disables)
+
+score {
+  time 4/4
+  default 1/8 // baseline duration for unmarked notes
+
+  pickup { 2:0.i 1:0.t } // partial bar (anacrusis)
+
+  section "A" // rehearsal mark above the next bar (A part)
+  repeat { // musical repeat; endings nest inside
+    chord "G" // chord symbol above the staff at this beat
+    3:0.t 2:0.i 1:0.m 5:0.t 3:0.i 1:0.m // body, auto-barred
+    chord "C"
+    [1:0.m 5:0.t]_4 // pinch: this chord only is a quarter (_N is one-shot)
+    ending(1) { r_8 3:2 ~ 3:2 } // 1st pass: rest then a tie
+    ending(2) { 1:0.m 1:0.m } // 2nd pass
+  }
+
+  section "B" // B part
+  default 1/4 // cascading default: the next run is quarter notes
+  loop 2 { 3:2 3:4 } // unroll: writes the body out twice → one full bar
+
+  measure { // explicit measure override
+    hammer(3:0, 3:2) // technique as a function
+    bend(1:7)
+  }
+}
