@@ -597,10 +597,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Diagnostics:*
 
-- [ ] **T7.27 — Diagnostic tooltip readability.** Currently white-on-white until selected; give it
+- [x] **T7.27 — Diagnostic tooltip readability.** Currently white-on-white until selected; give it
       themed background/foreground/border keyed to the semantic tokens (WKWebView caveat — prefer
       `-webkit-` prefixes / pointer events where needed).
-- [ ] **T7.28 — Diagnostics panel + bottom button.** Make the bottom-bar problem indicator (T7.3) a
+- [x] **T7.28 — Diagnostics panel + bottom button.** Make the bottom-bar problem indicator (T7.3) a
       button that opens an exhaustive warning/error list; clicking an entry jumps the editor selection
       to its span. *(The "error diagnostic button down below" from the notes.)*
 

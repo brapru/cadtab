@@ -3,6 +3,7 @@ import { EditorState } from "@codemirror/state";
 import {
   placeDiagnostics,
   diagnosticsAt,
+  diagnosticEntries,
   diagnosticTooltipDom,
   diagnosticsField,
   setDiagnostics,
@@ -78,6 +79,45 @@ describe("placeDiagnostics", () => {
     expect(start[0]).toMatchObject({ from: 0, to: 1 });
     // Nothing to underline in an empty document → dropped.
     expect(placeDiagnostics("", [diag("error", 0, 0)])).toEqual([]);
+  });
+});
+
+describe("diagnosticEntries", () => {
+  const source = "score {\n  3:0\n}";
+  // line 1: "score {" (chars 0-6, newline at 7)
+  // line 2: "  3:0"   (chars 8-12, newline at 13)
+  // line 3: "}"       (char 14)
+
+  it("carries span/severity/message/help with a 1-based line:col", () => {
+    // "3" sits at byte 10 → line 2, col 3.
+    const entries = diagnosticEntries(source, [
+      diag("warning", 10, 13, "under-full", "needs more"),
+    ]);
+    expect(entries).toEqual([
+      {
+        severity: "warning",
+        message: "under-full",
+        help: "needs more",
+        span: { start: 10, end: 13 },
+        line: 2,
+        col: 3,
+        inRange: true,
+      },
+    ]);
+  });
+
+  it("sorts by source position regardless of input order", () => {
+    const entries = diagnosticEntries(source, [
+      diag("error", 10, 13, "second"),
+      diag("warning", 0, 5, "first"),
+    ]);
+    expect(entries.map((e) => e.message)).toEqual(["first", "second"]);
+  });
+
+  it("keeps an out-of-range stale span but flags it unreachable", () => {
+    const [entry] = diagnosticEntries("abc", [diag("error", 50, 60, "stale")]);
+    expect(entry.inRange).toBe(false);
+    expect(entry).toMatchObject({ line: 1, col: 1, message: "stale" });
   });
 });
 

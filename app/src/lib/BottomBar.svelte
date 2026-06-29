@@ -1,8 +1,9 @@
 <script lang="ts">
-  import type { Diagnostic } from "./types";
+  import type { Diagnostic, Span } from "./types";
   import { diagnosticCounts } from "./diagnostics";
   import { tooltip } from "./tooltip";
   import Icon from "./Icon.svelte";
+  import DiagnosticsPanel from "./DiagnosticsPanel.svelte";
   import { themeIcon, type Theme } from "./theme";
 
   // The bottom status bar: a small, unobtrusive strip
@@ -11,6 +12,7 @@
   // switcher slot into.
   let {
     diagnostics = [],
+    source = "",
     dockOpen = false,
     notice = null,
     autocomplete = true,
@@ -20,8 +22,12 @@
     onToggleAutocomplete,
     onToggleFormatOnSave,
     onCycleTheme,
+    onJumpToDiagnostic,
   }: {
     diagnostics?: Diagnostic[];
+    // The active document's source, so the problems panel can show line/col and
+    // the jump resolves spans against the right text.
+    source?: string;
     dockOpen?: boolean;
     // A transient status flash (e.g. "Exported tune.pdf"); when set it takes the
     // diagnostics slot for a few seconds, then the caller clears it.
@@ -36,10 +42,42 @@
     onToggleAutocomplete?: () => void;
     onToggleFormatOnSave?: () => void;
     onCycleTheme?: () => void;
+    // Jump the active editor's selection to a diagnostic's span (T7.28).
+    onJumpToDiagnostic?: (span: Span) => void;
   } = $props();
 
   const counts = $derived(diagnosticCounts(diagnostics));
   const clean = $derived(counts.errors === 0 && counts.warnings === 0);
+
+  // The problems panel: a popover above the problem button listing every
+  // diagnostic; an entry click jumps the editor and closes the panel. Dismissed
+  // on Escape or a pointer down outside the wrap. Force-closed when the document
+  // goes clean (nothing left to list).
+  let panelOpen = $state(false);
+  $effect(() => {
+    if (clean || notice) panelOpen = false;
+  });
+  $effect(() => {
+    if (!panelOpen) return;
+    function onPointer(e: PointerEvent) {
+      const t = e.target;
+      if (t instanceof Element && t.closest(".diag-wrap")) return;
+      panelOpen = false;
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") panelOpen = false;
+    }
+    window.addEventListener("pointerdown", onPointer, true);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer, true);
+      window.removeEventListener("keydown", onKey);
+    };
+  });
+  function jump(span: Span) {
+    panelOpen = false;
+    onJumpToDiagnostic?.(span);
+  }
 </script>
 
 <footer class="bottombar">
@@ -92,19 +130,33 @@
         <span class="ok" aria-hidden="true">✓</span>
         <span class="text">{notice}</span>
       </div>
+    {:else if clean}
+      <!-- No problems: a quiet, non-interactive indicator. -->
+      <div class="diagnostics clean" use:tooltip={"No problems"}>
+        <span class="ok" aria-hidden="true">✓</span>
+        <span class="text">No problems</span>
+      </div>
     {:else}
-      <!-- Live problem counts. -->
-      <div
-        class="diagnostics"
-        class:clean
-        use:tooltip={clean
-          ? "No problems"
-          : `${counts.errors} error(s), ${counts.warnings} warning(s)`}
-      >
-        {#if clean}
-          <span class="ok" aria-hidden="true">✓</span>
-          <span class="text">No problems</span>
-        {:else}
+      <!-- Live problem counts: a button toggling the exhaustive problems panel. -->
+      <div class="diag-wrap">
+        {#if panelOpen}
+          <div class="diag-popover">
+            <DiagnosticsPanel
+              {diagnostics}
+              {source}
+              onSelect={(entry) => jump(entry.span)}
+            />
+          </div>
+        {/if}
+        <button
+          class="control diagnostics"
+          class:active={panelOpen}
+          aria-label="Problems: {counts.errors} error(s), {counts.warnings} warning(s)"
+          aria-haspopup="listbox"
+          aria-expanded={panelOpen}
+          use:tooltip={`${counts.errors} error(s), ${counts.warnings} warning(s)`}
+          onclick={() => (panelOpen = !panelOpen)}
+        >
           <span class="count error">
             <span class="dot" aria-hidden="true">●</span>
             <span class="num">{counts.errors}</span>
@@ -113,7 +165,7 @@
             <span class="dot" aria-hidden="true">▲</span>
             <span class="num">{counts.warnings}</span>
           </span>
-        {/if}
+        </button>
       </div>
     {/if}
   </div>
@@ -161,6 +213,19 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0 0.4rem;
+  }
+  /* The problem button anchors its panel; the popover floats above the bar,
+     right-aligned to the viewport edge so it never overflows off-screen. */
+  .diag-wrap {
+    position: relative;
+    display: inline-flex;
+  }
+  .diag-popover {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: 0.3rem;
+    z-index: 1000;
   }
   /* The export-success flash: the check reads as confirmation, the text in
      full-strength ink, fading in so the change registers. */

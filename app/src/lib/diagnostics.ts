@@ -67,6 +67,66 @@ function pointFallback(map: number[], span: Span): CharRange | null {
   return map.length > 1 ? { from: 0, to: 1 } : null;
 }
 
+// A diagnostic prepared for the bottom-bar problems panel: the original byte
+// span (for the jump), plus a 1-based line/column for display. `inRange` is false
+// for a span left over from a stale compile of longer text — it's still listed
+// (the bottom-bar count includes it) but can't be jumped to.
+export interface DiagnosticEntry {
+  severity: Severity;
+  message: string;
+  help: string | null;
+  span: Span;
+  line: number;
+  col: number;
+  inRange: boolean;
+}
+
+// 1-based line/column of a char offset, clamped into the source.
+function lineCol(
+  source: string,
+  charIndex: number,
+): { line: number; col: number } {
+  const at = Math.min(Math.max(charIndex, 0), source.length);
+  let line = 1;
+  let col = 1;
+  for (let i = 0; i < at; i++) {
+    if (source[i] === "\n") {
+      line++;
+      col = 1;
+    } else {
+      col++;
+    }
+  }
+  return { line, col };
+}
+
+// Build the problems-panel list: every diagnostic with a display location, sorted
+// by source position so the list reads top-to-bottom like the squiggles. Matches
+// the bottom-bar count (which tallies all diagnostics), so out-of-range stale
+// spans are kept and flagged rather than dropped.
+export function diagnosticEntries(
+  source: string,
+  diagnostics: Diagnostic[],
+): DiagnosticEntry[] {
+  const map = byteToCharIndex(source);
+  const entries = diagnostics.map((d) => {
+    const charStart = map[d.span.start];
+    const inRange = charStart !== undefined;
+    const { line, col } = lineCol(source, inRange ? charStart : 0);
+    return {
+      severity: d.severity,
+      message: d.message,
+      help: d.help,
+      span: d.span,
+      line,
+      col,
+      inRange,
+    };
+  });
+  entries.sort((a, b) => a.span.start - b.span.start);
+  return entries;
+}
+
 // The diagnostics covering a position, for the hover tooltip.
 export function diagnosticsAt(
   placed: PlacedDiagnostic[],

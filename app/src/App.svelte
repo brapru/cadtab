@@ -311,6 +311,12 @@ score {
     const range = spanToRange(byteToCharIndex(doc.content), span);
     if (range) selections = { ...selections, [id]: range };
   }
+  // A problems-panel entry click (T7.28): jump the active doc's editor selection
+  // to the diagnostic's span (reusing the render→source path), which scrolls it
+  // into view. A stale out-of-range span resolves to nothing and is a no-op.
+  function jumpToDiagnostic(span: Span) {
+    if (active) handlePrimitiveClick(active.id, span);
+  }
   function handleCursor(id: string, pos: number) {
     const r = results[id];
     const doc = docFor(id);
@@ -1351,6 +1357,7 @@ score {
   </div>
   <BottomBar
     diagnostics={activeResult?.diagnostics ?? []}
+    {source}
     {dockOpen}
     notice={exportNotice}
     {autocomplete}
@@ -1360,6 +1367,7 @@ score {
     onToggleAutocomplete={toggleAutocomplete}
     onToggleFormatOnSave={toggleFormatOnSave}
     onCycleTheme={cycleTheme}
+    onJumpToDiagnostic={jumpToDiagnostic}
   />
   <ConfirmDialog
     open={confirmPrompt !== null}

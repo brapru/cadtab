@@ -3,8 +3,13 @@ import { describe, it, expect, vi } from "vitest";
 import BottomBar from "./BottomBar.svelte";
 import type { Diagnostic } from "./types";
 
-function diag(severity: Diagnostic["severity"]): Diagnostic {
-  return { severity, span: { start: 0, end: 1 }, message: "x", help: null };
+function diag(
+  severity: Diagnostic["severity"],
+  start = 0,
+  end = 1,
+  message = "x",
+): Diagnostic {
+  return { severity, span: { start, end }, message, help: null };
 }
 
 describe("BottomBar", () => {
@@ -23,6 +28,46 @@ describe("BottomBar", () => {
     expect(container.querySelector(".count.warning .num")?.textContent).toBe(
       "1",
     );
+  });
+
+  it("opens the problems panel from the count button and jumps on entry click", async () => {
+    const onJumpToDiagnostic = vi.fn();
+    const { container } = render(BottomBar, {
+      source: "score {\n  3:0\n}",
+      diagnostics: [diag("error", 10, 13, "boom")],
+      onJumpToDiagnostic,
+    });
+
+    const button = container.querySelector("button.diagnostics")!;
+    expect(button.getAttribute("aria-expanded")).toBe("false");
+    expect(container.querySelector(".panel")).toBeNull();
+
+    // Clicking the count button opens the exhaustive panel.
+    await fireEvent.click(button);
+    expect(button.getAttribute("aria-expanded")).toBe("true");
+    const entry = container.querySelector(".panel .entry")!;
+    expect(entry.querySelector(".msg")?.textContent).toBe("boom");
+
+    // Clicking an entry jumps to its span and closes the panel.
+    await fireEvent.click(entry);
+    expect(onJumpToDiagnostic).toHaveBeenCalledWith({ start: 10, end: 13 });
+    expect(container.querySelector(".panel")).toBeNull();
+  });
+
+  it("closes the panel on Escape", async () => {
+    const { container } = render(BottomBar, {
+      diagnostics: [diag("error")],
+    });
+    await fireEvent.click(container.querySelector("button.diagnostics")!);
+    expect(container.querySelector(".panel")).not.toBeNull();
+
+    await fireEvent.keyDown(window, { key: "Escape" });
+    expect(container.querySelector(".panel")).toBeNull();
+  });
+
+  it("has no problem button when clean", () => {
+    const { container } = render(BottomBar, { diagnostics: [] });
+    expect(container.querySelector("button.diagnostics")).toBeNull();
   });
 
   it("reflects the dock state and fires the toggle on click", async () => {
