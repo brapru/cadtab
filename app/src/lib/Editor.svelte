@@ -7,6 +7,8 @@
     drawSelection,
     dropCursor,
     highlightActiveLine,
+    highlightActiveLineGutter,
+    lineNumbers,
   } from "@codemirror/view";
   import {
     defaultKeymap,
@@ -57,6 +59,10 @@
       doc: text,
       extensions: [
         history(),
+        // A line-number gutter (with the active line's number highlighted to
+        // match the active-line row).
+        lineNumbers(),
+        highlightActiveLineGutter(),
         // CM's own caret + selection layer (the native one only shows on focus
         // and can't be themed), a drop caret, and an active-line highlight.
         drawSelection(),
@@ -77,6 +83,21 @@
           ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--fg)" },
           ".cm-activeLine": {
             backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",
+          },
+          // Line-number gutter: themed muted numbers on the editor background,
+          // with a divider rule separating it from the code text.
+          ".cm-gutters": {
+            backgroundColor: "var(--bg)",
+            color: "var(--muted)",
+            borderRight: "1px solid var(--border)",
+          },
+          // Breathing room in the number column: 2x left, 1x right.
+          ".cm-lineNumbers .cm-gutterElement": {
+            padding: "0 6px 0 12px",
+          },
+          ".cm-activeLineGutter": {
+            backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",
+            color: "var(--fg)",
           },
           ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
             backgroundColor:

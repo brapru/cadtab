@@ -28,6 +28,22 @@ describe("Editor highlighting", () => {
     });
   });
 
+  it("renders a line-number gutter, one number per line", async () => {
+    const { container } = render(Editor, { props: { doc: "a\nb\nc" } });
+
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-gutters")).not.toBeNull();
+      const numbers = container.querySelectorAll(
+        ".cm-lineNumbers .cm-gutterElement",
+      );
+      const labels = Array.from(numbers)
+        .map((n) => n.textContent)
+        .filter((t) => /^\d+$/.test(t ?? ""));
+      // The numbered rows (the leading width-sizing spacer aside) count up.
+      expect(labels.slice(-3)).toEqual(["1", "2", "3"]);
+    });
+  });
+
   it("underlines diagnostics pushed in via the diagnostics prop", async () => {
     const diagnostics: Diagnostic[] = [
       {
