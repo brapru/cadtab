@@ -27,6 +27,7 @@
   import {
     completion as completionExtension,
     setCompletions,
+    setCompletionEnabled,
     acceptCompletion,
     emptyCompletions,
   } from "./completion";
@@ -40,6 +41,7 @@
     tokens = [],
     diagnostics = [],
     completions = emptyCompletions,
+    autocomplete = true,
     selection = null,
     loadRequest = null,
     zoom = 1,
@@ -51,6 +53,7 @@
     tokens?: Token[];
     diagnostics?: Diagnostic[];
     completions?: Completions;
+    autocomplete?: boolean;
     selection?: { from: number; to: number } | null;
     loadRequest?: { content: string; token: number } | null;
     zoom?: number;
@@ -200,6 +203,12 @@
   // compile's keyword/identifier set is in place before the next keystroke.
   $effect(() => {
     view?.dispatch({ effects: setCompletions.of(completions) });
+  });
+
+  // The autocomplete on/off setting (T7.24c): off silences the popup and inline
+  // hints, leaving the rest of the editor untouched.
+  $effect(() => {
+    view?.dispatch({ effects: setCompletionEnabled.of(autocomplete) });
   });
 
   // Swap in a freshly-built state when a new load is requested (opening a file).

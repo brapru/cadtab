@@ -47,9 +47,14 @@ const fakePaginated = {
 };
 const wasmCompileMock = vi.fn(async (..._args: unknown[]) => fake);
 const wasmPaginateMock = vi.fn(async (..._args: unknown[]) => fakePaginated);
+const wasmCompletionsMock = vi.fn(async (..._args: unknown[]) => ({
+  keywords: [],
+  identifiers: [],
+}));
 vi.mock("./lib/wasm", () => ({
   compile: (...args: unknown[]) => wasmCompileMock(...args),
   paginate: (...args: unknown[]) => wasmPaginateMock(...args),
+  completions: (...args: unknown[]) => wasmCompletionsMock(...args),
 }));
 
 const openProjectMock = vi.fn();
@@ -1572,5 +1577,23 @@ describe("App", () => {
     expect(root.getAttribute("data-theme")).toBe("light");
     await fireEvent.click(toggle);
     expect(root.getAttribute("data-theme")).toBe("dark"); // back to dark
+  });
+
+  it("toggles the editor autocomplete setting from the topbar", async () => {
+    const { container } = render(App);
+    const toggle = container.querySelector<HTMLButtonElement>(
+      ".autocomplete-toggle",
+    )!;
+
+    // On by default; the button reads its state for assistive tech.
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.getAttribute("aria-label")).toBe("Autocomplete: on");
+
+    await fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.getAttribute("aria-label")).toBe("Autocomplete: off");
+
+    await fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
   });
 });

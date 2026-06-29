@@ -157,6 +157,29 @@ describe("Editor highlighting", () => {
     });
   });
 
+  it("opens no completion popup when autocomplete is off", async () => {
+    const { container } = render(Editor, {
+      props: {
+        doc: "instrument ",
+        completions: vocab,
+        autocomplete: false,
+        selection: { from: 11, to: 11 },
+      },
+    });
+
+    let content!: Element;
+    await vi.waitFor(() => {
+      content = container.querySelector(".cm-content")!;
+      expect(content).toBeTruthy();
+    });
+
+    // Explicitly invoking completion in the operand slot does nothing: the
+    // setting silences the source, so no popup appears.
+    await fireEvent.keyDown(content, { key: " ", ctrlKey: true });
+    await new Promise((r) => setTimeout(r, 120));
+    expect(container.querySelector(".cm-tooltip-autocomplete")).toBeNull();
+  });
+
   it("selects the whole line on Cmd/Ctrl-L", async () => {
     const onCursor = vi.fn();
     const { container } = render(Editor, {

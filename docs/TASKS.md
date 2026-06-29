@@ -571,15 +571,15 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       (`score {`, `measure {`, `repeat {`, `def … {`): a down chevron that collapses the block's
       contents and turns into a coloured side arrow to re-expand. CodeMirror `foldGutter`/code-folding
       keyed to the brace structure. *(NOTES #14.)*
-- [ ] **T7.24 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven by
+- [x] **T7.24 — Autocomplete & completion hints (toggleable, D46).** CodeMirror completions driven by
       the core's existing knowledge, Tab to accept, with a setting to toggle them on/off.
-  - [ ] T7.24a — **Candidate source from core.** Surface the completion lists through the `core` adapter
+  - [x] T7.24a — **Candidate source from core.** Surface the completion lists through the `core` adapter
         from the keyword table + stdlib/`def` registry (no second source of truth).
-  - [ ] T7.24b — **CodeMirror completion + inline hints.** Keywords with a fixed value set hint their
+  - [x] T7.24b — **CodeMirror completion + inline hints.** Keywords with a fixed value set hint their
         options (`instrument` → `banjo`/`guitar`; `tuning` → named tunings; `barnumbers` →
         `lines`/`all`/`off`), top-level keywords hint their operand (`title` → `"Title"`), and
         stdlib/`def` names complete as identifiers. Tab to accept.
-  - [ ] T7.24c — **On/off setting.** A toggle for autocomplete + inline hinting.
+  - [x] T7.24c — **On/off setting.** A toggle for autocomplete + inline hinting.
 - [ ] **T7.25 — DSL formatter (button + format-on-save toggle, D47).** A canonical pretty-printer for
       `.ctab`, exposed as a toolbar action and an on-save option.
   - [ ] T7.25a — **Core `format(source) -> String`.** Over the parsed AST/token stream — deterministic,
@@ -627,6 +627,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       gutter, panels, the dock / tabs / bottom bar, the **iconified controls + tooltips (T7.10/T7.14)**,
       and the open/save/export controls so the whole UI reads as one design. Umbrella for T7.31, T7.27,
       T7.32 and the shell chrome.
+  - [ ] T7.34a — **Inline operand hints as ghost text.** T7.24's operand hints (`title → "Title"`)
+        currently surface as a *popup* snippet entry (the popup itself is themed). Provisional: refine to
+        dimmed in-buffer ghost text at a muted shade (a ViewPlugin rendering a ghost-text decoration for
+        the operand slot), designed alongside the editor cohesion so the shade reads with everything else.
 - [ ] **T7.37 — Unify the render painter's role styling.** The live painter `Tab.svelte` re-implements
       text anchor/mute as CSS `data-role` selectors instead of using `tabStyle.ts`'s shared
       `textAnchor()`/`isMuted()` (which `svg.ts`/export use), and the two have drifted (`sectionLabel`

@@ -613,6 +613,11 @@ score {
     else root.setAttribute("data-theme", theme);
   });
 
+  // Editor autocomplete + inline hints (T7.24c): on by default, toggled from the
+  // topbar. Passed into every editor, which silences its completion popup when off.
+  let autocomplete = $state(true);
+  const toggleAutocomplete = () => (autocomplete = !autocomplete);
+
   // Start a new draft from a starter template as its own tab in the current
   // project — driven by the tab-strip New ("+") menu. No discard guard: New
   // never replaces the edited doc, it adds a tab.
@@ -1221,6 +1226,19 @@ score {
       </div>
       <span class="sep" aria-hidden="true"></span>
       <button
+        class="icon-btn autocomplete-toggle"
+        class:toggle-off={!autocomplete}
+        onclick={toggleAutocomplete}
+        aria-label="Autocomplete: {autocomplete ? 'on' : 'off'}"
+        aria-pressed={autocomplete}
+        use:tooltip={`Autocomplete: ${autocomplete ? "on" : "off"}`}
+      >
+        <Icon
+          name={autocomplete ? "auto_fix_high" : "auto_fix_off"}
+          size={18}
+        />
+      </button>
+      <button
         class="icon-btn theme-toggle"
         onclick={cycleTheme}
         aria-label="Theme: {theme}"
@@ -1279,6 +1297,7 @@ score {
                 diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
                 completions={completionsByDoc[instance.docId ?? ""] ??
                   emptyCompletions}
+                {autocomplete}
               />
             </div>
           {:else if instance.type === "render"}
@@ -1393,6 +1412,10 @@ score {
   }
   .icon-btn:hover {
     background: color-mix(in srgb, var(--fg) 8%, transparent);
+  }
+  /* A toggle in its off state reads muted, so on/off is legible at a glance. */
+  .icon-btn.toggle-off {
+    color: var(--muted);
   }
   /* The Export control anchors its SVG/PNG menu just below the download icon. */
   .export-wrap {

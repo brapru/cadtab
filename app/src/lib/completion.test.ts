@@ -6,7 +6,9 @@ import {
   planCompletions,
   completionSource,
   completionsField,
+  completionEnabledField,
   setCompletions,
+  setCompletionEnabled,
   emptyCompletions,
 } from "./completion";
 
@@ -162,5 +164,29 @@ describe("completionSource", () => {
     expect(
       completionSource(new CompletionContext(state, state.doc.length, true)),
     ).toBeNull();
+  });
+
+  it("offers nothing at all when the setting is off", () => {
+    // Even an explicit invoke in an operand slot stays silent once disabled.
+    const base = EditorState.create({
+      doc: "instrument ",
+      extensions: [completionsField, completionEnabledField],
+    });
+    const state = base.update({
+      effects: [setCompletions.of(vocab), setCompletionEnabled.of(false)],
+    }).state;
+    expect(
+      completionSource(new CompletionContext(state, state.doc.length, true)),
+    ).toBeNull();
+  });
+});
+
+describe("completionEnabledField", () => {
+  it("defaults to enabled and follows the effect", () => {
+    let state = EditorState.create({ extensions: [completionEnabledField] });
+    expect(state.field(completionEnabledField)).toBe(true);
+
+    state = state.update({ effects: setCompletionEnabled.of(false) }).state;
+    expect(state.field(completionEnabledField)).toBe(false);
   });
 });

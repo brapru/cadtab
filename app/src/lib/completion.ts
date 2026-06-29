@@ -1,4 +1,5 @@
 import { StateField, StateEffect } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import {
   autocompletion,
   acceptCompletion,
@@ -24,6 +25,19 @@ export const completionsField = StateField.define<Completions>({
   update(vocab, tr) {
     for (const e of tr.effects) if (e.is(setCompletions)) return e.value;
     return vocab;
+  },
+});
+
+// Whether autocomplete + inline hints are active (T7.24c). The source consults
+// this so the toggle can silence completions without tearing the extension out
+// of the editor; off, the popup never opens and Tab falls back to indenting.
+export const setCompletionEnabled = StateEffect.define<boolean>();
+
+export const completionEnabledField = StateField.define<boolean>({
+  create: () => true,
+  update(on, tr) {
+    for (const e of tr.effects) if (e.is(setCompletionEnabled)) return e.value;
+    return on;
   },
 });
 
@@ -138,6 +152,8 @@ function toCompletion(c: Candidate): Completion {
 export function completionSource(
   context: CompletionContext,
 ): CompletionResult | null {
+  const enabled = context.state.field(completionEnabledField, false) ?? true;
+  if (!enabled) return null;
   const vocab =
     context.state.field(completionsField, false) ?? emptyCompletions;
   const line = context.state.doc.lineAt(context.pos);
@@ -154,11 +170,56 @@ export function completionSource(
   };
 }
 
+// Theme the completion popup to the app's semantic tokens so it matches the
+// editor surface (and the topbar menu) on every theme, rather than CodeMirror's
+// default chrome. The tooltip inherits the `--*` cascade, so `var(...)` resolves
+// to the active theme; backgrounds/borders need no WKWebView prefixing.
+const completionTheme = EditorView.theme({
+  ".cm-tooltip.cm-tooltip-autocomplete": {
+    background: "var(--bg)",
+    border: "1px solid var(--border)",
+    borderRadius: "0.4rem",
+    boxShadow: "0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent)",
+    overflow: "hidden",
+  },
+  ".cm-tooltip-autocomplete > ul": {
+    fontFamily: "inherit",
+    maxHeight: "16em",
+  },
+  ".cm-tooltip-autocomplete > ul > li": {
+    padding: "0.18rem 0.5rem",
+    color: "var(--fg)",
+    lineHeight: "1.5",
+  },
+  ".cm-tooltip-autocomplete > ul > li[aria-selected]": {
+    background: "color-mix(in srgb, var(--accent) 22%, transparent)",
+    color: "var(--fg)",
+  },
+  // The matched substring of the typed prefix: accent, not CM's underline.
+  ".cm-completionMatchedText": {
+    color: "var(--accent)",
+    fontWeight: "600",
+    textDecoration: "none",
+  },
+  // The operand-hint detail (`title operand`) reads muted and secondary.
+  ".cm-completionDetail": {
+    color: "var(--muted)",
+    fontStyle: "italic",
+  },
+  ".cm-completionIcon": {
+    color: "var(--muted)",
+    opacity: "0.8",
+    marginRight: "0.4rem",
+  },
+});
+
 // The editor extension: the vocabulary field plus autocompletion driven solely
 // by our core-sourced candidates. Tab-to-accept is wired in the editor's keymap
 // (before `indentWithTab`) via the re-exported `acceptCompletion`.
 export const completion = [
   completionsField,
+  completionEnabledField,
+  completionTheme,
   autocompletion({
     override: [completionSource],
     activateOnTyping: true,
