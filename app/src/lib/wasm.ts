@@ -1,4 +1,5 @@
 import type {
+  Completions,
   CompileResult,
   LayoutConfig,
   PageConfig,
@@ -6,6 +7,7 @@ import type {
 } from "./types";
 import init, {
   compile as wasmCompile,
+  completions as wasmCompletions,
   paginate as wasmPaginate,
 } from "../wasm-gen/cadtab_wasm.js";
 
@@ -34,4 +36,12 @@ export async function paginate(
 ): Promise<PaginatedTree> {
   await ensureReady();
   return wasmPaginate(source, config, files) as PaginatedTree;
+}
+
+export async function completions(
+  source: string,
+  files: Record<string, string> = {},
+): Promise<Completions> {
+  await ensureReady();
+  return wasmCompletions(source, files) as Completions;
 }

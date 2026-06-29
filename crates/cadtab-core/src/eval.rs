@@ -906,13 +906,14 @@ fn eval_bar_numbers(program: &Program, diagnostics: &mut Vec<Diagnostic>) -> Bar
     let mut mode = BarNumbers::default();
     for item in &program.items {
         if let ItemKind::BarNumbers(ident) = &item.kind {
-            match ident.name.as_str() {
-                "lines" => mode = BarNumbers::Lines,
-                "all" => mode = BarNumbers::All,
-                "off" => mode = BarNumbers::Off,
-                other => diagnostics.push(
-                    Diagnostic::error(ident.span, format!("unknown bar-number mode `{other}`"))
-                        .with_help("use `lines`, `all`, or `off`"),
+            match BarNumbers::from_keyword(ident.name.as_str()) {
+                Some(m) => mode = m,
+                None => diagnostics.push(
+                    Diagnostic::error(
+                        ident.span,
+                        format!("unknown bar-number mode `{}`", ident.name),
+                    )
+                    .with_help("use `lines`, `all`, or `off`"),
                 ),
             }
         }

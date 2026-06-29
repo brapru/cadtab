@@ -1,4 +1,5 @@
 import type {
+  Completions,
   CompileResult,
   LayoutConfig,
   PageConfig,
@@ -76,5 +77,27 @@ export function paginate(
   }
   return import("./wasm").then(({ paginate }) =>
     paginate(source, config, ctx?.files ?? {}),
+  );
+}
+
+// The completion-vocabulary seam (T7.24, D46): the core's keyword table +
+// stdlib/`def` registry, surfaced through the same backend split as `compile`.
+// Imports resolve through `ctx` exactly as a compile would, so imported
+// `def`/`let` names complete too.
+export function completions(
+  source: string,
+  ctx?: ProjectContext,
+): Promise<Completions> {
+  if (isTauri()) {
+    return import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke<Completions>("completions", {
+        source,
+        basePath: ctx?.basePath ?? null,
+        files: ctx?.files ?? {},
+      }),
+    );
+  }
+  return import("./wasm").then(({ completions }) =>
+    completions(source, ctx?.files ?? {}),
   );
 }

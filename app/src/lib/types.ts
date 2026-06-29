@@ -135,6 +135,28 @@ export interface PageConfig {
   contentWidth: number;
 }
 
+// Completion vocabulary mirror (T7.24, D46). Sourced from the core's keyword
+// table + stdlib/`def` registry, so the editor keeps no second copy.
+
+// The operand shape an editor should offer after a keyword.
+export type OperandKind = "none" | "string" | "number" | "values";
+
+// One keyword's completion entry: its spelling, the operand it expects, and —
+// for operand "values" — the closed set of values to offer (empty otherwise).
+export interface KeywordInfo {
+  name: string;
+  operand: OperandKind;
+  values: string[];
+}
+
+// The completion vocabulary for a document: the keyword table and the
+// identifier registry (ambient stdlib licks + the document's own / imported
+// top-level `def`/`let` names, sorted and deduplicated).
+export interface Completions {
+  keywords: KeywordInfo[];
+  identifiers: string[];
+}
+
 // Per-compile project context: how `import`s resolve. Desktop uses `basePath`
 // (the open document's path; imports resolve beside it on the real filesystem);
 // web uses `files` (an in-memory path->contents map from the project bundle).

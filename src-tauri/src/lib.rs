@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
+use cadtab_core::completions::{Completions, completions_with_provider};
 use cadtab_core::provider::{FileProvider, MapProvider};
 use cadtab_core::render::PaginatedTree;
 use cadtab_core::{
@@ -67,6 +68,16 @@ fn paginate(
     paginate_with_provider(&source, config, &provider)
 }
 
+#[tauri::command]
+fn completions(
+    source: String,
+    base_path: Option<String>,
+    files: Option<HashMap<String, String>>,
+) -> Completions {
+    let provider = ProjectProvider::new(base_path, files.unwrap_or_default());
+    completions_with_provider(&source, &provider)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -82,7 +93,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![compile, paginate])
+        .invoke_handler(tauri::generate_handler![compile, paginate, completions])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

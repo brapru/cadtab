@@ -54,6 +54,30 @@ pub enum Keyword {
 }
 
 impl Keyword {
+    /// Every keyword, in declaration order — the single list driving the
+    /// editor's keyword completions (D46), so the JS side keeps no copy.
+    pub const ALL: &'static [Keyword] = &[
+        Keyword::Title,
+        Keyword::Composer,
+        Keyword::Tempo,
+        Keyword::Instrument,
+        Keyword::Tuning,
+        Keyword::Capo,
+        Keyword::Import,
+        Keyword::BarNumbers,
+        Keyword::Score,
+        Keyword::Time,
+        Keyword::Default,
+        Keyword::Pickup,
+        Keyword::Repeat,
+        Keyword::Ending,
+        Keyword::Loop,
+        Keyword::Measure,
+        Keyword::Section,
+        Keyword::Def,
+        Keyword::Let,
+    ];
+
     /// The source spelling of this keyword.
     pub fn as_str(self) -> &'static str {
         use Keyword::*;
@@ -204,6 +228,24 @@ mod tests {
         assert_eq!(Keyword::from_ident("r"), None);
         assert_eq!(Keyword::from_ident("hammer"), None);
         assert_eq!(Keyword::from_ident("Score"), None); // case-sensitive
+    }
+
+    #[test]
+    fn all_keywords_are_listed_once_and_spell_themselves() {
+        // ALL is the single completion list; every entry must round-trip through
+        // its spelling and appear exactly once.
+        let mut spellings: Vec<&str> = Keyword::ALL
+            .iter()
+            .map(|&kw| {
+                assert_eq!(Keyword::from_ident(kw.as_str()), Some(kw));
+                kw.as_str()
+            })
+            .collect();
+        let listed = spellings.len();
+        spellings.sort_unstable();
+        spellings.dedup();
+        assert_eq!(spellings.len(), listed, "ALL has a duplicate keyword");
+        assert_eq!(listed, 19);
     }
 
     #[test]

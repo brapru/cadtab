@@ -384,6 +384,34 @@ pub enum BarNumbers {
     Off,
 }
 
+impl BarNumbers {
+    /// Every mode, in directive order — the single list behind `barnumbers`
+    /// completion and the parser's mode lookup.
+    pub const ALL: &'static [BarNumbers] = &[BarNumbers::Lines, BarNumbers::All, BarNumbers::Off];
+
+    /// The `barnumbers` directive spelling for this mode.
+    pub fn as_keyword(self) -> &'static str {
+        match self {
+            BarNumbers::Lines => "lines",
+            BarNumbers::All => "all",
+            BarNumbers::Off => "off",
+        }
+    }
+
+    /// Parse a `barnumbers` directive spelling into a mode, if it is one.
+    pub fn from_keyword(name: &str) -> Option<BarNumbers> {
+        BarNumbers::ALL
+            .iter()
+            .copied()
+            .find(|m| m.as_keyword() == name)
+    }
+
+    /// The directive spellings (`lines`, `all`, `off`), for completion.
+    pub fn keywords() -> Vec<&'static str> {
+        BarNumbers::ALL.iter().map(|m| m.as_keyword()).collect()
+    }
+}
+
 /// A fully evaluated score: metadata, the resolved instrument, display-only capo
 /// labels, the bar-numbering mode, and the barred measures. The layout engine is
 /// a pure function of it.

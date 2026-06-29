@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { CompileResult } from "./types";
+import type { Completions, CompileResult } from "./types";
 
 const invokeMock = vi.fn();
 vi.mock("@tauri-apps/api/core", () => ({
@@ -7,16 +7,23 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 const wasmCompileMock = vi.fn();
+const wasmCompletionsMock = vi.fn();
 vi.mock("./wasm", () => ({
   compile: (...args: unknown[]) => wasmCompileMock(...args),
+  completions: (...args: unknown[]) => wasmCompletionsMock(...args),
 }));
 
-import { compile, isTauri } from "./core";
+import { compile, completions, isTauri } from "./core";
 
 const fake: CompileResult = {
   renderTree: { meta: { width: 1, height: 1 }, header: [], systems: [] },
   diagnostics: [],
   tokens: [],
+};
+
+const fakeCompletions: Completions = {
+  keywords: [{ name: "instrument", operand: "values", values: ["banjo"] }],
+  identifiers: ["forward_roll"],
 };
 
 function setTauri(present: boolean) {
@@ -32,6 +39,7 @@ describe("core backend dispatch", () => {
   beforeEach(() => {
     invokeMock.mockReset();
     wasmCompileMock.mockReset();
+    wasmCompletionsMock.mockReset();
     setTauri(false);
   });
 
@@ -93,5 +101,43 @@ describe("core backend dispatch", () => {
     await compile("3:0", { width: 800 });
 
     expect(wasmCompileMock).toHaveBeenCalledWith("3:0", { width: 800 }, {});
+  });
+
+  it("dispatches completions to the Tauri command under Tauri", async () => {
+    setTauri(true);
+    invokeMock.mockResolvedValue(fakeCompletions);
+
+    const files = { "rolls.ctab": "def r() { 3:0 }" };
+    const result = await completions("instrument ", {
+      basePath: "/x/a.ctab",
+      files,
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("completions", {
+      source: "instrument ",
+      basePath: "/x/a.ctab",
+      files,
+    });
+    expect(wasmCompletionsMock).not.toHaveBeenCalled();
+    expect(result).toBe(fakeCompletions);
+  });
+
+  it("dispatches completions to the wasm backend in a plain browser", async () => {
+    wasmCompletionsMock.mockResolvedValue(fakeCompletions);
+    const files = { "rolls.ctab": "def r() { 3:0 }" };
+
+    const result = await completions("instrument ", { files });
+
+    expect(wasmCompletionsMock).toHaveBeenCalledWith("instrument ", files);
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(result).toBe(fakeCompletions);
+  });
+
+  it("defaults the completions bundle and base path when no context is given", async () => {
+    wasmCompletionsMock.mockResolvedValue(fakeCompletions);
+
+    await completions("instrument ");
+
+    expect(wasmCompletionsMock).toHaveBeenCalledWith("instrument ", {});
   });
 });

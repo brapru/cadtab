@@ -2,6 +2,7 @@
 
 pub mod ast;
 pub mod beam;
+pub mod completions;
 pub mod diagnostics;
 pub mod eval;
 pub mod imports;

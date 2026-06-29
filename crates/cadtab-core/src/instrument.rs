@@ -68,6 +68,17 @@ const GUITAR_DROP_D: TuningSpec = &[
     ("D", 38),
 ];
 
+/// The builtin instruments and the named tuning each opens in — the single list
+/// behind [`Instrument::builtin`] and the editor's `instrument` completions
+/// (D46), so neither keeps its own copy of the instrument names.
+const BUILTINS: &[(&str, &str)] = &[("banjo", "openG"), ("guitar", "standard")];
+
+/// The builtin instrument names (`banjo`, `guitar`), for `instrument`
+/// completion.
+pub fn builtin_names() -> Vec<&'static str> {
+    BUILTINS.iter().map(|&(name, _)| name).collect()
+}
+
 /// The known tunings available to a `tuning` override.
 const TUNINGS: &[Tuning] = &[
     Tuning {
@@ -101,19 +112,23 @@ fn named_tuning(name: &str) -> Option<&'static Tuning> {
     TUNINGS.iter().find(|t| t.key == name)
 }
 
+/// The named-tuning keys (`openG`, `dropD`, …), for `tuning` completion and the
+/// unknown-tuning diagnostic's help text.
+pub fn named_tuning_keys() -> Vec<&'static str> {
+    TUNINGS.iter().map(|t| t.key).collect()
+}
+
 fn known_tuning_names() -> String {
-    TUNINGS.iter().map(|t| t.key).collect::<Vec<_>>().join(", ")
+    named_tuning_keys().join(", ")
 }
 
 impl Instrument {
     /// Resolve a builtin instrument (with its default tuning) by name.
     pub fn builtin(name: &str) -> Option<Instrument> {
         // Each builtin opens in a default tuning, named for the header.
-        let default_tuning = match name {
-            "banjo" => "openG",
-            "guitar" => "standard",
-            _ => return None,
-        };
+        let default_tuning = BUILTINS
+            .iter()
+            .find_map(|&(n, tuning)| (n == name).then_some(tuning))?;
         let tuning = named_tuning(default_tuning).expect("builtin default tuning is known");
         Some(Instrument::from_spec(name, tuning))
     }

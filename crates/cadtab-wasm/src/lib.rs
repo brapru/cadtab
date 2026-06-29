@@ -61,6 +61,28 @@ pub fn paginate(source: &str, config: JsValue, files: JsValue) -> Result<JsValue
     serde_wasm_bindgen::to_value(&tree).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Returns the completion vocabulary (keyword table + identifier registry) for
+/// `source`, marshalled to a JS `Completions`. `files` backs `import`
+/// resolution exactly as in [`compile`], so imported `def`/`let` names complete
+/// too. Drives the editor's autocomplete and inline hints (T7.24); mirrors the
+/// Tauri `completions` command so the frontend can dispatch to either backend.
+#[wasm_bindgen]
+pub fn completions(source: &str, files: JsValue) -> Result<JsValue, JsValue> {
+    let files: std::collections::HashMap<String, String> =
+        if files.is_undefined() || files.is_null() {
+            std::collections::HashMap::new()
+        } else {
+            serde_wasm_bindgen::from_value(files).map_err(|e| JsValue::from_str(&e.to_string()))?
+        };
+    let mut provider = cadtab_core::provider::MapProvider::new();
+    for (path, contents) in files {
+        provider.insert(path, contents);
+    }
+
+    let result = cadtab_core::completions::completions_with_provider(source, &provider);
+    serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
+}
+
 #[cfg(test)]
 mod tests {
     use cadtab_core::{CompileResult, compile, layout::LayoutConfig};
@@ -102,5 +124,14 @@ mod wasm_tests {
             serde_wasm_bindgen::from_value(value).unwrap();
         assert_eq!(tree.pages.len(), 1);
         assert!(!tree.pages[0].systems.is_empty());
+    }
+
+    #[wasm_bindgen_test]
+    fn completions_marshals_the_vocabulary() {
+        let value = completions("def my_lick(c) { c.0 }", JsValue::UNDEFINED).unwrap();
+        let result: cadtab_core::completions::Completions =
+            serde_wasm_bindgen::from_value(value).unwrap();
+        assert!(result.keywords.iter().any(|k| k.name == "instrument"));
+        assert!(result.identifiers.iter().any(|n| n == "my_lick"));
     }
 }
