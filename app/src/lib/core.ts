@@ -101,3 +101,15 @@ export function completions(
     completions(source, ctx?.files ?? {}),
   );
 }
+
+// The formatter seam (T7.25): the core's canonical `.ctab` pretty-printer,
+// surfaced through the same backend split. Pure source -> string; a document
+// with parse errors comes back unchanged.
+export function format(source: string): Promise<string> {
+  if (isTauri()) {
+    return import("@tauri-apps/api/core").then(({ invoke }) =>
+      invoke<string>("format", { source }),
+    );
+  }
+  return import("./wasm").then(({ format }) => format(source));
+}

@@ -11,6 +11,7 @@
     compile,
     paginate,
     completions as fetchCompletions,
+    format as formatSource,
     isTauri,
   } from "./lib/core";
   import { emptyCompletions } from "./lib/completion";
@@ -165,6 +166,13 @@ score {
     {},
   );
   let loadToken = 0;
+
+  // Per-doc format requests pushed into a live editor (T7.25): bumping the token
+  // replaces the buffer with the core-formatted text in one undoable transaction.
+  let formatRequests = $state<
+    Record<string, { content: string; token: number }>
+  >({});
+  let formatToken = 0;
 
   // The dock's rows: every project file (dirty iff its open doc has unsaved
   // edits) plus every open unsaved draft as a root leaf.
@@ -355,6 +363,7 @@ score {
     activeSpans = {};
     layoutWidths = {};
     loadRequests = {};
+    formatRequests = {};
     for (const k in compilers) delete compilers[k];
     for (const k in editHandlers) delete editHandlers[k];
   }
@@ -369,6 +378,7 @@ score {
   function cleanupDoc(id: string) {
     results = without(results, id);
     completionsByDoc = without(completionsByDoc, id);
+    formatRequests = without(formatRequests, id);
     errors = without(errors, id);
     selections = without(selections, id);
     activeSpans = without(activeSpans, id);
@@ -614,9 +624,37 @@ score {
   });
 
   // Editor autocomplete + inline hints (T7.24c): on by default, toggled from the
-  // topbar. Passed into every editor, which silences its completion popup when off.
+  // bottom bar. Passed into every editor, which silences its completion popup when off.
   let autocomplete = $state(true);
   const toggleAutocomplete = () => (autocomplete = !autocomplete);
+
+  // DSL formatter (T7.25): a bottom-bar toggle. When on, every save canonicalizes
+  // the document through the core's pretty-printer first.
+  let formatOnSave = $state(false);
+  const toggleFormatOnSave = () => (formatOnSave = !formatOnSave);
+
+  // Format one document through the core formatter and apply the result. Returns
+  // the formatted text (or the original when unchanged / on failure), so the save
+  // flow can write it without waiting on the editor's debounced echo.
+  async function formatDoc(id: string): Promise<string | undefined> {
+    const doc = docFor(id);
+    if (!doc) return undefined;
+    let formatted: string;
+    try {
+      formatted = await formatSource(doc.content);
+    } catch {
+      return doc.content; // formatter/backend hiccup: leave the text as-is
+    }
+    if (formatted === doc.content) return formatted;
+    // Update the store now (immediate dirty/recompile) and push the change into
+    // the live editor as an undoable replacement.
+    handleEdit(id, formatted);
+    formatRequests = {
+      ...formatRequests,
+      [id]: { content: formatted, token: ++formatToken },
+    };
+    return formatted;
+  }
 
   // Start a new draft from a starter template as its own tab in the current
   // project — driven by the tab-strip New ("+") menu. No discard guard: New
@@ -1033,9 +1071,15 @@ score {
   // Save the current score. Overwrites the known path in place; for a never-
   // saved doc, prompts a dialog seeded from the open file's name or the title.
   async function saveFile() {
-    const saved = await saveDocument(source, {
+    // Format-on-save (T7.25): canonicalize the active doc first, then persist the
+    // formatted text (using the returned value, not the editor's debounced echo).
+    let content = source;
+    if (formatOnSave && active) {
+      content = (await formatDoc(active.id)) ?? source;
+    }
+    const saved = await saveDocument(content, {
       path: currentPath,
-      suggestedName: currentName ?? defaultDocName(source),
+      suggestedName: currentName ?? defaultDocName(content),
     });
     if (!saved) return;
     docStore = markActiveSaved(docStore, {
@@ -1280,6 +1324,7 @@ score {
                 zoom={editorZoom}
                 selection={selections[instance.docId ?? ""] ?? null}
                 loadRequest={loadRequests[instance.docId ?? ""] ?? null}
+                formatRequest={formatRequests[instance.docId ?? ""] ?? null}
                 tokens={results[instance.docId ?? ""]?.tokens ?? []}
                 diagnostics={results[instance.docId ?? ""]?.diagnostics ?? []}
                 completions={completionsByDoc[instance.docId ?? ""] ??
@@ -1318,8 +1363,10 @@ score {
     {dockOpen}
     notice={exportNotice}
     {autocomplete}
+    {formatOnSave}
     onToggleDock={toggleDock}
     onToggleAutocomplete={toggleAutocomplete}
+    onToggleFormatOnSave={toggleFormatOnSave}
   />
   <ConfirmDialog
     open={confirmPrompt !== null}

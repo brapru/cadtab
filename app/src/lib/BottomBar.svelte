@@ -13,8 +13,10 @@
     dockOpen = false,
     notice = null,
     autocomplete = true,
+    formatOnSave = false,
     onToggleDock,
     onToggleAutocomplete,
+    onToggleFormatOnSave,
   }: {
     diagnostics?: Diagnostic[];
     dockOpen?: boolean;
@@ -23,8 +25,11 @@
     notice?: string | null;
     // Editor autocomplete on/off (T7.24c): lit when on, muted when off.
     autocomplete?: boolean;
+    // Format-on-save on/off (T7.25): when lit, every save canonicalizes first.
+    formatOnSave?: boolean;
     onToggleDock?: () => void;
     onToggleAutocomplete?: () => void;
+    onToggleFormatOnSave?: () => void;
   } = $props();
 
   const counts = $derived(diagnosticCounts(diagnostics));
@@ -45,8 +50,18 @@
     </button>
   </div>
   <!-- The diagnostics/notice indicator stays pinned rightmost; any new control
-       (the autocomplete toggle, future settings) goes to its left. -->
+       (Format, the toggles, future settings) goes to its left. -->
   <div class="group">
+    <button
+      class="control format-toggle"
+      class:active={formatOnSave}
+      aria-label="Format on save: {formatOnSave ? 'on' : 'off'}"
+      aria-pressed={formatOnSave}
+      use:tooltip={`Format on save: ${formatOnSave ? "on" : "off"}`}
+      onclick={() => onToggleFormatOnSave?.()}
+    >
+      <Icon name="text_format" size={16} />
+    </button>
     <button
       class="control autocomplete-toggle"
       class:active={autocomplete}

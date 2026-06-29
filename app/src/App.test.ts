@@ -51,10 +51,13 @@ const wasmCompletionsMock = vi.fn(async (..._args: unknown[]) => ({
   keywords: [],
   identifiers: [],
 }));
+// The formatter echoes a sentinel so a test can see the formatted text land.
+const wasmFormatMock = vi.fn(async (_source: string) => 'title "Formatted"\n');
 vi.mock("./lib/wasm", () => ({
   compile: (...args: unknown[]) => wasmCompileMock(...args),
   paginate: (...args: unknown[]) => wasmPaginateMock(...args),
   completions: (...args: unknown[]) => wasmCompletionsMock(...args),
+  format: (...args: unknown[]) => wasmFormatMock(...(args as [string])),
 }));
 
 const openProjectMock = vi.fn();
@@ -1595,5 +1598,29 @@ describe("App", () => {
 
     await fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("auto-formats on save only when format-on-save is toggled on", async () => {
+    const { container } = render(App);
+    await vi.waitFor(() => {
+      expect(container.querySelector(".cm-content")).not.toBeNull();
+    });
+
+    // Off by default: saving does not run the formatter.
+    wasmFormatMock.mockClear();
+    await fireEvent.click(screen.getByLabelText("Save"));
+    expect(wasmFormatMock).not.toHaveBeenCalled();
+
+    // Toggle format-on-save on, then save: the doc is canonicalized first and
+    // the formatted text replaces the editor buffer.
+    await fireEvent.click(container.querySelector(".format-toggle")!);
+    await fireEvent.click(screen.getByLabelText("Save"));
+    await vi.waitFor(() => {
+      expect(wasmFormatMock).toHaveBeenCalled();
+    });
+    await vi.waitFor(() => {
+      const text = container.querySelector(".cm-content")?.textContent ?? "";
+      expect(text).toContain('title "Formatted"');
+    });
   });
 });

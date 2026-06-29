@@ -78,6 +78,11 @@ fn completions(
     completions_with_provider(&source, &provider)
 }
 
+#[tauri::command]
+fn format(source: String) -> String {
+    cadtab_core::fmt::format(&source)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -93,7 +98,12 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![compile, paginate, completions])
+        .invoke_handler(tauri::generate_handler![
+            compile,
+            paginate,
+            completions,
+            format
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

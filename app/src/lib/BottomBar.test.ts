@@ -65,4 +65,24 @@ describe("BottomBar", () => {
     expect(toggle.getAttribute("aria-label")).toBe("Autocomplete: off");
     expect(toggle.classList.contains("active")).toBe(false);
   });
+
+  it("reflects the format-on-save setting and fires its toggle", async () => {
+    const onToggleFormatOnSave = vi.fn();
+    const { container, rerender } = render(BottomBar, {
+      formatOnSave: false,
+      onToggleFormatOnSave,
+    });
+    const toggle = container.querySelector(".format-toggle")!;
+    // Off by default: muted, announced as not pressed.
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+    expect(toggle.classList.contains("active")).toBe(false);
+
+    await fireEvent.click(toggle);
+    expect(onToggleFormatOnSave).toHaveBeenCalledOnce();
+
+    await rerender({ formatOnSave: true, onToggleFormatOnSave });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(toggle.getAttribute("aria-label")).toBe("Format on save: on");
+    expect(toggle.classList.contains("active")).toBe(true);
+  });
 });

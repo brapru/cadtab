@@ -8,6 +8,7 @@ import type {
 import init, {
   compile as wasmCompile,
   completions as wasmCompletions,
+  format as wasmFormat,
   paginate as wasmPaginate,
 } from "../wasm-gen/cadtab_wasm.js";
 
@@ -44,4 +45,9 @@ export async function completions(
 ): Promise<Completions> {
   await ensureReady();
   return wasmCompletions(source, files) as Completions;
+}
+
+export async function format(source: string): Promise<string> {
+  await ensureReady();
+  return wasmFormat(source) as string;
 }

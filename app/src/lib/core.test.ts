@@ -8,12 +8,14 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 const wasmCompileMock = vi.fn();
 const wasmCompletionsMock = vi.fn();
+const wasmFormatMock = vi.fn();
 vi.mock("./wasm", () => ({
   compile: (...args: unknown[]) => wasmCompileMock(...args),
   completions: (...args: unknown[]) => wasmCompletionsMock(...args),
+  format: (...args: unknown[]) => wasmFormatMock(...args),
 }));
 
-import { compile, completions, isTauri } from "./core";
+import { compile, completions, format, isTauri } from "./core";
 
 const fake: CompileResult = {
   renderTree: { meta: { width: 1, height: 1 }, header: [], systems: [] },
@@ -40,6 +42,7 @@ describe("core backend dispatch", () => {
     invokeMock.mockReset();
     wasmCompileMock.mockReset();
     wasmCompletionsMock.mockReset();
+    wasmFormatMock.mockReset();
     setTauri(false);
   });
 
@@ -139,5 +142,28 @@ describe("core backend dispatch", () => {
     await completions("instrument ");
 
     expect(wasmCompletionsMock).toHaveBeenCalledWith("instrument ", {});
+  });
+
+  it("dispatches format to the Tauri command under Tauri", async () => {
+    setTauri(true);
+    invokeMock.mockResolvedValue('title "X"\n');
+
+    const result = await format('title    "X"');
+
+    expect(invokeMock).toHaveBeenCalledWith("format", {
+      source: 'title    "X"',
+    });
+    expect(wasmFormatMock).not.toHaveBeenCalled();
+    expect(result).toBe('title "X"\n');
+  });
+
+  it("dispatches format to the wasm backend in a plain browser", async () => {
+    wasmFormatMock.mockResolvedValue('title "X"\n');
+
+    const result = await format('title    "X"');
+
+    expect(wasmFormatMock).toHaveBeenCalledWith('title    "X"');
+    expect(invokeMock).not.toHaveBeenCalled();
+    expect(result).toBe('title "X"\n');
   });
 });

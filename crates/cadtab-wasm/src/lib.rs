@@ -83,6 +83,15 @@ pub fn completions(source: &str, files: JsValue) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(&result).map_err(|e| JsValue::from_str(&e.to_string()))
 }
 
+/// Pretty-prints `.ctab` source into the canonical layout (T7.25). Pure
+/// `source -> String`; a document with parse errors is returned unchanged.
+/// Mirrors the Tauri `format` command so the frontend can dispatch to either
+/// backend.
+#[wasm_bindgen]
+pub fn format(source: &str) -> String {
+    cadtab_core::fmt::format(source)
+}
+
 #[cfg(test)]
 mod tests {
     use cadtab_core::{CompileResult, compile, layout::LayoutConfig};

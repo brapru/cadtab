@@ -44,6 +44,7 @@
     autocomplete = true,
     selection = null,
     loadRequest = null,
+    formatRequest = null,
     zoom = 1,
   }: {
     doc?: string;
@@ -56,6 +57,7 @@
     autocomplete?: boolean;
     selection?: { from: number; to: number } | null;
     loadRequest?: { content: string; token: number } | null;
+    formatRequest?: { content: string; token: number } | null;
     zoom?: number;
   } = $props();
 
@@ -63,6 +65,8 @@
   let view = $state<EditorView | undefined>();
   // Highest load token applied, so a re-render doesn't re-replace the document.
   let lastLoadToken = -1;
+  // Highest format token applied, so a re-render doesn't re-apply a format.
+  let lastFormatToken = -1;
 
   // Build a fresh editor state for `text`. Loading a document rebuilds the state
   // (rather than editing the current one) so the loaded file becomes the undo
@@ -220,6 +224,23 @@
     lastLoadToken = loadRequest.token;
     view.setState(buildState(loadRequest.content));
     view.focus();
+  });
+
+  // Apply a format request (T7.25): replace the whole document in one
+  // transaction. Unlike a load, this stays on the undo stack — Cmd/Ctrl-Z
+  // reverts the format — and fires onChange so the doc store re-syncs. Keyed on
+  // the token so it applies once. The cursor is clamped into the new text.
+  $effect(() => {
+    if (!view || !formatRequest || formatRequest.token === lastFormatToken)
+      return;
+    lastFormatToken = formatRequest.token;
+    const { content } = formatRequest;
+    if (view.state.doc.toString() === content) return;
+    const head = Math.min(view.state.selection.main.head, content.length);
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: content },
+      selection: EditorSelection.single(head),
+    });
   });
 
   // Apply a selection requested from outside (a clicked render primitive),
