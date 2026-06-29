@@ -1565,12 +1565,12 @@ describe("App", () => {
     const toggle = container.querySelector(".theme-toggle")!;
     const root = document.documentElement;
 
+    expect(root.getAttribute("data-theme")).toBe("dark"); // dark by default
+    await fireEvent.click(toggle);
     expect(root.getAttribute("data-theme")).toBeNull(); // system
     await fireEvent.click(toggle);
     expect(root.getAttribute("data-theme")).toBe("light");
     await fireEvent.click(toggle);
-    expect(root.getAttribute("data-theme")).toBe("dark");
-    await fireEvent.click(toggle);
-    expect(root.getAttribute("data-theme")).toBeNull(); // back to system
+    expect(root.getAttribute("data-theme")).toBe("dark"); // back to dark
   });
 });

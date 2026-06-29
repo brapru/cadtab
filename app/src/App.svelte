@@ -569,9 +569,10 @@ score {
     return () => window.removeEventListener("keydown", onZoomKey);
   });
 
-  // Theme: "system" follows the OS; light/dark force a mode via a root attribute
-  // the semantic CSS tokens key off.
-  let theme = $state<Theme>("system");
+  // Theme: dark by default; "system" follows the OS; light/dark force a mode via
+  // a root attribute the semantic CSS tokens key off. index.html pre-sets
+  // data-theme="dark" so first paint matches this default with no light flash.
+  let theme = $state<Theme>("dark");
   const cycleTheme = () => (theme = nextTheme(theme));
   $effect(() => {
     const root = document.documentElement;
