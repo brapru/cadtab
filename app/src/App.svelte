@@ -552,7 +552,8 @@ score {
   }
 
   // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B.
-  let dockOpen = $state(false);
+  // Open by default so the project tree is visible on first load.
+  let dockOpen = $state(true);
   const toggleDock = () => (dockOpen = !dockOpen);
 
   // Cmd/Ctrl-B toggles the dock, overriding the browser's default for the key.

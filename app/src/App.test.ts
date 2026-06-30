@@ -406,8 +406,7 @@ describe("App", () => {
       ),
     );
 
-    // Reveal the dock and click the lib: it opens as its own focused editor tab.
-    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    // Click the lib in the dock: it opens as its own focused editor tab.
     await fireEvent.click(getByText("lib.ctab"));
     await vi.waitFor(() => {
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
@@ -443,7 +442,6 @@ describe("App", () => {
         "tune.ctab",
       ),
     );
-    await fireEvent.click(container.querySelector(".dock-toggle")!);
     await fireEvent.click(getByText("lib.ctab"));
     await vi.waitFor(() =>
       expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
@@ -495,7 +493,6 @@ describe("App", () => {
         "tune.ctab",
       ),
     );
-    await fireEvent.click(container.querySelector(".dock-toggle")!);
     await fireEvent.click(getByText("lib.ctab"));
     await vi.waitFor(() => expect(editorTabs()).toHaveLength(2));
 
@@ -1055,17 +1052,17 @@ describe("App", () => {
   it("toggles the project dock from Cmd/Ctrl-B", async () => {
     const { container } = render(App);
     const toggle = container.querySelector(".dock-toggle")!;
-    expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    // The dock is collapsed by default, then revealed on the shortcut.
-    expect(container.querySelector(".dock")).toBeNull();
-
-    await fireEvent.keyDown(window, { key: "b", metaKey: true });
+    // The dock is open by default, then hidden on the shortcut.
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
     expect(container.querySelector(".dock")).not.toBeNull();
 
-    await fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    await fireEvent.keyDown(window, { key: "b", metaKey: true });
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
     expect(container.querySelector(".dock")).toBeNull();
+
+    await fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+    expect(container.querySelector(".dock")).not.toBeNull();
   });
 
   it("lists an opened bundle's files in the project dock", async () => {
@@ -1091,9 +1088,8 @@ describe("App", () => {
       );
     });
 
-    // Reveal the dock: it shows the entry (active) and the sibling lib, headed
-    // by the bundle name.
-    await fireEvent.click(container.querySelector(".dock-toggle")!);
+    // The dock shows the entry (active) and the sibling lib, headed by the
+    // bundle name.
     expect(container.querySelector(".dock-title")?.textContent).toBe(
       "proj.ctabz",
     );
@@ -1114,7 +1110,6 @@ describe("App", () => {
 
     // The starter is an unsaved draft but kept clean, so the dock lists it with
     // no unsaved dot.
-    await fireEvent.click(container.querySelector(".dock-toggle")!);
     expect(
       [...container.querySelectorAll(".dock .file-name")].map(
         (n) => n.textContent,
@@ -1167,8 +1162,7 @@ describe("App", () => {
       // Cmd+O.
       expect(screen.queryByLabelText("Open")).toBeNull();
 
-      // Reveal the dock and open a folder from its header control.
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
+      // Open a folder from the dock's header control.
       await fireEvent.click(screen.getByLabelText("Open Folder"));
 
       // The dock shows the real folder tree, headed by the folder name...
@@ -1207,7 +1201,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
 
       // The empty `drafts` folder (no .ctab files) still renders, sorted before
@@ -1245,7 +1238,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock-title")?.textContent).toBe(
@@ -1296,7 +1288,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock-title")?.textContent).toBe(
@@ -1341,7 +1332,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeTruthy();
@@ -1390,7 +1380,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeTruthy();
@@ -1455,7 +1444,6 @@ describe("App", () => {
       });
 
       // Open the folder, then open its file from the dock.
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeTruthy();
@@ -1497,7 +1485,6 @@ describe("App", () => {
       });
 
       // Open the folder, then its file, so it's live in an editor tab.
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeTruthy();
@@ -1552,7 +1539,6 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      await fireEvent.click(container.querySelector(".dock-toggle")!);
       await fireEvent.click(screen.getByLabelText("Open Folder"));
       await vi.waitFor(() => {
         expect(container.querySelector(".dock .file")).toBeTruthy();
