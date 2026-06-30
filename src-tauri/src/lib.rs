@@ -96,6 +96,17 @@ pub fn run() {
                         .build(),
                 )?;
             }
+            // Custom in-window titlebar (T7.45): macOS keeps its native traffic
+            // lights via the `titleBarStyle: Overlay` config (content draws under
+            // them); Windows/Linux have no such overlay, so drop the OS frame here
+            // and let the in-app Titlebar paint the controls + drag region.
+            #[cfg(not(target_os = "macos"))]
+            {
+                use tauri::Manager;
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.set_decorations(false);
+                }
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

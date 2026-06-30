@@ -106,6 +106,32 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invokeMock(...args),
 }));
 
+// Desktop builds the native menu (T7.30) and dispatch its items' actions — the
+// only desktop home for Save/Open now the in-app topbar is web-only (T7.45).
+// Stub the menu API so `installAppMenu` actually wires up, capturing each
+// command item's action by its label so a desktop test can invoke the real
+// menu path (e.g. Save) instead of a button.
+const menuActions = vi.hoisted(() => new Map<string, () => void>());
+vi.mock("@tauri-apps/api/menu", () => {
+  const passthrough = async (o: Record<string, unknown>) => o;
+  return {
+    MenuItem: {
+      new: async (o: { text?: string; action?: () => void }) => {
+        if (o.text && o.action) menuActions.set(o.text, o.action);
+        return o;
+      },
+    },
+    PredefinedMenuItem: { new: passthrough },
+    Submenu: { new: passthrough },
+    Menu: {
+      new: async (o: Record<string, unknown>) => ({
+        ...o,
+        setAsAppMenu: async () => {},
+      }),
+    },
+  };
+});
+
 // Toggle the Tauri-webview marker `isTauri()` keys off, so a test can render the
 // app in desktop mode. Cleaned up per-test so others stay in web mode.
 function setDesktop(on: boolean) {
@@ -1398,6 +1424,7 @@ describe("App", () => {
     try {
       openFolderMock.mockReset();
       saveDocumentMock.mockReset();
+      menuActions.clear(); // fresh native-menu actions for this mount
       saveDocumentMock.mockResolvedValue({
         path: "/proj/tune.ctab",
         name: "tune.ctab",
@@ -1424,8 +1451,12 @@ describe("App", () => {
         expect(container.querySelector(".cm-content")).toBeTruthy();
       });
 
-      // Save writes straight back to the file's real path — no dialog.
-      await fireEvent.click(screen.getByLabelText("Save"));
+      // Save (via the native menu — desktop's save path now) writes straight
+      // back to the file's real path, no dialog.
+      await vi.waitFor(() =>
+        expect(menuActions.get("Save")).toBeTypeOf("function"),
+      );
+      menuActions.get("Save")!();
       await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
       const [, target] = saveDocumentMock.mock.calls[0] as [
         string,
@@ -1493,6 +1524,7 @@ describe("App", () => {
       openFolderMock.mockReset();
       rescanFolderMock.mockReset();
       saveDocumentMock.mockReset();
+      menuActions.clear(); // fresh native-menu actions for this mount
       saveDocumentMock.mockResolvedValue({
         path: "/proj/tune.ctab",
         name: "tune.ctab",
@@ -1536,8 +1568,12 @@ describe("App", () => {
         "3:0",
       );
 
-      // Saving rewrites it to its original path and clears the strike.
-      await fireEvent.click(screen.getByLabelText("Save"));
+      // Saving (via the native menu) rewrites it to its original path and
+      // clears the strike.
+      await vi.waitFor(() =>
+        expect(menuActions.get("Save")).toBeTypeOf("function"),
+      );
+      menuActions.get("Save")!();
       await vi.waitFor(() => expect(saveDocumentMock).toHaveBeenCalled());
       const [, target] = saveDocumentMock.mock.calls[0] as [
         string,

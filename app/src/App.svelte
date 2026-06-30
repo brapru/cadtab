@@ -5,6 +5,7 @@
   import HelpView from "./lib/HelpView.svelte";
   import Workspace from "./lib/Workspace.svelte";
   import BottomBar from "./lib/BottomBar.svelte";
+  import Titlebar from "./lib/Titlebar.svelte";
   import Dock from "./lib/Dock.svelte";
   import ConfirmDialog from "./lib/ConfirmDialog.svelte";
   import Icon from "./lib/Icon.svelte";
@@ -154,6 +155,13 @@ score {
   let projectDirs = $state<string[]>([]);
   let projectRoot = $state<string | null>(null);
   let projectName = $state("Project");
+
+  // The desktop titlebar's project breadcrumb (T7.45): the open project's name
+  // once one is actually open (its files are loaded), else null — so a fresh
+  // draft shows just the `cadtab` brand, not the placeholder "Project".
+  const projectLabel = $derived(
+    Object.keys(projectFiles).length > 0 ? projectName : null,
+  );
 
   // An in-progress inline name edit in the dock (New File/Folder or Rename),
   // driven by the dock's right-click menu. Set on a menu pick, cleared on
@@ -1248,14 +1256,25 @@ score {
 </script>
 
 <main>
-  <!-- A lean toolbar of icon controls only: the open document is named by its
-       tab (T7.39's edited-dot lives there too), so the old brand + filename line
-       is gone (T7.34c). -->
-  <header class="topbar">
-    <div class="actions">
-      {#if !desktop}
-        <!-- File/bundle open lives here on web; on desktop it's Cmd/Ctrl+O and
-             (folders) the dock's Open Folder, with the native menu in T7.30. -->
+  {#if desktop}
+    <!-- Desktop: a custom in-window titlebar (T7.45). The in-app topbar is
+         web-only now — Save/Export/Open live in the native menu (T7.30) too. -->
+    <Titlebar
+      {projectLabel}
+      mac={isMac()}
+      onExportSvg={exportSvg}
+      onExportPng={exportPng}
+      onExportPdf={exportPdf}
+      onExportBundle={exportBundle}
+    />
+  {:else}
+    <!-- Web: a lean toolbar of icon controls (no native menu here, so this is the
+         in-app home for Open/Save/Export). The open document is named by its tab
+         (T7.34c), so there's no brand/filename line. -->
+    <header class="topbar">
+      <div class="actions">
+        <!-- File/bundle open lives here on web; desktop opens via the native
+             menu / Cmd-O and the dock's Open Folder. -->
         <button
           class="icon-btn"
           onclick={openFile}
@@ -1264,55 +1283,55 @@ score {
         >
           <Icon name="folder_open" size={18} />
         </button>
-      {/if}
-      <button
-        class="icon-btn"
-        onclick={saveFile}
-        aria-label="Save"
-        use:tooltip={"Save score (Cmd/Ctrl+S)"}
-      >
-        <Icon name="save" size={18} />
-      </button>
-      <span class="sep" aria-hidden="true"></span>
-      <div class="export-wrap">
         <button
           class="icon-btn"
-          aria-label="Export"
-          aria-haspopup="menu"
-          aria-expanded={exportMenuOpen}
-          use:tooltip={"Export the tab (SVG, PNG, PDF)"}
-          onclick={() => (exportMenuOpen = !exportMenuOpen)}
+          onclick={saveFile}
+          aria-label="Save"
+          use:tooltip={"Save score (Cmd/Ctrl+S)"}
         >
-          <Icon name="download" size={18} />
+          <Icon name="save" size={18} />
         </button>
-        {#if exportMenuOpen}
-          <div class="menu" role="menu">
-            <button
-              class="menu-item"
-              role="menuitem"
-              onclick={() => chooseExport(exportSvg)}>Export SVG</button
-            >
-            <button
-              class="menu-item"
-              role="menuitem"
-              onclick={() => chooseExport(exportPng)}>Export PNG</button
-            >
-            <button
-              class="menu-item"
-              role="menuitem"
-              onclick={() => chooseExport(exportPdf)}>Export PDF</button
-            >
-            <button
-              class="menu-item"
-              role="menuitem"
-              onclick={() => chooseExport(exportBundle)}
-              >Export Bundle (.ctabz)</button
-            >
-          </div>
-        {/if}
+        <span class="sep" aria-hidden="true"></span>
+        <div class="export-wrap">
+          <button
+            class="icon-btn"
+            aria-label="Export"
+            aria-haspopup="menu"
+            aria-expanded={exportMenuOpen}
+            use:tooltip={"Export the tab (SVG, PNG, PDF)"}
+            onclick={() => (exportMenuOpen = !exportMenuOpen)}
+          >
+            <Icon name="download" size={18} />
+          </button>
+          {#if exportMenuOpen}
+            <div class="menu" role="menu">
+              <button
+                class="menu-item"
+                role="menuitem"
+                onclick={() => chooseExport(exportSvg)}>Export SVG</button
+              >
+              <button
+                class="menu-item"
+                role="menuitem"
+                onclick={() => chooseExport(exportPng)}>Export PNG</button
+              >
+              <button
+                class="menu-item"
+                role="menuitem"
+                onclick={() => chooseExport(exportPdf)}>Export PDF</button
+              >
+              <button
+                class="menu-item"
+                role="menuitem"
+                onclick={() => chooseExport(exportBundle)}
+                >Export Bundle (.ctabz)</button
+              >
+            </div>
+          {/if}
+        </div>
       </div>
-    </div>
-  </header>
+    </header>
+  {/if}
   <div class="body">
     {#if dockOpen}
       <Dock

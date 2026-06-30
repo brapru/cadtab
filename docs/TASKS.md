@@ -680,7 +680,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       desktop loses Preview access in the gap.)* **Done — see DESIGN changelog; the gate (`previewable`)
       offers preview for any doc that renders systems — scores *and* def-libraries — not strictly scores
       (user tried it on a defs-only lib and liked it); hidden only on empty/error docs.*
-- [ ] **T7.45 — Desktop chrome: custom Zed-style titlebar + web-only topbar.** Decided 2026-06-30 after
+- [x] **T7.45 — Desktop chrome: custom Zed-style titlebar + web-only topbar.** Decided 2026-06-30 after
       T7.34c emptied the topbar. **Context:** Save/Export/Open already live in the desktop **native menu**
       (T7.30, `menu.ts`/`setAsAppMenu`) + ⌘S/⌘O, so the topbar icons are redundant on desktop; the web has
       no native menu and genuinely needs an in-app home for them. **Decision (user picked the ambitious
@@ -699,6 +699,13 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       Svelte component (drag region via `data-tauri-drag-region`, platform-aware window controls), reuse of
       the existing Save/Export handlers + the native menu. Grounding read pending (Tauri version, current
       `tauri.conf.json`, the macOS detection `menu.ts` already does via `navigator.userAgent`).
+      **Done — see DESIGN changelog.** Sub-decisions locked via mockup: (a) `cadtab — <project>` breadcrumb
+      (brand alone when no project); (b) text controls; (c) all platforms. Built `Titlebar.svelte` (Overlay
+      titlebar + native traffic lights on macOS, `decorations:false` + custom min/maximize/close on
+      Win/Linux); topbar made web-only. **Refined in review:** Save dropped from the titlebar entirely
+      (⌘S + native menu suffice) — right side is just `Export ▾`. **Win/Linux hardware-verify items:**
+      whether the native menu *bar* renders with decorations off, traffic-light alignment, drag, caption
+      buttons — all best eyeballed on real hardware; verified live on macOS via `just dev`.
 
 *Notation:*
 
