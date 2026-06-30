@@ -168,9 +168,13 @@
             backgroundColor: "color-mix(in srgb, var(--fg) 6%, transparent)",
             color: "var(--fg)",
           },
+          // Text selection rides the calm --select blue (the T7.32 "selected"
+          // token the render painter uses for the cursor<->render highlight),
+          // not the warm --accent — so a selection reads as *selected* rather
+          // than washing the notation in accent (T7.34e).
           ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
             backgroundColor:
-              "color-mix(in srgb, var(--accent) 25%, transparent)",
+              "color-mix(in srgb, var(--select) 30%, transparent)",
           },
         }),
         syntaxHighlighting,
