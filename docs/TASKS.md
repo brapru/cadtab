@@ -614,37 +614,76 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       **View ▸ Zoom / Reset**, **Edit** basics. Menu items dispatch the same commands as the in-app
       controls (single command source). Desktop-only (no-op on web).
 
-*Cohesion (last — styles the finished UI):*
+*Cohesion & finishing pass — second NOTES.md triage (2026-06-29; see DESIGN changelog). All M7.*
+*Recommended order: quick-win/bug sweep (T7.38–T7.40) → cohesion pass (T7.34a–g, T7.37) → functional*
+*redesigns (T7.41–T7.43) → notation (T7.44).*
+
+*Quick-win + bug sweep (do first):*
+
+- [ ] **T7.38 — Dock open by default.** The project dock starts expanded on first load. *(NOTES #9.)*
+- [ ] **T7.39 — Edited-dot left of the filename.** Move the unsaved-changes dot from the tab corner to
+      just left of the filename, where it actually reads. *(NOTES #8.)*
+- [ ] **T7.40 — Bottom-bar tooltip clipping.** Tooltips anchored on the bottom bar open downward and fall
+      off-screen; make the `tooltip` action edge-aware so they flip upward. *(NOTES #10.)*
+
+*Cohesion pass — the Zed-feel polish:*
 
 - [x] **T7.31 — Syntax-highlighting palette.** Muted two-tone palette (desaturated blue structure, warm
-      tan numbers, muted green strings, gray italic comments); replace the dramatic full-width
-      active-line bar with a faint left-edge tick so the cursor stays readable.
-- [x] **T7.32 — Bidirectional highlight treatment.** The active cursor↔primitive
-      highlight reuses the orange `--accent` and reads wrong. Pick a calmer treatment (desaturated fill
-      vs underline vs halo, and which token); touches the theme accent token + `.active` styles in
-      `Tab.svelte`. T7.33 reuses whatever is chosen.
-- [ ] **T7.33 — Structural bidirectional mapping.** Cursor↔render mapping (T4.5) only covers
-      span-bearing text/notes; thread spans onto repeat barlines, ending (volta) brackets, and
-      `measure {}` boxes, and extend the highlight (reusing T7.32's treatment) to line/box prims so
-      clicking or cursoring a repeat / ending / measure lights it up. *(Extends T4.5.)*
-- [ ] **T7.34 — Accent/detail cohesion pass.** A coherent accent/detail pass across topbar, toolbar,
-      gutter, panels, the dock / tabs / bottom bar, the **iconified controls + tooltips (T7.10/T7.14)**,
-      and the open/save/export controls so the whole UI reads as one design. Umbrella for T7.31, T7.27,
-      T7.32 and the shell chrome.
-  - [ ] T7.34a — **Inline operand hints as ghost text.** T7.24's operand hints (`title → "Title"`)
-        currently surface as a *popup* snippet entry (the popup itself is themed). Provisional: refine to
-        dimmed in-buffer ghost text at a muted shade (a ViewPlugin rendering a ghost-text decoration for
-        the operand slot), designed alongside the editor cohesion so the shade reads with everything else.
-- [ ] **T7.37 — Unify the render painter's role styling.** The live painter `Tab.svelte` re-implements
-      text anchor/mute as CSS `data-role` selectors instead of using `tabStyle.ts`'s shared
-      `textAnchor()`/`isMuted()` (which `svg.ts`/export use), and the two have drifted (`sectionLabel`
-      /`barNumber` differ). Make `Tab.svelte` consume the shared sets so screen and export never drift.
-      Pairs with the cohesion pass (T7.34).
+      tan numbers, muted green strings, gray italic comments); the full-width active-line bar became a
+      faint left-edge tick. *(Done — see DESIGN changelog.)*
+- [x] **T7.32 — Bidirectional highlight treatment.** The active cursor↔primitive highlight no longer
+      reuses the orange `--accent`: the note keeps its ink on a soft `--select` chip. *(Done.)*
+- [ ] ~~**T7.33 — Structural bidirectional mapping.**~~ **Dropped 2026-06-29** — built end-to-end (spans
+      on repeat barlines / voltas / `measure {}` boxes + the chip/stroke highlight) then walked back; it
+      didn't feel right. T7.32's note-chip stays the bidirectional treatment. *(See DESIGN changelog.)*
+- [ ] **T7.34 — Accent/detail cohesion pass.** Umbrella for the whole-UI Zed-feel pass across topbar,
+      toolbar, gutter, panels, dock / tabs / bottom bar, the iconified controls + tooltips (T7.10/T7.14),
+      and the open/save/export controls. The subtasks sequence it foundation-first; sampled targets in
+      the DESIGN changelog (elevation stack, offset-white text).
+  - [ ] T7.34a — **Palette & elevation foundation.** The bedrock everything reads against: the
+        chrome→dock→editor elevation stack (sampled `#313337`→`#1F2126`→`#0E1015`), offset-white text in
+        editor *and* render (not true white), and thinner dividers. *(NOTES #14.)*
+  - [ ] T7.34b — **Tab strip restyle.** Drop the orange top accent bar; inactive tabs a shade lighter,
+        the active tab darker (Zed-style). *(NOTES #12.)*
+  - [ ] T7.34c — **Topbar declutter.** Remove the redundant "cadtab" + open-filename line (the tab strip
+        already names the file). *(NOTES #13.)*
+  - [ ] T7.34d — **Popup de-glow.** Remove the glow/drop-shadow backgrounds on popups (diagnostics,
+        new-file, export menu, completion) to fit the flat, layered look. *(NOTES #4.)*
+  - [ ] T7.34e — **Editor selection/highlight colour.** The CodeMirror selection reads as a harsh white
+        that clashes; re-key it to the theme. *(NOTES #15.)*
+  - [ ] T7.34f — **Tooltip overhaul.** Bold title + optional smaller description + the element's keyboard
+        shortcut when it has one; better font + themed CSS. (T7.40 fixes clipping; this is structure +
+        style.) *(NOTES #2, #3.)*
+  - [ ] T7.34g — **Inline operand hints as ghost text.** (was T7.34a) Refine T7.24's operand hints
+        (`title → "Title"`) from a *popup* snippet to dimmed in-buffer ghost text at a muted shade (a
+        ViewPlugin ghost-text decoration), designed with the editor cohesion so the shade reads right.
+- [ ] **T7.37 — Unify the render painter's role styling.** Make `Tab.svelte` consume `tabStyle.ts`'s
+      shared `textAnchor()`/`isMuted()` (which `svg.ts`/export use) instead of its drifted `data-role`
+      CSS (`sectionLabel`/`barNumber` differ), so screen and export never diverge. Pairs with T7.34 (the
+      render text colour from T7.34a lands here too).
+
+*Functional / workspace redesigns (M7):*
+
+- [ ] **T7.41 — Maximize behavior.** Maximizing a tab shouldn't fully hide the others — keep the tab
+      strips visible (VSCode: the maximized pane takes most space) or collapse the dock with a sliver of
+      background showing (Zed). *(NOTES #1; revisits T7.7-era maximize.)*
+- [ ] **T7.42 — Zoom scope rescope + render zoom bug.** Walk back the earlier per-view zoom: zoom in/out
+      applies to *all* editors globally, but a render view zooms only its own tab. Fold in the render
+      zoom/reformat bug (repro pending from user). *(NOTES #5, #6; design walk-back.)*
+- [ ] **T7.43 — Preview control → tab group.** Move the preview control into the tab-group buttons; offer
+      preview when the active doc is recognized as a score. *(NOTES #11.)*
+
+*Notation:*
+
+- [ ] **T7.44 — Right-hand finger marks above the staff.** Move the T/I/M (thumb/index/middle) right-hand
+      finger marks from below the staff into the above-staff band, and re-space the band (section / chord
+      / bar-number / volta / fingers) so it doesn't crowd. *(NOTES #7.)*
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
 + web; justified systems with a fixed page; **paginated PDF export (T7.19)** behind a unified export
-control; autocomplete, formatter, and a native desktop menu; readable diagnostics + panel;
-dark-by-default cohesive themed UI; structural elements participate in bidirectional mapping. Green.
+control; autocomplete, formatter, and a native desktop menu; readable diagnostics + panel; and a
+cohesive, polished dark-by-default UI matching the Zed-feel target (elevation, accent restraint,
+restyled tabs, decluttered topbar, themed tooltips/popups). Green.
 
 ---
 
