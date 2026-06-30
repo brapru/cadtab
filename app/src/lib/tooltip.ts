@@ -22,7 +22,7 @@ function showTip(target: HTMLElement, text: string) {
   document.body.appendChild(tip);
   current = tip;
   currentTarget = target;
-  // Below the control, horizontally centered, clamped to the viewport.
+  // Horizontally centered, clamped to the viewport.
   const r = target.getBoundingClientRect();
   const left = Math.max(
     4,
@@ -31,7 +31,15 @@ function showTip(target: HTMLElement, text: string) {
       window.innerWidth - tip.offsetWidth - 4,
     ),
   );
-  tip.style.top = `${r.bottom + 6}px`;
+  // Below the control by default; flip above when there isn't room below
+  // (e.g. controls anchored on the bottom bar would otherwise clip off-screen).
+  const gap = 6;
+  const below = r.bottom + gap;
+  const flipUp =
+    below + tip.offsetHeight > window.innerHeight &&
+    r.top - gap - tip.offsetHeight >= 0;
+  tip.dataset.placement = flipUp ? "above" : "below";
+  tip.style.top = `${flipUp ? r.top - gap - tip.offsetHeight : below}px`;
   tip.style.left = `${left}px`;
 }
 

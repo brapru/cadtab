@@ -62,6 +62,55 @@ describe("tooltip action", () => {
     expect(tip()).toBeNull();
   });
 
+  it("flips above the control when there isn't room below", () => {
+    const original = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetHeight",
+    );
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get: () => 30,
+    });
+    try {
+      const { node } = setup("Fit");
+      // Anchored at the bottom of the viewport (innerHeight 768 in jsdom).
+      node.getBoundingClientRect = () =>
+        ({ top: 740, bottom: 760, left: 100, width: 40 }) as DOMRect;
+      fire(node, "pointerenter");
+      const t = tip() as HTMLElement;
+      expect(t.dataset.placement).toBe("above");
+      // top = r.top - gap(6) - height(30).
+      expect(t.style.top).toBe("704px");
+    } finally {
+      if (original)
+        Object.defineProperty(HTMLElement.prototype, "offsetHeight", original);
+    }
+  });
+
+  it("stays below the control when there is room", () => {
+    const original = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      "offsetHeight",
+    );
+    Object.defineProperty(HTMLElement.prototype, "offsetHeight", {
+      configurable: true,
+      get: () => 30,
+    });
+    try {
+      const { node } = setup("Fit");
+      node.getBoundingClientRect = () =>
+        ({ top: 20, bottom: 40, left: 100, width: 40 }) as DOMRect;
+      fire(node, "pointerenter");
+      const t = tip() as HTMLElement;
+      expect(t.dataset.placement).toBe("below");
+      // top = r.bottom + gap(6).
+      expect(t.style.top).toBe("46px");
+    } finally {
+      if (original)
+        Object.defineProperty(HTMLElement.prototype, "offsetHeight", original);
+    }
+  });
+
   it("tears down listeners and any tooltip on destroy", () => {
     const { node, action } = setup("Close");
     fire(node, "pointerenter");

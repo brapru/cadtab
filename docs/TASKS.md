@@ -621,9 +621,9 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 *Quick-win + bug sweep (do first):*
 
 - [x] **T7.38 — Dock open by default.** The project dock starts expanded on first load. *(NOTES #9.)*
-- [ ] **T7.39 — Edited-dot left of the filename.** Move the unsaved-changes dot from the tab corner to
+- [x] **T7.39 — Edited-dot left of the filename.** Move the unsaved-changes dot from the tab corner to
       just left of the filename, where it actually reads. *(NOTES #8.)*
-- [ ] **T7.40 — Bottom-bar tooltip clipping.** Tooltips anchored on the bottom bar open downward and fall
+- [x] **T7.40 — Bottom-bar tooltip clipping.** Tooltips anchored on the bottom bar open downward and fall
       off-screen; make the `tooltip` action edge-aware so they flip upward. *(NOTES #10.)*
 
 *Cohesion pass — the Zed-feel polish:*
