@@ -24,6 +24,7 @@
     view,
     missingDocIds = [],
     docName,
+    docDirty,
     onActivateView,
     onCloseTab,
     onOpenRender,
@@ -40,6 +41,9 @@
     // icon carries the view-type distinction). Falls back to the view's registry
     // title when unset (singletons, or a doc with no name yet).
     docName?: (docId: string) => string | null | undefined;
+    // Whether a doc has unsaved changes — drives the tab's edited-dot, shown
+    // just left of the filename (every view of a dirty doc carries it).
+    docDirty?: (docId: string) => boolean;
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
     onOpenRender?: (docId: string) => void;
@@ -299,6 +303,9 @@
                 <span class="tab-icon">
                   <Icon name={viewDef(tab.type)?.icon ?? ""} size={16} />
                 </span>
+                {#if tab.docId !== null && docDirty?.(tab.docId)}
+                  <span class="tab-dot" aria-label="unsaved">•</span>
+                {/if}
                 <span
                   class="tab-title"
                   class:missing={tab.docId !== null &&
@@ -487,6 +494,15 @@
   .tab-icon {
     display: flex;
     align-items: center;
+  }
+  /* The unsaved-changes dot sits just left of the filename (T7.39). The negative
+     right margin pulls it tight to the name so the pair reads as one unit rather
+     than floating midway between the icon and the title; it follows the tab's
+     text colour (muted inactive, --fg active). */
+  .tab-dot {
+    margin-right: -0.18rem;
+    line-height: 1;
+    user-select: none;
   }
   /* A tab whose backing file was deleted/moved on disk: struck through, dimmed —
      the buffer is still editable and a Save rewrites the file. */

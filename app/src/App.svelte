@@ -218,6 +218,12 @@ score {
     return docFor(id)?.name ?? "untitled";
   }
 
+  // Whether a doc has unsaved changes — drives the tab's edited-dot.
+  function docDirty(id: string): boolean {
+    const doc = docFor(id);
+    return doc ? isDirty(doc) : false;
+  }
+
   // One latest-wins compiler per document, so interleaved compiles never clobber
   // each other's render.
   const compilers: Record<string, ReturnType<typeof createLiveCompiler>> = {};
@@ -1340,6 +1346,7 @@ score {
       bind:workspace
       {missingDocIds}
       {docName}
+      {docDirty}
       onActivateView={focusView}
       onCloseTab={closeView}
       onOpenRender={openRender}

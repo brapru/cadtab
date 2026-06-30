@@ -352,6 +352,35 @@ describe("Workspace chrome", () => {
     ]);
   });
 
+  it("marks every view of a dirty doc with an edited-dot left of the name", () => {
+    // The dot rides the doc's dirtiness, so both the editor and render of a
+    // dirty doc carry it; it precedes the filename in the DOM.
+    const { container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      docName: () => "tune.ctab",
+      docDirty: () => true,
+    });
+    expect(container.querySelectorAll(".tab-dot")).toHaveLength(2);
+    const tab = container.querySelector(".tab")!;
+    const dot = tab.querySelector(".tab-dot")!;
+    const title = tab.querySelector(".tab-title")!;
+    // The dot is positioned before the title within the tab.
+    expect(dot.compareDocumentPosition(title)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("shows no edited-dot when the doc is clean", () => {
+    const { container } = render(Workspace, {
+      workspace: defaultWorkspace("doc"),
+      view: stubView,
+      docName: () => "tune.ctab",
+      docDirty: () => false,
+    });
+    expect(container.querySelectorAll(".tab-dot")).toHaveLength(0);
+  });
+
   it("maximizes a group, hiding the other and its gutter, then restores", async () => {
     const { container, getByLabelText } = mountShell();
 
