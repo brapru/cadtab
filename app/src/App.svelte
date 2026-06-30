@@ -138,7 +138,6 @@ score {
   const source = $derived(active?.content ?? "");
   const currentName = $derived(active?.name ?? null);
   const currentPath = $derived(active?.path ?? null);
-  const dirty = $derived(active ? isDirty(active) : false);
   const activeResult = $derived(active ? (results[active.id] ?? null) : null);
 
   // True in the desktop (Tauri) webview: folder open + write-back are desktop
@@ -1246,17 +1245,10 @@ score {
 </script>
 
 <main>
+  <!-- A lean toolbar of icon controls only: the open document is named by its
+       tab (T7.39's edited-dot lives there too), so the old brand + filename line
+       is gone (T7.34c). -->
   <header class="topbar">
-    <div class="brand">
-      <h1>cadtab</h1>
-      <span
-        class="doc-name"
-        class:dirty
-        use:tooltip={currentName ?? "unsaved document"}
-      >
-        {currentName ?? "untitled"}{dirty ? " •" : ""}
-      </span>
-    </div>
     <div class="actions">
       {#if !desktop}
         <!-- File/bundle open lives here on web; on desktop it's Cmd/Ctrl+O and
@@ -1454,30 +1446,10 @@ score {
   .topbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-end;
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-chrome);
-  }
-  .brand {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-    min-width: 0;
-  }
-  h1 {
-    margin: 0;
-    font-size: 1.1rem;
-  }
-  .doc-name {
-    font-size: 0.85rem;
-    color: var(--muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .doc-name.dirty {
-    color: var(--fg);
   }
   .actions {
     display: flex;

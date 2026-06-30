@@ -647,8 +647,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
   - [x] T7.34b — **Tab strip restyle.** Drop the orange top accent bar; inactive tabs a shade lighter,
         the active tab darker (Zed-style). *(NOTES #12. Done — folded into T7.34a: active tab drops to the
         editor surface `#0E1015`, accent bar dropped, inactive tabs flush at panel with muted labels.)*
-  - [ ] T7.34c — **Topbar declutter.** Remove the redundant "cadtab" + open-filename line (the tab strip
-        already names the file). *(NOTES #13.)*
+  - [x] T7.34c — **Topbar declutter.** Remove the redundant "cadtab" + open-filename line (the tab strip
+        already names the file). *(NOTES #13. Done — `.brand` block + `dirty` derived removed, topbar
+        right-aligned; App.test.ts migrated from `.doc-name` to active-tab observables. Removing the brand
+        surfaced the "what now holds Save/Export/Preview" question → see T7.45.)*
   - [ ] T7.34d — **Popup de-glow.** Remove the glow/drop-shadow backgrounds on popups (diagnostics,
         new-file, export menu, completion) to fit the flat, layered look. *(NOTES #4.)*
   - [ ] T7.34e — **Editor selection/highlight colour.** The CodeMirror selection reads as a harsh white
@@ -673,7 +675,28 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       applies to *all* editors globally, but a render view zooms only its own tab. Fold in the render
       zoom/reformat bug (repro pending from user). *(NOTES #5, #6; design walk-back.)*
 - [ ] **T7.43 — Preview control → tab group.** Move the preview control into the tab-group buttons; offer
-      preview when the active doc is recognized as a score. *(NOTES #11.)*
+      preview when the active doc is recognized as a score. *(NOTES #11. **Coupled to / prerequisite of
+      T7.45:** Preview must leave the topbar via the tab group before the desktop topbar is dropped, or
+      desktop loses Preview access in the gap.)*
+- [ ] **T7.45 — Desktop chrome: custom Zed-style titlebar + web-only topbar.** Decided 2026-06-30 after
+      T7.34c emptied the topbar. **Context:** Save/Export/Open already live in the desktop **native menu**
+      (T7.30, `menu.ts`/`setAsAppMenu`) + ⌘S/⌘O, so the topbar icons are redundant on desktop; the web has
+      no native menu and genuinely needs an in-app home for them. **Decision (user picked the ambitious
+      option):** build a **custom in-window titlebar on desktop** (window `decorations` off / macOS
+      `titleBarStyle` overlay), Zed-style — brand/breadcrumb on the left, **Save + Export (dropdown)** on
+      the right — and make the **existing topbar web-only** (keep Open/Save/Export there, unchanged). Drop
+      the in-app topbar entirely on desktop. **Preview leaves both** via the tab group (T7.43, do first).
+      **Open decisions to resolve before/while building (lock with a mockup, per our rhythm):**
+      (a) left content — brand `cadtab` only, vs `cadtab — <project/folder>` when one is open (NOT the
+          filename — that's the tab's job, avoid re-introducing T7.34c's redundancy), vs empty;
+      (b) right controls — text labels (`Save`  `Export ▾`, Zed-style) vs icons;
+      (c) platform scope — macOS-first (overlay titlebar, keep native traffic lights, inset via
+          `trafficLightPosition`); Windows/Linux need custom min/max/close buttons + drag regions (bigger
+          lift) — decide whether to ship mac-first and keep standard decorations on Win/Linux for now.
+      **Touches:** `tauri.conf.json` window config (+ maybe `src-tauri` window setup), a new titlebar
+      Svelte component (drag region via `data-tauri-drag-region`, platform-aware window controls), reuse of
+      the existing Save/Export handlers + the native menu. Grounding read pending (Tauri version, current
+      `tauri.conf.json`, the macOS detection `menu.ts` already does via `navigator.userAgent`).
 
 *Notation:*
 

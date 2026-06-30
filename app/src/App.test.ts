@@ -144,10 +144,20 @@ function closeTabBtn(container: ParentNode, icon: string): HTMLElement {
 const closeRender = (c: ParentNode) => closeTabBtn(c, "music_note");
 const closeEditor = (c: ParentNode) => closeTabBtn(c, "code");
 
+// The open doc is named by its active tab now — the topbar's brand/filename line
+// was removed (T7.34c). Its unsaved-dot sits left of that tab's title (T7.39).
+const activeTabName = (c: ParentNode) =>
+  c.querySelector(".tab-wrap.active .tab-title")?.textContent?.trim();
+const activeTabDirty = (c: ParentNode) =>
+  c.querySelector(".tab-wrap.active .tab-dot");
+
 describe("App", () => {
-  it("renders the title heading", () => {
+  it("renders a lean toolbar with no brand/filename line (T7.34c)", () => {
     render(App);
-    expect(screen.getByRole("heading", { name: "cadtab" })).toBeInTheDocument();
+    // The redundant "cadtab" heading + filename line is gone; the tab strip
+    // names the doc. The toolbar keeps its icon controls.
+    expect(screen.queryByRole("heading", { name: "cadtab" })).toBeNull();
+    expect(screen.getByLabelText("Save")).toBeInTheDocument();
   });
 
   it("renders the compiled tab via the wasm backend", async () => {
@@ -341,10 +351,9 @@ describe("App", () => {
     await fireEvent.click(screen.getByLabelText("Open"));
 
     await vi.waitFor(() => {
-      const name = container.querySelector(".doc-name");
-      expect(name?.textContent?.trim()).toBe("loaded.ctab");
+      expect(activeTabName(container)).toBe("loaded.ctab");
       // The freshly loaded doc is not a user edit, so it is not marked dirty.
-      expect(container.querySelector(".doc-name.dirty")).toBeNull();
+      expect(activeTabDirty(container)).toBeNull();
     });
   });
 
@@ -369,9 +378,7 @@ describe("App", () => {
 
     // The entry becomes the open document...
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      );
+      expect(activeTabName(container)).toBe("tune.ctab");
     });
     // ...and the project's files (entry + sibling lib) flow to compile as the
     // import map, so an `import` resolves against them.
@@ -400,18 +407,12 @@ describe("App", () => {
     const { container, getByText } = render(App);
 
     await fireEvent.click(screen.getByLabelText("Open"));
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      ),
-    );
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
 
     // Click the lib in the dock: it opens as its own focused editor tab.
     await fireEvent.click(getByText("lib.ctab"));
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "lib.ctab",
-      );
+      expect(activeTabName(container)).toBe("lib.ctab");
       expect(container.querySelector(".cm-content")?.textContent).toContain(
         "def roll()",
       );
@@ -437,17 +438,9 @@ describe("App", () => {
     // Open the project, then a sibling lib from the dock: two editor tabs within
     // the one project (lib focused).
     await fireEvent.click(screen.getByLabelText("Open"));
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      ),
-    );
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
     await fireEvent.click(getByText("lib.ctab"));
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "lib.ctab",
-      ),
-    );
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("lib.ctab"));
 
     // Activating the entry's editor tab (the first one — the lib was appended
     // after it) makes it the active document again. Tabs label by filename now
@@ -458,11 +451,7 @@ describe("App", () => {
         t.querySelector(".tab-title")?.textContent === "tune.ctab",
     )!;
     await fireEvent.click(entryTab);
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      ),
-    );
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
   });
 
   it("opening a project closes the prior project's docs, tabs, and renders", async () => {
@@ -488,11 +477,7 @@ describe("App", () => {
 
     // Open the bundle, then a dock lib — two editor tabs open in this project.
     await fireEvent.click(screen.getByLabelText("Open"));
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      ),
-    );
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
     await fireEvent.click(getByText("lib.ctab"));
     await vi.waitFor(() => expect(editorTabs()).toHaveLength(2));
 
@@ -506,9 +491,7 @@ describe("App", () => {
     });
     await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "other.ctab",
-      );
+      expect(activeTabName(container)).toBe("other.ctab");
       expect(editorTabs()).toHaveLength(1);
     });
     // The bundle's lib is no longer reachable from the dock (project reset).
@@ -555,9 +538,7 @@ describe("App", () => {
 
     await vi.waitFor(() => {
       expect(saveDocumentMock).toHaveBeenCalled();
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      );
+      expect(activeTabName(container)).toBe("tune.ctab");
     });
     // The default doc has no path yet, so save targets a dialog seeded by the
     // title-derived name, and sends the current editor source.
@@ -600,7 +581,7 @@ describe("App", () => {
     // Editing (Tab indents) marks the doc dirty after the debounced compile.
     await fireEvent.keyDown(content, { key: "Tab" });
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+      expect(activeTabDirty(container)).not.toBeNull();
     });
 
     // Opening a project replaces the current one; since the current doc is
@@ -616,9 +597,7 @@ describe("App", () => {
     await fireEvent.click(confirmBtn);
     await vi.waitFor(() => expect(openProjectMock).toHaveBeenCalled());
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "x.ctab",
-      );
+      expect(activeTabName(container)).toBe("x.ctab");
       // The modal closes once settled.
       expect(container.querySelector(".dialog")).toBeNull();
     });
@@ -645,9 +624,7 @@ describe("App", () => {
       expect(content).toBeTruthy();
     });
     await fireEvent.keyDown(content, { key: "Tab" });
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name.dirty")).not.toBeNull(),
-    );
+    await vi.waitFor(() => expect(activeTabDirty(container)).not.toBeNull());
 
     // Cancelling the modal aborts before the file picker — nothing is opened and
     // the dirty doc stays put.
@@ -660,9 +637,8 @@ describe("App", () => {
     await fireEvent.click(cancelBtn);
     expect(openProjectMock).not.toHaveBeenCalled();
     expect(container.querySelector(".dialog")).toBeNull();
-    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-      "untitled •",
-    );
+    expect(activeTabName(container)).toBe("untitled");
+    expect(activeTabDirty(container)).not.toBeNull();
   });
 
   it("closes one view at a time, the session outliving its views", async () => {
@@ -679,9 +655,7 @@ describe("App", () => {
       expect(container.querySelector(".cm-content")).not.toBeNull();
     });
     expect(container.querySelector(".dialog")).toBeNull();
-    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-      "untitled",
-    );
+    expect(activeTabName(container)).toBe("untitled");
 
     // Closing the editor too removes the last view, emptying the layout.
     await fireEvent.click(closeEditor(container));
@@ -760,9 +734,7 @@ describe("App", () => {
       expect(content).toBeTruthy();
     });
     await fireEvent.keyDown(content, { key: "Tab" });
-    await vi.waitFor(() =>
-      expect(container.querySelector(".doc-name.dirty")).not.toBeNull(),
-    );
+    await vi.waitFor(() => expect(activeTabDirty(container)).not.toBeNull());
 
     // Closing the editor of a dirty doc warns; cancelling keeps it editable.
     await fireEvent.click(closeEditor(container));
@@ -785,7 +757,7 @@ describe("App", () => {
       expect(container.querySelector(".cm-content")).toBeNull(),
     );
     expect(container.querySelector("svg.tab")).not.toBeNull();
-    expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+    expect(activeTabDirty(container)).not.toBeNull();
 
     // Closing the render is now the last view of a still-dirty doc: a final
     // discard prompt, after which the document is gone for good.
@@ -955,9 +927,8 @@ describe("App", () => {
         "instrument guitar",
       );
     });
-    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-      "untitled •",
-    );
+    expect(activeTabName(container)).toBe("untitled");
+    expect(activeTabDirty(container)).not.toBeNull();
     // The default document is still open alongside it (two editor tabs), with no
     // discard prompt — New never replaces the current doc.
     const editorTabs = [...container.querySelectorAll(".tab-icon")].filter(
@@ -977,13 +948,13 @@ describe("App", () => {
 
     await fireEvent.keyDown(content, { key: "Tab" });
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name.dirty")).not.toBeNull();
+      expect(activeTabDirty(container)).not.toBeNull();
     });
 
     // Undoing the edit returns the buffer to the baseline, so it is clean again.
     await fireEvent.keyDown(content, { key: "z", ctrlKey: true });
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name.dirty")).toBeNull();
+      expect(activeTabDirty(container)).toBeNull();
     });
   });
 
@@ -1083,9 +1054,7 @@ describe("App", () => {
 
     await fireEvent.click(screen.getByLabelText("Open"));
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "tune.ctab",
-      );
+      expect(activeTabName(container)).toBe("tune.ctab");
     });
 
     // The dock shows the entry (active) and the sibling lib, headed by the
@@ -1117,25 +1086,22 @@ describe("App", () => {
     ).toEqual(["untitled"]);
     expect(container.querySelectorAll(".dock .dot")).toHaveLength(0);
 
-    // A New draft joins the dock and is dirty from birth (its row + the topbar
-    // both carry the unsaved dot).
+    // A New draft joins the dock and is dirty from birth (its dock row + its
+    // active tab both carry the unsaved dot).
     await fireEvent.click(getAllByLabelText("New tab")[0]);
     await fireEvent.click(screen.getByText("Guitar (standard)"));
     await vi.waitFor(() => {
       expect(container.querySelectorAll(".dock .file-name")).toHaveLength(2);
     });
     expect(container.querySelectorAll(".dock .dot")).toHaveLength(1);
-    expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-      "untitled •",
-    );
+    expect(activeTabName(container)).toBe("untitled");
+    expect(activeTabDirty(container)).not.toBeNull();
 
-    // Clicking the clean starter row in the dock refocuses it — the topbar's
-    // active doc (and its dot) follow.
+    // Clicking the clean starter row in the dock refocuses it — the active doc
+    // (and its tab dot) follow.
     await fireEvent.click(container.querySelector(".dock .file")!);
     await vi.waitFor(() => {
-      expect(container.querySelector(".doc-name")?.textContent?.trim()).toBe(
-        "untitled",
-      );
+      expect(activeTabName(container)).toBe("untitled");
     });
   });
 
