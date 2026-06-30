@@ -22,6 +22,13 @@
   --bg-panel: #f3f4f6; /* dock, side panels */
   --bg-editor: #ffffff; /* editor + render surface */
 
+  /* Floating popups/menus (export, new-file, context, completion, diagnostics)
+     ride the topmost --bg-chrome surface so they read as elevated above the
+     editor and dock, lifted by a subtle *dark* drop shadow (T7.34d). The dark
+     theme needs a deeper alpha to register over its near-black editor; the old
+     warm `--fg`-tinted shadow painted a glow halo there instead. */
+  --shadow-popup: 0 4px 12px color-mix(in srgb, #000 18%, transparent);
+
   /* Syntax-highlighting palette (T7.31): a muted two-tone scheme — desaturated
      blue for structure (keywords + operators), warm tan for numbers — plus a
      muted green for strings and a gray for comments. Idents/punctuation stay
@@ -47,6 +54,7 @@
     --bg-chrome: #313337;
     --bg-panel: #1f2126;
     --bg-editor: #0e1015;
+    --shadow-popup: 0 4px 12px color-mix(in srgb, #000 50%, transparent);
     --muted: #8a8986;
     --accent: #e08a3c;
     --error: #f0857a;
@@ -67,6 +75,7 @@
   --bg-chrome: #eceef2;
   --bg-panel: #f3f4f6;
   --bg-editor: #ffffff;
+  --shadow-popup: 0 4px 12px color-mix(in srgb, #000 18%, transparent);
   --muted: #5f5f5f;
   --accent: #b4540a;
   --error: #e45649;
@@ -84,6 +93,7 @@
   --bg-chrome: #313337;
   --bg-panel: #1f2126;
   --bg-editor: #0e1015;
+  --shadow-popup: 0 4px 12px color-mix(in srgb, #000 50%, transparent);
   --muted: #8a8986;
   --accent: #e08a3c;
   --error: #f0857a;

@@ -234,11 +234,11 @@ const diagnosticTheme = EditorView.baseTheme({
 // need no WKWebView prefixing. Mirrors the completion popup's chrome.
 const diagnosticTooltipTheme = EditorView.theme({
   ".cm-tooltip.cm-tooltip-hover": {
-    background: "var(--bg)",
+    background: "var(--bg-chrome)",
     color: "var(--fg)",
     border: "1px solid var(--border)",
     borderRadius: "0.4rem",
-    boxShadow: "0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent)",
+    boxShadow: "var(--shadow-popup)",
     overflow: "hidden",
   },
   ".cm-diag-tooltip": {

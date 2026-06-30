@@ -171,15 +171,17 @@ export function completionSource(
 }
 
 // Theme the completion popup to the app's semantic tokens so it matches the
-// editor surface (and the topbar menu) on every theme, rather than CodeMirror's
-// default chrome. The tooltip inherits the `--*` cascade, so `var(...)` resolves
-// to the active theme; backgrounds/borders need no WKWebView prefixing.
+// other elevated popups (export/context menus) on every theme, rather than
+// CodeMirror's default chrome: the elevated --bg-chrome surface lifted by the
+// shared --shadow-popup (T7.34d). The tooltip inherits the `--*` cascade, so
+// `var(...)` resolves to the active theme; backgrounds/borders need no WKWebView
+// prefixing.
 const completionTheme = EditorView.theme({
   ".cm-tooltip.cm-tooltip-autocomplete": {
-    background: "var(--bg)",
+    background: "var(--bg-chrome)",
     border: "1px solid var(--border)",
     borderRadius: "0.4rem",
-    boxShadow: "0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent)",
+    boxShadow: "var(--shadow-popup)",
     overflow: "hidden",
   },
   ".cm-tooltip-autocomplete > ul": {

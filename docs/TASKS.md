@@ -651,8 +651,10 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         already names the file). *(NOTES #13. Done — `.brand` block + `dirty` derived removed, topbar
         right-aligned; App.test.ts migrated from `.doc-name` to active-tab observables. Removing the brand
         surfaced the "what now holds Save/Export/Preview" question → see T7.45.)*
-  - [ ] T7.34d — **Popup de-glow.** Remove the glow/drop-shadow backgrounds on popups (diagnostics,
-        new-file, export menu, completion) to fit the flat, layered look. *(NOTES #4.)*
+  - [x] T7.34d — **Popup de-glow.** Remove the glow/drop-shadow backgrounds on popups (diagnostics,
+        new-file, export menu, completion) to fit the flat, layered look. *(NOTES #4. Done — see DESIGN
+        changelog; warm-fg glow → shared `--shadow-popup` (#000-based), all popups onto elevated
+        `--bg-chrome`. User picked the elevated surface against the rsvg mockups.)*
   - [ ] T7.34e — **Editor selection/highlight colour.** The CodeMirror selection reads as a harsh white
         that clashes; re-key it to the theme. *(NOTES #15.)*
   - [ ] T7.34f — **Tooltip overhaul.** Bold title + optional smaller description + the element's keyboard

@@ -1511,10 +1511,10 @@ score {
     flex-direction: column;
     min-width: 9rem;
     padding: 0.25rem;
-    background: var(--bg);
+    background: var(--bg-chrome);
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent);
+    box-shadow: var(--shadow-popup);
   }
   .menu-item {
     border: none;

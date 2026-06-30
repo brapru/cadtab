@@ -28,6 +28,10 @@ function block(anchor: string): string {
 
 const ELEVATION = ["--bg-chrome", "--bg-panel", "--bg-editor"];
 
+// The popup drop-shadow token (T7.34d) must exist in every block too — popups
+// reference it for elevation, and a missing block falls back to no shadow.
+const SHADOW = "--shadow-popup";
+
 describe("elevation tokens", () => {
   for (const [name, anchor] of Object.entries(BLOCKS)) {
     it(`defines the full elevation stack in the ${name} block`, () => {
@@ -37,6 +41,24 @@ describe("elevation tokens", () => {
       }
     });
   }
+
+  for (const [name, anchor] of Object.entries(BLOCKS)) {
+    it(`defines the popup shadow token in the ${name} block`, () => {
+      expect(block(anchor)).toContain(`${SHADOW}:`);
+    });
+  }
+
+  it("uses a dark (not warm-fg) popup shadow on the dark blocks", () => {
+    // The pre-T7.34d shadow was `var(--fg) N%` — a warm light halo on the dark
+    // ground. The de-glowed shadow is #000-based.
+    for (const name of ["prefers dark", "forced dark"] as const) {
+      const shadow = block(BLOCKS[name]).match(
+        /--shadow-popup:\s*([^;]+);/,
+      )![1];
+      expect(shadow).toContain("#000");
+      expect(shadow).not.toContain("--fg");
+    }
+  });
 
   it("steps each dark block chrome -> panel -> editor by darkening", () => {
     // The dark grounds darken toward the editing surface: chrome is the

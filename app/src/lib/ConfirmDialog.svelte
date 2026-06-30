@@ -136,8 +136,10 @@
     padding: 1.1rem 1.2rem;
     border: 1px solid var(--border);
     border-radius: 0.5rem;
-    background: var(--bg);
+    background: var(--bg-chrome);
     color: var(--fg);
+    /* A heavier lift than --shadow-popup: a centred modal over the dim backdrop
+       reads as the topmost surface (T7.34d). */
     box-shadow: 0 0.5rem 1.5rem color-mix(in srgb, #000 30%, transparent);
   }
   .message {

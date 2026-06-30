@@ -63,11 +63,11 @@
     max-height: 16rem;
     display: flex;
     flex-direction: column;
-    background: var(--bg);
+    background: var(--bg-chrome);
     color: var(--fg);
     border: 1px solid var(--border);
     border-radius: 0.4rem;
-    box-shadow: 0 6px 18px color-mix(in srgb, var(--fg) 18%, transparent);
+    box-shadow: var(--shadow-popup);
     overflow: hidden;
     font-size: 0.75rem;
   }
