@@ -223,6 +223,14 @@ score {
     return doc ? isDirty(doc) : false;
   }
 
+  // Whether a doc compiles to laid-out content worth previewing — at least one
+  // system. True for scores *and* def-libraries (their definitions render to
+  // systems too), false for an empty or error-only doc. Gates the tab group's
+  // preview launcher (T7.43).
+  function previewable(id: string): boolean {
+    return (results[id]?.renderTree.systems.length ?? 0) > 0;
+  }
+
   // One latest-wins compiler per document, so interleaved compiles never clobber
   // each other's render.
   const compilers: Record<string, ReturnType<typeof createLiveCompiler>> = {};
@@ -486,11 +494,6 @@ score {
       workspace = addTab(workspace, viewInstance(type, docId), group);
     }
     focusDoc(docId);
-  }
-
-  // The active document's print preview, from the topbar Preview button.
-  function openPreview() {
-    if (active) openViewFor(active.id, "preview");
   }
 
   // Open (or focus) the Help tab from the bottom bar (T7.29). A global singleton:
@@ -1271,14 +1274,6 @@ score {
         <Icon name="save" size={18} />
       </button>
       <span class="sep" aria-hidden="true"></span>
-      <button
-        class="icon-btn"
-        onclick={openPreview}
-        aria-label="Preview"
-        use:tooltip={"Open the print preview (final light output)"}
-      >
-        <Icon name="preview" size={18} />
-      </button>
       <div class="export-wrap">
         <button
           class="icon-btn"
@@ -1339,9 +1334,11 @@ score {
       {missingDocIds}
       {docName}
       {docDirty}
+      {previewable}
       onActivateView={focusView}
       onCloseTab={closeView}
       onOpenRender={openRender}
+      onOpenPreview={(docId) => openViewFor(docId, "preview")}
       onNew={newFromTemplate}
       newTemplates={TEMPLATES}
       onFit={fitRender}

@@ -964,7 +964,12 @@ describe("App", () => {
       expect(container.querySelector("svg.tab")).not.toBeNull(),
     );
 
-    await fireEvent.click(screen.getByLabelText("Preview"));
+    // Preview now launches from the tab group (T7.43), offered for score docs —
+    // the starter is a score, so the launcher is present once it compiles.
+    await vi.waitFor(() =>
+      expect(screen.getByLabelText("Open preview")).toBeTruthy(),
+    );
+    await fireEvent.click(screen.getByLabelText("Open preview"));
 
     // A Preview tab appears and renders the export SVG on a white sheet. Tabs
     // label by filename now (D49); the "preview" icon marks the preview view.

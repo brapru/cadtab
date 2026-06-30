@@ -432,6 +432,40 @@ describe("Workspace chrome", () => {
     expect(container.querySelectorAll(".launch")).toHaveLength(1);
   });
 
+  it("puts a preview launcher beside the render one for a previewable editor doc", async () => {
+    const onOpenPreview = vi.fn();
+    const { getByLabelText } = render(Workspace, {
+      workspace: closeTab(defaultWorkspace("doc"), "render:doc"), // g1 [editor]
+      view: stubView,
+      previewable: () => true,
+      onOpenPreview,
+    });
+    await fireEvent.click(getByLabelText("Open preview"));
+    expect(onOpenPreview).toHaveBeenCalledWith("doc");
+  });
+
+  it("hides the preview launcher when the active doc has nothing to preview", () => {
+    const { queryByLabelText } = render(Workspace, {
+      workspace: closeTab(defaultWorkspace("doc"), "render:doc"), // g1 [editor]
+      view: stubView,
+      previewable: () => false,
+    });
+    expect(queryByLabelText("Open preview")).toBeNull();
+  });
+
+  it("marks the preview launcher as jump-to when the preview is already open", () => {
+    // Editor active in g1; a preview tab open in g2 — the launcher reads jump-to.
+    let ws = defaultWorkspace("doc");
+    ws = addTab(ws, instance("preview", "doc"), ws.groups[1].id);
+    const { getByLabelText, queryByLabelText } = render(Workspace, {
+      workspace: ws,
+      view: stubView,
+      previewable: () => true,
+    });
+    expect(getByLabelText("Go to preview")).toBeTruthy();
+    expect(queryByLabelText("Open preview")).toBeNull();
+  });
+
   it("opens the New template menu and reports the chosen template", async () => {
     const onNew = vi.fn();
     const { getAllByLabelText, getByText, container } = render(Workspace, {

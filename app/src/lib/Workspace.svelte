@@ -25,9 +25,11 @@
     missingDocIds = [],
     docName,
     docDirty,
+    previewable,
     onActivateView,
     onCloseTab,
     onOpenRender,
+    onOpenPreview,
     onNew,
     newTemplates = [],
     onFit,
@@ -44,9 +46,14 @@
     // Whether a doc has unsaved changes — drives the tab's edited-dot, shown
     // just left of the filename (every view of a dirty doc carries it).
     docDirty?: (docId: string) => boolean;
+    // Whether a doc has laid-out content worth previewing (compiles to systems —
+    // scores and def-libraries alike, but not empty/error docs). Gates the
+    // preview launcher (T7.43).
+    previewable?: (docId: string) => boolean;
     onActivateView?: (instance: ViewInstance) => void;
     onCloseTab?: (instance: ViewInstance) => void;
     onOpenRender?: (docId: string) => void;
+    onOpenPreview?: (docId: string) => void;
     onNew?: (templateId: string) => void;
     newTemplates?: readonly { id: string; label: string }[];
     onFit?: () => void;
@@ -349,6 +356,22 @@
               >
                 <Icon name="music_note" size={16} fill={open} />
               </button>
+              {#if active.docId !== null && previewable?.(active.docId)}
+                {@const previewing = hasView("preview", active.docId)}
+                <!-- Print preview launcher, offered only for score docs (T7.43);
+                     moved here from the topbar. Open/jump-to like the render. -->
+                <button
+                  class="launch"
+                  class:open={previewing}
+                  aria-label={previewing ? "Go to preview" : "Open preview"}
+                  use:tooltip={previewing
+                    ? "Go to print preview"
+                    : "Open print preview (final light output)"}
+                  onclick={() => active?.docId && onOpenPreview?.(active.docId)}
+                >
+                  <Icon name="preview" size={16} fill={previewing} />
+                </button>
+              {/if}
             {/if}
             {#if active?.type === "render"}
               <!-- Fit resets zoom to fill the pane width. Shown when this group
