@@ -640,11 +640,13 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
       toolbar, gutter, panels, dock / tabs / bottom bar, the iconified controls + tooltips (T7.10/T7.14),
       and the open/save/export controls. The subtasks sequence it foundation-first; sampled targets in
       the DESIGN changelog (elevation stack, offset-white text).
-  - [ ] T7.34a — **Palette & elevation foundation.** The bedrock everything reads against: the
+  - [x] T7.34a — **Palette & elevation foundation.** The bedrock everything reads against: the
         chrome→dock→editor elevation stack (sampled `#313337`→`#1F2126`→`#0E1015`), offset-white text in
-        editor *and* render (not true white), and thinner dividers. *(NOTES #14.)*
-  - [ ] T7.34b — **Tab strip restyle.** Drop the orange top accent bar; inactive tabs a shade lighter,
-        the active tab darker (Zed-style). *(NOTES #12.)*
+        editor *and* render (not true white), and thinner dividers. *(NOTES #14. Done — see DESIGN
+        changelog; warm offset-white `#bfbdb6` + warm muted `#8a8986`, tab bar at panel level.)*
+  - [x] T7.34b — **Tab strip restyle.** Drop the orange top accent bar; inactive tabs a shade lighter,
+        the active tab darker (Zed-style). *(NOTES #12. Done — folded into T7.34a: active tab drops to the
+        editor surface `#0E1015`, accent bar dropped, inactive tabs flush at panel with muted labels.)*
   - [ ] T7.34c — **Topbar declutter.** Remove the redundant "cadtab" + open-filename line (the tab strip
         already names the file). *(NOTES #13.)*
   - [ ] T7.34d — **Popup de-glow.** Remove the glow/drop-shadow backgrounds on popups (diagnostics,

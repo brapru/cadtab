@@ -248,7 +248,7 @@
     flex-direction: column;
     min-height: 0;
     border-right: 1px solid var(--border);
-    background: var(--bg);
+    background: var(--bg-panel);
     overflow: hidden;
   }
   .dock-header {

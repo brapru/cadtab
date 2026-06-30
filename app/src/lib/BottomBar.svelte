@@ -190,7 +190,7 @@
     height: 1.7rem;
     padding: 0 0.4rem;
     border-top: 1px solid var(--border);
-    background: var(--bg);
+    background: var(--bg-chrome);
     color: var(--muted);
     font-size: 0.72rem;
     line-height: 1;

@@ -1445,7 +1445,10 @@ score {
     overflow: hidden;
     margin: 0;
     font-family: system-ui, sans-serif;
-    background: var(--bg);
+    /* The shell ground is the editor surface — the deepest elevation step.
+       Transparent panes (render/preview) show through to it; the editor paints
+       its own matching ground (Editor.svelte). Chrome and dock paint over it. */
+    background: var(--bg-editor);
     color: var(--fg);
   }
   .topbar {
@@ -1454,6 +1457,7 @@ score {
     justify-content: space-between;
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--border);
+    background: var(--bg-chrome);
   }
   .brand {
     display: flex;

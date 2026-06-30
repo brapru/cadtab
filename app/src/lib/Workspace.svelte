@@ -439,6 +439,9 @@
     align-items: stretch;
     border-bottom: 1px solid var(--border);
     min-height: 2rem;
+    /* The tab strip sits at panel level with the dock — the active tab drops to
+       the editor surface and inactive tabs stay at this panel tone (T7.34b). */
+    background: var(--bg-panel);
   }
   /* The empty strip space after the tabs (before the controls); it grows to push
      the controls to the right. */
@@ -478,12 +481,12 @@
     /* Pointer-driven drag: keep touch gestures from scrolling mid-drag. */
     touch-action: none;
   }
-  /* The active tab is clearly set apart: a stronger tint across the whole cell,
-     an accent bar along its top edge, and full-strength label text (inactive
-     tabs stay muted on transparent). */
+  /* The active tab drops to the editor surface so it reads as cut out of the
+     panel-tone strip and continuous with the editor below (Zed-style) — no top
+     accent bar. Inactive tabs stay flush with the strip (transparent panel) and
+     keep muted label text; the active tab gets full-strength ink. */
   .tab-wrap.active {
-    background: color-mix(in srgb, var(--fg) 12%, transparent);
-    box-shadow: inset 0 2px 0 var(--accent);
+    background: var(--bg-editor);
   }
   .tab-wrap.active .tab {
     color: var(--fg);

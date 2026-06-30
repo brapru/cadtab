@@ -3,14 +3,24 @@
 
   /* Semantic theme tokens (light defaults). The app chrome, render, and editor
      all reference these so a single switch re-themes everything. */
-  --bg: #ffffff;
+  --bg: #f3f4f6;
   --fg: #1a1a1a;
   --muted: #5f5f5f;
   --accent: #b4540a;
   --error: #e45649;
   --warning: #c18401;
   --info: #4078f2;
-  --border: color-mix(in srgb, var(--fg) 15%, transparent);
+  --border: color-mix(in srgb, var(--fg) 11%, transparent);
+
+  /* Elevation stack (T7.34a): three surfaces stepping from the outer chrome
+     toward the editing surface. On the dark ground each step *darkens* toward
+     the editor so the eye settles on the content (Zed-style); the light theme
+     inverts the direction — the editor is the cleanest/brightest surface and
+     the chrome a touch greyer. --bg is the neutral mid (panel) level, kept as
+     the fallback for popups/menus/dialogs until they migrate (T7.34d). */
+  --bg-chrome: #eceef2; /* topbar, tab strip, bottom bar */
+  --bg-panel: #f3f4f6; /* dock, side panels */
+  --bg-editor: #ffffff; /* editor + render surface */
 
   /* Syntax-highlighting palette (T7.31): a muted two-tone scheme — desaturated
      blue for structure (keywords + operators), warm tan for numbers — plus a
@@ -32,9 +42,12 @@
 /* System dark mode, unless the user has forced light. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #1e1e1e;
-    --fg: #e6e6e6;
-    --muted: #9a9a9a;
+    --bg: #1f2126;
+    --fg: #bfbdb6;
+    --bg-chrome: #313337;
+    --bg-panel: #1f2126;
+    --bg-editor: #0e1015;
+    --muted: #8a8986;
     --accent: #e08a3c;
     --error: #f0857a;
     --warning: #d6a23a;
@@ -49,8 +62,11 @@
 
 /* Explicit overrides win regardless of OS preference. */
 :root[data-theme="light"] {
-  --bg: #ffffff;
+  --bg: #f3f4f6;
   --fg: #1a1a1a;
+  --bg-chrome: #eceef2;
+  --bg-panel: #f3f4f6;
+  --bg-editor: #ffffff;
   --muted: #5f5f5f;
   --accent: #b4540a;
   --error: #e45649;
@@ -63,9 +79,12 @@
   --select: #3f6e96;
 }
 :root[data-theme="dark"] {
-  --bg: #1e1e1e;
-  --fg: #e6e6e6;
-  --muted: #9a9a9a;
+  --bg: #1f2126;
+  --fg: #bfbdb6;
+  --bg-chrome: #313337;
+  --bg-panel: #1f2126;
+  --bg-editor: #0e1015;
+  --muted: #8a8986;
   --accent: #e08a3c;
   --error: #f0857a;
   --warning: #d6a23a;

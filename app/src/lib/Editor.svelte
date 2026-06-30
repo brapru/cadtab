@@ -114,7 +114,7 @@
         // Bind the editor surface to the app's semantic theme tokens so it
         // re-themes (background, caret, selection) with everything else.
         EditorView.theme({
-          "&": { backgroundColor: "var(--bg)", color: "var(--fg)" },
+          "&": { backgroundColor: "var(--bg-editor)", color: "var(--fg)" },
           ".cm-cursor, .cm-dropCursor": { borderLeftColor: "var(--fg)" },
           // The active line wears a faint accent tick at its left edge rather
           // than a full-width fill (T7.31), so the row reads without washing out
@@ -127,7 +127,7 @@
           // Line-number gutter: themed muted numbers on the editor background,
           // with a divider rule separating it from the code text.
           ".cm-gutters": {
-            backgroundColor: "var(--bg)",
+            backgroundColor: "var(--bg-editor)",
             color: "var(--muted)",
             borderRight: "1px solid var(--border)",
           },
