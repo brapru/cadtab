@@ -174,10 +174,14 @@
           // Text selection rides the calm --select blue (the T7.32 "selected"
           // token the render painter uses for the cursor<->render highlight),
           // not the warm --accent — so a selection reads as *selected* rather
-          // than washing the notation in accent (T7.34e).
+          // than washing the notation in accent (T7.34e). `!important` is
+          // required: CodeMirror's built-in `&light.cm-focused … ` selection
+          // rule (#d7d4f0 — a pale near-white) is higher-specificity and always
+          // matches (the editor is CM's "light" mode; the app themes via CSS
+          // vars CM can't see), so a plain override never wins while focused.
           ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": {
             backgroundColor:
-              "color-mix(in srgb, var(--select) 30%, transparent)",
+              "color-mix(in srgb, var(--select) 30%, transparent) !important",
           },
         }),
         syntaxHighlighting,
