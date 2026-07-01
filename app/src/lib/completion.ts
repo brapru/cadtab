@@ -1,14 +1,20 @@
-import { StateField, StateEffect } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { StateField, StateEffect, EditorSelection } from "@codemirror/state";
+import {
+  EditorView,
+  ViewPlugin,
+  Decoration,
+  WidgetType,
+  type DecorationSet,
+  type ViewUpdate,
+} from "@codemirror/view";
 import {
   autocompletion,
   acceptCompletion,
-  snippetCompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
 } from "@codemirror/autocomplete";
-import type { Completions, KeywordInfo } from "./types";
+import type { Completions } from "./types";
 
 export { acceptCompletion };
 
@@ -42,14 +48,13 @@ export const completionEnabledField = StateField.define<boolean>({
 });
 
 // A planned candidate, independent of CodeMirror so the logic stays unit-
-// testable. `kind` picks the affordance; `snippet`, when set, is a snippet
-// template inserted instead of the bare label (operand hints insert a
-// placeholder the user then overtypes).
+// testable. `kind` picks the affordance. (The single quoted-placeholder hint for
+// a string operand is not a popup candidate — it renders as inline ghost text;
+// see `operandGhost` + `operandGhostPlugin`, T7.34g.)
 export interface Candidate {
   label: string;
-  kind: "keyword" | "value" | "identifier" | "operand";
+  kind: "keyword" | "value" | "identifier";
   detail?: string;
-  snippet?: string;
 }
 
 export interface CompletionPlan {
@@ -71,7 +76,7 @@ const OPERAND_SLOT = /^\s*([a-z]+)[ \t]+([A-Za-z_]\w*|)$/;
 // The bare word immediately before the cursor, for general name completion.
 const TRAILING_WORD = /([A-Za-z_]\w*)?$/;
 
-// The placeholder shown inside the inserted quotes for a string directive
+// The placeholder shown inside the quotes for a string directive
 // (`title "Title"`), keyed off the keyword so the hint reads naturally.
 const STRING_PLACEHOLDER: Record<string, string> = {
   title: "Title",
@@ -79,17 +84,6 @@ const STRING_PLACEHOLDER: Record<string, string> = {
   capo: "Capo",
   import: "file.ctab",
 };
-
-function operandHint(kw: KeywordInfo): Candidate {
-  const placeholder = STRING_PLACEHOLDER[kw.name] ?? "value";
-  return {
-    label: `"${placeholder}"`,
-    kind: "operand",
-    detail: `${kw.name} operand`,
-    // A snippet field (`${Title}`) so the inserted placeholder lands selected.
-    snippet: `"\${${placeholder}}"`,
-  };
-}
 
 // The completion candidates for a cursor, given the text on its line up to the
 // cursor and the document's vocabulary. Pure: the CodeMirror adapter turns the
@@ -110,7 +104,9 @@ export function planCompletions(
       };
     }
     if (kw && kw.operand === "string") {
-      return { position: "operand", partial, candidates: [operandHint(kw)] };
+      // The quoted-placeholder hint is inline ghost text (operandGhost), not a
+      // popup candidate (T7.34g) — so the popup stays out of the way here.
+      return { position: "operand", partial, candidates: [] };
     }
     // A number operand (`tempo 120`) or a structural keyword (`score {`) has no
     // list to offer; suppress completion rather than mis-offer names.
@@ -129,17 +125,28 @@ export function planCompletions(
   return { position: "general", partial: word, candidates };
 }
 
-// Map a neutral candidate to a CodeMirror completion. Operand hints insert a
-// snippet (placeholder selected); the rest insert their label, typed by kind so
-// the popup shows a sensible icon.
-function toCompletion(c: Candidate): Completion {
-  if (c.kind === "operand" && c.snippet) {
-    return snippetCompletion(c.snippet, {
-      label: c.label,
-      type: "text",
-      detail: c.detail,
-    });
+// The inline ghost hint for a string-operand slot: the placeholder to show (and,
+// on Tab, insert) once `<keyword><space>` is typed with nothing after it — e.g.
+// `title ` → `Title` (rendered `"Title"`). Null anywhere else: a partial already
+// typed, a non-string operand, or a non-keyword. Pure, so it unit-tests without
+// CodeMirror; the ViewPlugin and the accept command both consult it.
+export function operandGhost(
+  lineBefore: string,
+  vocab: Completions,
+): string | null {
+  const slot = OPERAND_SLOT.exec(lineBefore);
+  if (!slot) return null;
+  const kw = vocab.keywords.find((k) => k.name === slot[1]);
+  const partial = slot[2];
+  if (kw && kw.operand === "string" && partial === "") {
+    return STRING_PLACEHOLDER[kw.name] ?? "value";
   }
+  return null;
+}
+
+// Map a neutral candidate to a CodeMirror completion, typed by kind so the popup
+// shows a sensible icon.
+function toCompletion(c: Candidate): Completion {
   const type =
     c.kind === "keyword" ? "keyword" : c.kind === "value" ? "enum" : "function";
   return { label: c.label, type, detail: c.detail };
@@ -213,7 +220,96 @@ const completionTheme = EditorView.theme({
     opacity: "0.8",
     marginRight: "0.4rem",
   },
+  // Inline operand ghost text (T7.34g): a dimmed placeholder after the caret,
+  // muted and faint so it reads as a transient hint, not real content.
+  ".cm-operand-ghost": {
+    color: "var(--muted)",
+    opacity: "0.65",
+  },
 });
+
+// The widget drawn after the caret for an operand ghost hint (e.g. `"Title"`).
+class GhostHintWidget extends WidgetType {
+  constructor(readonly text: string) {
+    super();
+  }
+  eq(other: GhostHintWidget) {
+    return other.text === this.text;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = "cm-operand-ghost";
+    span.textContent = this.text;
+    return span;
+  }
+  // Purely decorative — never intercept the editor's own events.
+  ignoreEvent() {
+    return true;
+  }
+}
+
+// Compute the ghost-hint decoration set for the current cursor: a single widget
+// after the caret when the caret is a bare cursor at the end of an empty string-
+// operand slot and completions are enabled. Empty otherwise.
+function ghostDecorations(view: EditorView): DecorationSet {
+  const enabled = view.state.field(completionEnabledField, false) ?? true;
+  if (!enabled) return Decoration.none;
+  const sel = view.state.selection.main;
+  if (!sel.empty) return Decoration.none;
+  const line = view.state.doc.lineAt(sel.head);
+  // Only at the line's end — a hint mid-line would collide with real text.
+  if (sel.head !== line.to) return Decoration.none;
+  const before = line.text.slice(0, sel.head - line.from);
+  const vocab = view.state.field(completionsField, false) ?? emptyCompletions;
+  const placeholder = operandGhost(before, vocab);
+  if (!placeholder) return Decoration.none;
+  const widget = Decoration.widget({
+    widget: new GhostHintWidget(`"${placeholder}"`),
+    side: 1,
+  });
+  return Decoration.set([widget.range(sel.head)]);
+}
+
+// The ViewPlugin that keeps the ghost decoration in sync with the cursor. The
+// check is a cheap single-line scan, so it just recomputes on every update.
+export const operandGhostPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+    constructor(view: EditorView) {
+      this.decorations = ghostDecorations(view);
+    }
+    update(u: ViewUpdate) {
+      this.decorations = ghostDecorations(u.view);
+    }
+  },
+  { decorations: (v) => v.decorations },
+);
+
+// Tab command: if an operand ghost is showing, insert its quoted placeholder
+// with the placeholder text selected (so the user overtypes it) and consume the
+// key; otherwise return false so Tab falls through (to `acceptCompletion`, then
+// indentation). Mirrors the old snippet-insert, now driven by the ghost.
+export function acceptOperandGhost(view: EditorView): boolean {
+  const enabled = view.state.field(completionEnabledField, false) ?? true;
+  if (!enabled) return false;
+  const sel = view.state.selection.main;
+  if (!sel.empty) return false;
+  const line = view.state.doc.lineAt(sel.head);
+  if (sel.head !== line.to) return false;
+  const before = line.text.slice(0, sel.head - line.from);
+  const vocab = view.state.field(completionsField, false) ?? emptyCompletions;
+  const placeholder = operandGhost(before, vocab);
+  if (!placeholder) return false;
+  const from = sel.head;
+  const inner = from + 1; // inside the opening quote
+  view.dispatch({
+    changes: { from, insert: `"${placeholder}"` },
+    selection: EditorSelection.range(inner, inner + placeholder.length),
+    scrollIntoView: true,
+    userEvent: "input.complete",
+  });
+  return true;
+}
 
 // The editor extension: the vocabulary field plus autocompletion driven solely
 // by our core-sourced candidates. Tab-to-accept is wired in the editor's keymap
@@ -222,6 +318,7 @@ export const completion = [
   completionsField,
   completionEnabledField,
   completionTheme,
+  operandGhostPlugin,
   autocompletion({
     override: [completionSource],
     activateOnTyping: true,

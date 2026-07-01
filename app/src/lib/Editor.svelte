@@ -29,6 +29,7 @@
     setCompletions,
     setCompletionEnabled,
     acceptCompletion,
+    acceptOperandGhost,
     emptyCompletions,
   } from "./completion";
   import type { Token, Diagnostic, Completions } from "./types";
@@ -99,15 +100,17 @@
         drawSelection(),
         dropCursor(),
         highlightActiveLine(),
-        // Tab accepts an open completion (T7.24), else inserts indentation
-        // rather than moving focus out; Cmd/Ctrl-L selects the whole line (Mod
-        // maps to Cmd on macOS, Ctrl elsewhere). The accept binding precedes
-        // `indentWithTab`, and is a no-op when no completion is open.
+        // Tab accepts an open completion (T7.24), else an inline operand ghost
+        // hint (T7.34g), else inserts indentation rather than moving focus out;
+        // Cmd/Ctrl-L selects the whole line (Mod maps to Cmd on macOS, Ctrl
+        // elsewhere). Each accept binding precedes `indentWithTab` and is a
+        // no-op (falls through) when its affordance isn't showing.
         keymap.of([
           ...defaultKeymap,
           ...historyKeymap,
           ...foldKeymap,
           { key: "Tab", run: acceptCompletion },
+          { key: "Tab", run: acceptOperandGhost },
           indentWithTab,
           { key: "Mod-l", run: selectLine },
         ]),

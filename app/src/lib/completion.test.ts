@@ -1,9 +1,13 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import { CompletionContext } from "@codemirror/autocomplete";
 import type { Completions } from "./types";
 import {
   planCompletions,
+  operandGhost,
+  acceptOperandGhost,
+  completion as completionExtension,
   completionSource,
   completionsField,
   completionEnabledField,
@@ -52,14 +56,12 @@ describe("planCompletions", () => {
     expect(labels(partial.candidates)).toEqual(["banjo", "guitar"]);
   });
 
-  it("hints a quoted placeholder for a string operand", () => {
+  it("suppresses the popup for a string operand (it becomes ghost text)", () => {
+    // The quoted-placeholder hint moved to inline ghost text (T7.34g), so the
+    // popup offers nothing in a string-operand slot.
     const plan = planCompletions("title ", vocab);
     expect(plan.position).toBe("operand");
-    expect(plan.candidates).toHaveLength(1);
-    const [hint] = plan.candidates;
-    expect(hint.kind).toBe("operand");
-    expect(hint.label).toBe('"Title"');
-    expect(hint.snippet).toBe('"${Title}"');
+    expect(plan.candidates).toHaveLength(0);
   });
 
   it("suppresses completion for a number operand", () => {
@@ -96,6 +98,91 @@ describe("planCompletions", () => {
     const plan = planCompletions("notakeyword ", vocab);
     expect(plan.position).toBe("general");
     expect(plan.candidates.length).toBeGreaterThan(0);
+  });
+});
+
+describe("operandGhost", () => {
+  it("returns the named placeholder for an empty string-operand slot", () => {
+    expect(operandGhost("title ", vocab)).toBe("Title");
+    expect(operandGhost("  title ", vocab)).toBe("Title"); // leading indent ok
+  });
+
+  it("falls back to a generic placeholder for an unnamed string keyword", () => {
+    const v: Completions = {
+      keywords: [{ name: "artist", operand: "string", values: [] }],
+      identifiers: [],
+    };
+    expect(operandGhost("artist ", v)).toBe("value");
+  });
+
+  it("disappears once the operand is being typed", () => {
+    expect(operandGhost("title Ti", vocab)).toBeNull();
+  });
+
+  it("is null before the space (still the keyword itself)", () => {
+    expect(operandGhost("title", vocab)).toBeNull();
+  });
+
+  it("is null for value-set, number, and structural operands", () => {
+    expect(operandGhost("instrument ", vocab)).toBeNull();
+    expect(operandGhost("tempo ", vocab)).toBeNull();
+    expect(operandGhost("score ", vocab)).toBeNull();
+  });
+
+  it("is null outside any keyword's operand slot", () => {
+    expect(operandGhost("notakeyword ", vocab)).toBeNull();
+  });
+});
+
+describe("operand ghost decoration + Tab accept", () => {
+  const views: EditorView[] = [];
+  function view(doc: string): EditorView {
+    const v = new EditorView({
+      doc,
+      selection: { anchor: doc.length }, // caret at end of line
+      // The full editor completion stack (fields + theme + ghost plugin +
+      // autocompletion), so this exercises the real composition, not just the
+      // plugin in isolation.
+      extensions: [completionExtension],
+      parent: document.body,
+    });
+    v.dispatch({ effects: setCompletions.of(vocab) });
+    views.push(v);
+    return v;
+  }
+  const ghost = (v: EditorView) => v.dom.querySelector(".cm-operand-ghost");
+
+  afterEach(() => {
+    for (const v of views.splice(0)) v.destroy();
+    document.body.innerHTML = "";
+  });
+
+  it("draws a ghost placeholder after the caret in an empty string slot", () => {
+    expect(ghost(view("title "))?.textContent).toBe('"Title"');
+  });
+
+  it("shows no ghost once typed, or for a value-set slot", () => {
+    expect(ghost(view("title Ti"))).toBeNull();
+    expect(ghost(view("instrument "))).toBeNull();
+  });
+
+  it("hides the ghost when completions are disabled", () => {
+    const v = view("title ");
+    expect(ghost(v)).not.toBeNull();
+    v.dispatch({ effects: setCompletionEnabled.of(false) });
+    expect(ghost(v)).toBeNull();
+  });
+
+  it("accepts on Tab: inserts the quoted placeholder and selects it", () => {
+    const v = view("title ");
+    expect(acceptOperandGhost(v)).toBe(true);
+    expect(v.state.doc.toString()).toBe('title "Title"');
+    const sel = v.state.selection.main;
+    expect(v.state.sliceDoc(sel.from, sel.to)).toBe("Title");
+  });
+
+  it("declines Tab (returns false) when no ghost is showing", () => {
+    expect(acceptOperandGhost(view("instrument "))).toBe(false);
   });
 });
 
@@ -146,17 +233,12 @@ describe("completionSource", () => {
     expect(result?.from).toBe(state.doc.length - 3); // before "ban"
   });
 
-  it("offers a snippet for a string operand hint", () => {
+  it("opens no popup for a string operand (its hint is ghost text)", () => {
     const state = stateWith("title ");
     const result = completionSource(
       new CompletionContext(state, state.doc.length, false),
     );
-    expect(result?.options).toHaveLength(1);
-    const [hint] = result!.options;
-    expect(hint.label).toBe('"Title"');
-    expect(hint.type).toBe("text");
-    // snippetCompletion attaches an `apply` that inserts the placeholder.
-    expect(typeof hint.apply).toBe("function");
+    expect(result).toBeNull();
   });
 
   it("returns null when there is nothing to offer", () => {

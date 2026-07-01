@@ -664,9 +664,12 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         style.) *(NOTES #2, #3. Done — see DESIGN changelog; `tooltip` action now takes a structured
         `{title, description?, shortcut?}`, themed elevated card matching the de-glowed popups, platform-
         aware `kbd` chips, and fixed the portaled-tooltip serif-fallback font bug.)*
-  - [ ] T7.34g — **Inline operand hints as ghost text.** (was T7.34a) Refine T7.24's operand hints
+  - [x] T7.34g — **Inline operand hints as ghost text.** (was T7.34a) Refine T7.24's operand hints
         (`title → "Title"`) from a *popup* snippet to dimmed in-buffer ghost text at a muted shade (a
         ViewPlugin ghost-text decoration), designed with the editor cohesion so the shade reads right.
+        *(Done — see DESIGN changelog; only the single string-operand hint became ghost (`--muted` 65%,
+        Tab-accepts); multi-choice keyword/value completion stays a popup. Value-set/number/structural
+        operands unchanged.)*
 - [ ] **T7.37 — Unify the render painter's role styling.** Make `Tab.svelte` consume `tabStyle.ts`'s
       shared `textAnchor()`/`isMuted()` (which `svg.ts`/export use) instead of its drifted `data-role`
       CSS (`sectionLabel`/`barNumber` differ), so screen and export never diverge. Pairs with T7.34 (the
