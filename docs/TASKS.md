@@ -670,10 +670,13 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         *(Done — see DESIGN changelog; only the single string-operand hint became ghost (`--muted` 65%,
         Tab-accepts); multi-choice keyword/value completion stays a popup. Value-set/number/structural
         operands unchanged.)*
-- [ ] **T7.37 — Unify the render painter's role styling.** Make `Tab.svelte` consume `tabStyle.ts`'s
+- [x] **T7.37 — Unify the render painter's role styling.** Make `Tab.svelte` consume `tabStyle.ts`'s
       shared `textAnchor()`/`isMuted()` (which `svg.ts`/export use) instead of its drifted `data-role`
       CSS (`sectionLabel`/`barNumber` differ), so screen and export never diverge. Pairs with T7.34 (the
-      render text colour from T7.34a lands here too).
+      render text colour from T7.34a lands here too). *(Done — see DESIGN changelog; `Tab.svelte` now
+      derives anchor+muting classes from the shared helpers via `roleClass()`; screen adopted the export-
+      canonical roles — tuning header full-ink, barNumber muted+start, pageNumber muted+end, sectionLabel
+      start-anchored. User approved the unified look live.)*
 
 *Functional / workspace redesigns (M7):*
 

@@ -1,7 +1,8 @@
 import { render, fireEvent } from "@testing-library/svelte";
 import { describe, it, expect, vi } from "vitest";
 import Tab from "./Tab.svelte";
-import type { RenderTree } from "./types";
+import { textAnchor, isMuted } from "./tabStyle";
+import type { RenderTree, TextRole } from "./types";
 
 const tree: RenderTree = {
   meta: { width: 12, height: 8 },
@@ -88,6 +89,41 @@ describe("Tab painter", () => {
     expect(fret?.getAttribute("font-size")).not.toBe(
       title?.getAttribute("font-size"),
     );
+  });
+
+  // Anchor + muting must match tabStyle.ts's shared helpers (the source svg.ts/
+  // export read), so the screen render can't drift from the exported artifact
+  // (T7.37). Cross-checked against the helpers directly, not hard-coded classes.
+  it("keys anchor + muting off the shared tabStyle helpers", () => {
+    const roles: TextRole[] = [
+      "tuningName", // start-anchored, primary ink
+      "capo",
+      "sectionLabel", // was centred + full-ink on screen; now start-anchored
+      "barNumber", // was centred + full-ink; now start-anchored + muted
+      "pageNumber", // end-anchored + muted
+      "fretNumber", // centred, primary ink
+      "finger", // centred, muted
+    ];
+    const roleTree: RenderTree = {
+      meta: { width: 12, height: 40 },
+      header: roles.map((role, i) => ({
+        kind: "text" as const,
+        x: 2,
+        y: i + 1,
+        content: role,
+        role,
+        span: null,
+      })),
+      systems: [],
+    };
+    const { container } = render(Tab, { props: { tree: roleTree } });
+    for (const role of roles) {
+      const el = container.querySelector(`text[data-role="${role}"]`)!;
+      const anchor = textAnchor(role);
+      expect(el.classList.contains("anchor-start")).toBe(anchor === "start");
+      expect(el.classList.contains("anchor-end")).toBe(anchor === "end");
+      expect(el.classList.contains("muted")).toBe(isMuted(role));
+    }
   });
 
   it("paints def-gallery card text by role (bold heading, italic note)", () => {
