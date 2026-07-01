@@ -215,7 +215,7 @@
       <button
         class="dock-action"
         aria-label="Open Folder"
-        use:tooltip={"Open folder (Cmd/Ctrl+Shift+O)"}
+        use:tooltip={{ title: "Open folder", shortcut: "mod shift O" }}
         onclick={() => onOpenFolder?.()}
       >
         <Icon name="folder_open" size={16} />

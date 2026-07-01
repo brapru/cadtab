@@ -90,7 +90,7 @@
       class:active={dockOpen}
       aria-label="Toggle project dock"
       aria-pressed={dockOpen}
-      use:tooltip={"Toggle project dock (Cmd/Ctrl+B)"}
+      use:tooltip={{ title: "Toggle project dock", shortcut: "mod B" }}
       onclick={() => onToggleDock?.()}
     >
       <span aria-hidden="true">◧</span>
@@ -165,7 +165,10 @@
           aria-label="Problems: {counts.errors} error(s), {counts.warnings} warning(s)"
           aria-haspopup="listbox"
           aria-expanded={panelOpen}
-          use:tooltip={`${counts.errors} error(s), ${counts.warnings} warning(s)`}
+          use:tooltip={{
+            title: "Problems",
+            description: `${counts.errors} error(s), ${counts.warnings} warning(s)`,
+          }}
           onclick={() => (panelOpen = !panelOpen)}
         >
           <span class="count error">

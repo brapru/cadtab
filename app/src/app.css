@@ -123,21 +123,58 @@ body {
   color: var(--fg);
 }
 
-/* Styled hover/focus tooltip, portaled to <body> by the `tooltip` action
-   so it is never clipped. An inverted chip (ink background, page-coloured text)
-   that reads clearly over either theme. */
+/* Styled hover/focus tooltip, portaled to <body> by the `tooltip` action so it
+   is never clipped. A themed elevated card matching the de-glowed popups
+   (T7.34d/f): a bold title, an optional smaller muted description, and the
+   keyboard shortcut as key-cap chips. */
 .app-tooltip {
   position: fixed;
   z-index: 1000;
-  padding: 0.2rem 0.45rem;
-  background: var(--fg);
-  color: var(--bg);
-  border-radius: 0.3rem;
-  font-size: 0.75rem;
-  line-height: 1.2;
-  white-space: nowrap;
+  max-width: 17rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--bg-chrome);
+  color: var(--fg);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  /* Portaled to <body>, outside the `.app` element that carries the UI font, so
+     it must set its own — otherwise it falls back to the UA serif default. */
+  font-family: system-ui, sans-serif;
+  font-size: 0.78rem;
+  line-height: 1.3;
   pointer-events: none;
-  box-shadow: 0 2px 8px color-mix(in srgb, var(--fg) 25%, transparent);
+  box-shadow: var(--shadow-popup);
+}
+.app-tooltip .tt-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  white-space: nowrap;
+}
+.app-tooltip .tt-title {
+  font-weight: 600;
+}
+.app-tooltip .tt-keys {
+  display: inline-flex;
+  gap: 0.2rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.app-tooltip kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 0.7rem;
+  line-height: 1.2;
+  padding: 0.02rem 0.32rem;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--fg) 6%, var(--bg-chrome));
+  color: var(--fg);
+}
+.app-tooltip .tt-desc {
+  margin-top: 0.22rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  line-height: 1.35;
 }
 
 /* Self-hosted Material Symbols: the variable font is bundled in

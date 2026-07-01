@@ -655,11 +655,15 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
         new-file, export menu, completion) to fit the flat, layered look. *(NOTES #4. Done — see DESIGN
         changelog; warm-fg glow → shared `--shadow-popup` (#000-based), all popups onto elevated
         `--bg-chrome`. User picked the elevated surface against the rsvg mockups.)*
-  - [ ] T7.34e — **Editor selection/highlight colour.** The CodeMirror selection reads as a harsh white
-        that clashes; re-key it to the theme. *(NOTES #15.)*
-  - [ ] T7.34f — **Tooltip overhaul.** Bold title + optional smaller description + the element's keyboard
+  - [x] T7.34e — **Editor selection/highlight colour.** The CodeMirror selection reads as a harsh white
+        that clashes; re-key it to the theme. *(NOTES #15. Done — see DESIGN changelog; selection re-keyed
+        from warm `--accent 25%` to the calm `--select 30%` (the T7.32 "selected" token), so a selection
+        reads as selected, not as washing the notation in accent.)*
+  - [x] T7.34f — **Tooltip overhaul.** Bold title + optional smaller description + the element's keyboard
         shortcut when it has one; better font + themed CSS. (T7.40 fixes clipping; this is structure +
-        style.) *(NOTES #2, #3.)*
+        style.) *(NOTES #2, #3. Done — see DESIGN changelog; `tooltip` action now takes a structured
+        `{title, description?, shortcut?}`, themed elevated card matching the de-glowed popups, platform-
+        aware `kbd` chips, and fixed the portaled-tooltip serif-fallback font bug.)*
   - [ ] T7.34g — **Inline operand hints as ghost text.** (was T7.34a) Refine T7.24's operand hints
         (`title → "Title"`) from a *popup* snippet to dimmed in-buffer ghost text at a muted shade (a
         ViewPlugin ghost-text decoration), designed with the editor cohesion so the shade reads right.

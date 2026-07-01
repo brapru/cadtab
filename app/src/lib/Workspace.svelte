@@ -379,7 +379,7 @@
               <button
                 class="fit"
                 aria-label="Fit to width"
-                use:tooltip={"Fit to width"}
+                use:tooltip={{ title: "Fit to width", shortcut: "mod 0" }}
                 onclick={() => onFit?.()}
               >
                 <Icon name="crop_free" size={16} />
@@ -389,7 +389,10 @@
               <button
                 class="split"
                 aria-label="Split group"
-                use:tooltip={"Split the active tab into its own group"}
+                use:tooltip={{
+                  title: "Split",
+                  description: "Split the active tab into its own group",
+                }}
                 onclick={() => (workspace = splitTab(workspace, g.id))}
               >
                 <Icon name="split_scene" size={16} />

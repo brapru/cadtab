@@ -1279,7 +1279,11 @@ score {
           class="icon-btn"
           onclick={openFile}
           aria-label="Open"
-          use:tooltip={"Open score or project (Cmd/Ctrl+O)"}
+          use:tooltip={{
+            title: "Open",
+            description: "Open a score or project",
+            shortcut: "mod O",
+          }}
         >
           <Icon name="folder_open" size={18} />
         </button>
@@ -1287,7 +1291,7 @@ score {
           class="icon-btn"
           onclick={saveFile}
           aria-label="Save"
-          use:tooltip={"Save score (Cmd/Ctrl+S)"}
+          use:tooltip={{ title: "Save", shortcut: "mod S" }}
         >
           <Icon name="save" size={18} />
         </button>
@@ -1298,7 +1302,10 @@ score {
             aria-label="Export"
             aria-haspopup="menu"
             aria-expanded={exportMenuOpen}
-            use:tooltip={"Export the tab (SVG, PNG, PDF)"}
+            use:tooltip={{
+              title: "Export",
+              description: "Save the tab as SVG, PNG, or PDF",
+            }}
             onclick={() => (exportMenuOpen = !exportMenuOpen)}
           >
             <Icon name="download" size={18} />

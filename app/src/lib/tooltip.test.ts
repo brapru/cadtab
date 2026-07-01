@@ -111,6 +111,39 @@ describe("tooltip action", () => {
     }
   });
 
+  it("renders a structured tooltip: bold title, description, and shortcut chips", () => {
+    const node = document.createElement("button");
+    document.body.appendChild(node);
+    tooltip(node, {
+      title: "Save",
+      description: "Write the active file",
+      shortcut: "mod S",
+    });
+    fire(node, "pointerenter");
+    const t = tip()!;
+    expect(t.querySelector(".tt-title")?.textContent).toBe("Save");
+    expect(t.querySelector(".tt-desc")?.textContent).toBe(
+      "Write the active file",
+    );
+    const caps = [...t.querySelectorAll("kbd")].map((k) => k.textContent);
+    // The "mod" token renders platform-aware (⌘ on macOS, Ctrl elsewhere); the
+    // literal "S" passes through unchanged.
+    expect(caps).toHaveLength(2);
+    expect(["⌘", "Ctrl"]).toContain(caps[0]);
+    expect(caps[1]).toBe("S");
+  });
+
+  it("omits the description and shortcut when not provided", () => {
+    const node = document.createElement("button");
+    document.body.appendChild(node);
+    tooltip(node, { title: "New tab" });
+    fire(node, "pointerenter");
+    const t = tip()!;
+    expect(t.querySelector(".tt-title")?.textContent).toBe("New tab");
+    expect(t.querySelector(".tt-desc")).toBeNull();
+    expect(t.querySelector(".tt-keys")).toBeNull();
+  });
+
   it("tears down listeners and any tooltip on destroy", () => {
     const { node, action } = setup("Close");
     fire(node, "pointerenter");

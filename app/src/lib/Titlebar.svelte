@@ -86,7 +86,10 @@
         aria-label="Export"
         aria-haspopup="menu"
         aria-expanded={exportMenuOpen}
-        use:tooltip={"Export the tab (SVG, PNG, PDF)"}
+        use:tooltip={{
+          title: "Export",
+          description: "Save the tab as SVG, PNG, or PDF",
+        }}
         onclick={() => (exportMenuOpen = !exportMenuOpen)}
       >
         Export
