@@ -77,6 +77,21 @@ describe("BottomBar", () => {
     expect(onOpenHelp).toHaveBeenCalledOnce();
   });
 
+  it("places help right of the problems indicator, set off by a divider", () => {
+    const { container } = render(BottomBar, { diagnostics: [] });
+    const problems = container.querySelector(".diagnostics")!;
+    const divider = container.querySelector(".divider")!;
+    const help = container.querySelector(".help-toggle")!;
+    // reads left-to-right: problems | ?
+    expect(
+      problems.compareDocumentPosition(divider) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      divider.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("reflects the dock state and fires the toggle on click", async () => {
     const onToggleDock = vi.fn();
     const { container, rerender } = render(BottomBar, {

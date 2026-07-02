@@ -740,10 +740,11 @@ render & notation (T7.51–T7.56).*
 - [x] **T7.46 — Bump the bottom-bar height.** The bottom status bar is a touch too short; increase its
       height a small amount (keep it minimal/unobtrusive per T7.3). *(Done — `.bottombar`/`.control`
       height 1.7rem → 2rem.)*
-- [ ] **T7.47 — Bottom-bar button order + divider.** Move the help (`?`) button to the **right** of the
+- [x] **T7.47 — Bottom-bar button order + divider.** Move the help (`?`) button to the **right** of the
       problems button (the "No problems" / error-count indicator), separated by a `|` divider — reads
       `problems | ?`. Regroups the bottom-right cluster (theme · format-on-save · autocomplete already
-      there; problems + help get the explicit divider).
+      there; problems + help get the explicit divider). *(Done — help moved out of the left group to the
+      right cluster's end, past the problems/notice slot, with a thin `.divider` rule between them.)*
 - [ ] **T7.48 — Retire the orange accent.** The orange highlight on the render-launcher button doesn't
       match anything else in the UI; replace it, and substitute out the orange `--accent` **everywhere
       else it surfaces** (active-line tick, drag/drop cues, maximize/restore icon, dock-collapsed toggle,

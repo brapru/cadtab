@@ -95,14 +95,6 @@
     >
       <span aria-hidden="true">◧</span>
     </button>
-    <button
-      class="control help-toggle"
-      aria-label="Open help"
-      use:tooltip={"How to use cadtab"}
-      onclick={() => onOpenHelp?.()}
-    >
-      <Icon name="help" size={16} />
-    </button>
   </div>
   <!-- The diagnostics/notice indicator stays pinned rightmost; any new control
        (theme, the toggles, future settings) goes to its left. -->
@@ -182,6 +174,17 @@
         </button>
       </div>
     {/if}
+    <!-- The help button sits rightmost, past the problems indicator, set off by
+         an explicit divider — reads `problems | ?`. -->
+    <span class="divider" aria-hidden="true"></span>
+    <button
+      class="control help-toggle"
+      aria-label="Open help"
+      use:tooltip={"How to use cadtab"}
+      onclick={() => onOpenHelp?.()}
+    >
+      <Icon name="help" size={16} />
+    </button>
   </div>
 </footer>
 
@@ -203,6 +206,14 @@
     display: flex;
     align-items: center;
     gap: 0.2rem;
+  }
+  /* A thin vertical rule setting the help button off from the problems
+     indicator — reads `problems | ?`. */
+  .divider {
+    width: 1px;
+    height: 0.9rem;
+    margin: 0 0.15rem;
+    background: var(--border);
   }
   /* The shared bottom-control look: borderless, compact, lights up on hover. */
   .control {
