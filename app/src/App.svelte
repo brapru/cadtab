@@ -471,6 +471,14 @@ score {
         workspace.groups.length === 0
           ? defaultWorkspace(id)
           : addDocTabs(workspace, id);
+    } else {
+      // Already open: focus its editor tab in whatever group holds it (T7.50) —
+      // setActive alone updates the active *doc* but never switches the visible
+      // *tab*. addTab is idempotent-and-activating, mirroring the render/preview
+      // launchers, so a stacked or other-group tab jumps to front instead of the
+      // click no-op'ing.
+      const eg = groupOfType(workspace, "editor") ?? workspace.groups[0]?.id;
+      if (eg) workspace = addTab(workspace, viewInstance("editor", id), eg);
     }
     focusDoc(id);
     compileDoc(id);

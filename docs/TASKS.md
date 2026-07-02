@@ -760,10 +760,27 @@ render & notation (T7.51–T7.56).*
       final width without the intermediate reflow (measure/settle before paint, or transition without an
       interim relayout). *(Distinct from the T7.42 zoom/reformat bug; surfaced by T7.41's full-screen
       maximize.)*
-- [ ] **T7.50 — Dock click should focus an already-open tab.** Clicking a file in the left dock doesn't
+  - **Deferred 2026-07-02 (known issue) — attempts reverted, flash persists.** Tried, in order (all
+    backed out): (1) reflow **immediately** on a discrete width jump instead of the 150 ms debounce
+    (`isWidthJump`); (2) **freeze** the render at its prior width while the reflow is in flight so the
+    fit-to-width SVG can't rescale the stale layout (`planReflow` + a `.tab-host` pinned to a fixed px);
+    (3) **clip** the frozen render on shrink so a shrunk pane doesn't scroll the still-wide render;
+    (4) make the freeze release **atomic** with the new tree via a `$derived` (fixed a one-frame late
+    unfreeze); (5) **pre-arm the freeze from the layout action** (maximize/split/move/dock) via a shared
+    `layoutPulse` runes module, so the freeze engages synchronously *before* the resize paints. Even (5)
+    still flashed live on shrink/restore. **Suspected root cause:** the render's width is observed via
+    `bind:clientWidth` (a ResizeObserver) which reports a frame *after* the pane has already resized and
+    painted the stale layout at the new size — reacting to width can't beat that. A real fix likely needs
+    to make the SVG's rendered scale **independent of live pane width** (size by the layout's own units,
+    not `width:100%`), and/or drive the pre-resize freeze from the exact same synchronous paint as the
+    layout change. Revisit fresh; don't re-attempt the reactive-freeze approaches above.
+- [x] **T7.50 — Dock click should focus an already-open tab.** Clicking a file in the left dock doesn't
       jump to its tab when that file is already open. Repro: open ctab A, open ctab B, click A's name in
       the dock — it doesn't focus A's existing tab. The dock open-file path should **focus the existing
       view if one is open** (like the render/preview launchers already do) instead of no-op'ing / reopening.
+      *(Done — `addOrFocusFile`'s already-open branch now routes through the idempotent-and-activating
+      `addTab`, mirroring the render/preview launchers; `focusDoc`/`setActive` alone never switched the
+      visible tab. See DESIGN changelog.)*
 
 *Render & notation:*
 

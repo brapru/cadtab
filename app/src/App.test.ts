@@ -480,6 +480,39 @@ describe("App", () => {
     await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
   });
 
+  it("focuses an already-open file's tab when re-clicked in the dock (T7.50)", async () => {
+    openProjectMock.mockReset();
+    openProjectMock.mockResolvedValue({
+      kind: "bundle",
+      path: "/proj.ctabz",
+      name: "proj.ctabz",
+      bundle: {
+        entry: "tune.ctab",
+        files: {
+          "tune.ctab": 'import "lib.ctab"\nscore { roll() }',
+          "lib.ctab": "def roll() { 3:0 }",
+        },
+      },
+    });
+    const { container, getByText } = render(App);
+
+    // Open A (tune.ctab, the entry), then open B (lib.ctab) from the dock so B is
+    // the active tab and A's tab sits behind it.
+    await fireEvent.click(screen.getByLabelText("Open"));
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
+    await fireEvent.click(getByText("lib.ctab"));
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("lib.ctab"));
+
+    // Click A's name in the dock (scoped to the dock — the tab strip also shows
+    // "tune.ctab"): it must jump back to A's existing tab, not no-op.
+    const dock = container.querySelector(".dock")!;
+    const entryRow = [...dock.querySelectorAll("button.row.file")].find(
+      (b) => b.querySelector(".file-name")?.textContent?.trim() === "tune.ctab",
+    )!;
+    await fireEvent.click(entryRow);
+    await vi.waitFor(() => expect(activeTabName(container)).toBe("tune.ctab"));
+  });
+
   it("opening a project closes the prior project's docs, tabs, and renders", async () => {
     openProjectMock.mockReset();
     openProjectMock.mockResolvedValue({
