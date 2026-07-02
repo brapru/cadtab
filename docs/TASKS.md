@@ -737,8 +737,9 @@ render & notation (T7.51–T7.56).*
 
 *Chrome / cohesion:*
 
-- [ ] **T7.46 — Bump the bottom-bar height.** The bottom status bar is a touch too short; increase its
-      height a small amount (keep it minimal/unobtrusive per T7.3).
+- [x] **T7.46 — Bump the bottom-bar height.** The bottom status bar is a touch too short; increase its
+      height a small amount (keep it minimal/unobtrusive per T7.3). *(Done — `.bottombar`/`.control`
+      height 1.7rem → 2rem.)*
 - [ ] **T7.47 — Bottom-bar button order + divider.** Move the help (`?`) button to the **right** of the
       problems button (the "No problems" / error-count indicator), separated by a `|` divider — reads
       `problems | ?`. Regroups the bottom-right cluster (theme · format-on-save · autocomplete already

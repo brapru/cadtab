@@ -190,7 +190,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 1.7rem;
+    height: 2rem;
     padding: 0 0.4rem;
     border-top: 1px solid var(--border);
     background: var(--bg-chrome);
@@ -213,7 +213,7 @@
     background: transparent;
     color: inherit;
     cursor: pointer;
-    height: 1.7rem;
+    height: 2rem;
     padding: 0 0.4rem;
     font: inherit;
   }
