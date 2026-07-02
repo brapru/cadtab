@@ -31,6 +31,7 @@
     docIdsWithViews,
     groupOfType,
     activeTab,
+    toggleMaximize,
     type Workspace as WorkspaceModel,
     type ViewInstance,
   } from "./lib/workspace";
@@ -570,7 +571,21 @@ score {
   // Project dock visibility, toggled from the bottom bar and Cmd/Ctrl-B.
   // Open by default so the project tree is visible on first load.
   let dockOpen = $state(true);
-  const toggleDock = () => (dockOpen = !dockOpen);
+  const toggleDock = () => {
+    // While a group is maximized the dock is collapsed for focus; asking for the
+    // dock restores the layout and reveals it, rather than being a silent no-op.
+    if (workspace.maximizedId !== null) {
+      workspace = toggleMaximize(workspace, workspace.maximizedId);
+      dockOpen = true;
+      return;
+    }
+    dockOpen = !dockOpen;
+  };
+
+  // Maximizing a group collapses the dock so the pane goes truly full-screen
+  // (Zed-style focus). The dock's own open/closed intent (dockOpen) is preserved,
+  // so restoring the group brings it back to whatever state it was in.
+  const dockVisible = $derived(dockOpen && workspace.maximizedId === null);
 
   // Cmd/Ctrl-B toggles the dock, overriding the browser's default for the key.
   // Desktop routes this through the native menu's accelerator instead (T7.30),
@@ -1340,7 +1355,7 @@ score {
     </header>
   {/if}
   <div class="body">
-    {#if dockOpen}
+    {#if dockVisible}
       <Dock
         entries={dockEntries}
         dirs={projectDirs}
@@ -1426,7 +1441,7 @@ score {
   <BottomBar
     diagnostics={activeResult?.diagnostics ?? []}
     {source}
-    {dockOpen}
+    dockOpen={dockVisible}
     notice={exportNotice}
     {autocomplete}
     {formatOnSave}

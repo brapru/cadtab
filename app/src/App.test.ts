@@ -1067,6 +1067,44 @@ describe("App", () => {
     expect(container.querySelector(".dock")).not.toBeNull();
   });
 
+  it("collapses the dock while a group is maximized, then restores it", async () => {
+    const { container } = render(App);
+    const toggle = container.querySelector(".dock-toggle")!;
+    expect(container.querySelector(".dock")).not.toBeNull();
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+
+    // Maximize the active group → the pane goes full-screen and the dock
+    // collapses; the bottom-bar toggle reads closed.
+    await fireEvent.click(
+      container.querySelector('.maximize[aria-label="Maximize group"]')!,
+    );
+    expect(container.querySelector(".dock")).toBeNull();
+    expect(toggle.getAttribute("aria-pressed")).toBe("false");
+
+    // Restore → the dock returns to its prior (open) state.
+    await fireEvent.click(
+      container.querySelector('.maximize[aria-label="Restore group"]')!,
+    );
+    expect(container.querySelector(".dock")).not.toBeNull();
+    expect(toggle.getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("toggling the dock while maximized exits focus and reveals the dock", async () => {
+    const { container } = render(App);
+    await fireEvent.click(
+      container.querySelector('.maximize[aria-label="Maximize group"]')!,
+    );
+    expect(container.querySelector(".dock")).toBeNull();
+
+    // Asking for the dock (Cmd/Ctrl-B) restores the layout rather than being a
+    // silent no-op: the group un-maximizes and the dock reappears.
+    await fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(container.querySelector(".dock")).not.toBeNull();
+    expect(
+      container.querySelector('.maximize[aria-label="Maximize group"]'),
+    ).not.toBeNull();
+  });
+
   it("lists an opened bundle's files in the project dock", async () => {
     openProjectMock.mockReset();
     openProjectMock.mockResolvedValue({

@@ -680,9 +680,15 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Functional / workspace redesigns (M7):*
 
-- [ ] **T7.41 — Maximize behavior.** Maximizing a tab shouldn't fully hide the others — keep the tab
+- [x] **T7.41 — Maximize behavior.** Maximizing a tab shouldn't fully hide the others — keep the tab
       strips visible (VSCode: the maximized pane takes most space) or collapse the dock with a sliver of
-      background showing (Zed). *(NOTES #1; revisits T7.7-era maximize.)*
+      background showing (Zed). *(NOTES #1; revisits T7.7-era maximize.)* **Done — see DESIGN changelog.**
+      Locked against the user's `docs/zed-maximize.png` (rsvg mockups): maximize is a **Zed-style focus** —
+      the maximized pane goes **truly full-screen** (its tab strip + group controls, incl. the flipped
+      *Restore*, stay), the **dock collapses** (reopen via ⌘B / the bottom-bar toggle, which now restores
+      the layout rather than no-op'ing), and the sibling group stays hidden (user picked "sibling fully
+      hidden" — restore via the control / double-click / ⌘-maximize). Delta from T7.7-era maximize was
+      just collapsing the dock so the pane reclaims that space; sibling-hiding was already the behavior.
 - [ ] **T7.42 — Zoom scope rescope + render zoom bug.** Walk back the earlier per-view zoom: zoom in/out
       applies to *all* editors globally, but a render view zooms only its own tab. Fold in the render
       zoom/reformat bug (repro pending from user). *(NOTES #5, #6; design walk-back.)*
