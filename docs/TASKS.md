@@ -745,12 +745,13 @@ render & notation (T7.51–T7.56).*
       `problems | ?`. Regroups the bottom-right cluster (theme · format-on-save · autocomplete already
       there; problems + help get the explicit divider). *(Done — help moved out of the left group to the
       right cluster's end, past the problems/notice slot, with a thin `.divider` rule between them.)*
-- [ ] **T7.48 — Retire the orange accent.** The orange highlight on the render-launcher button doesn't
+- [x] **T7.48 — Retire the orange accent.** The orange highlight on the render-launcher button doesn't
       match anything else in the UI; replace it, and substitute out the orange `--accent` **everywhere
       else it surfaces** (active-line tick, drag/drop cues, maximize/restore icon, dock-collapsed toggle,
-      export caret, etc.) for a cohesive treatment. *Open sub-decision (lock with a mockup):* the
-      replacement — re-key `--accent` to the calm `--select` blue, a neutral, or a new restrained hue.
-      Cohesion-pass work; pairs with the T7.34 elevation/palette foundation.
+      export caret, etc.) for a cohesive treatment. *Sub-decision resolved (user picked neutral):* re-keyed
+      the `--accent` token to each theme's offset-white ink (== `--fg`) in all four theme blocks, so solid
+      uses read as ink and alpha washes as neutral grey — no coloured accent anywhere. All ~10 sites route
+      through the token, so one re-key covers them. *(Done — see DESIGN changelog.)*
 
 *Workspace bugs:*
 
