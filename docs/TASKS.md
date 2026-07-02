@@ -616,7 +616,7 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Cohesion & finishing pass — second NOTES.md triage (2026-06-29; see DESIGN changelog). All M7.*
 *Recommended order: quick-win/bug sweep (T7.38–T7.40) → cohesion pass (T7.34a–g, T7.37) → functional*
-*redesigns (T7.41–T7.43) → notation (T7.44).*
+*redesigns (T7.41–T7.43) → ~~notation (T7.44, dropped)~~ → live-use pass (T7.46–T7.56).*
 
 *Quick-win + bug sweep (do first):*
 
@@ -727,9 +727,63 @@ T4.7i→T7.27 · T4.7m→T7.28 · (old)T7.14→T7.30 · T4.7h→T7.31 · T4.7r�
 
 *Notation:*
 
-- [ ] **T7.44 — Right-hand finger marks above the staff.** Move the T/I/M (thumb/index/middle) right-hand
-      finger marks from below the staff into the above-staff band, and re-space the band (section / chord
-      / bar-number / volta / fingers) so it doesn't crowd. *(NOTES #7.)*
+- [ ] ~~**T7.44 — Right-hand finger marks above the staff.**~~ **Dropped 2026-07-02** — the T/I/M
+      right-hand finger marks read fine below the staff; not moving them above. (Was: move them into the
+      above-staff band and re-space section/chord/bar-number/volta/fingers.)
+
+*Live-use pass — new round (2026-07-02). All M7. Bugs, polish, and notation surfaced authoring real
+tabs. Recommended order: chrome/cohesion quick wins (T7.46–T7.48) → workspace bugs (T7.49–T7.50) →
+render & notation (T7.51–T7.56).*
+
+*Chrome / cohesion:*
+
+- [ ] **T7.46 — Bump the bottom-bar height.** The bottom status bar is a touch too short; increase its
+      height a small amount (keep it minimal/unobtrusive per T7.3).
+- [ ] **T7.47 — Bottom-bar button order + divider.** Move the help (`?`) button to the **right** of the
+      problems button (the "No problems" / error-count indicator), separated by a `|` divider — reads
+      `problems | ?`. Regroups the bottom-right cluster (theme · format-on-save · autocomplete already
+      there; problems + help get the explicit divider).
+- [ ] **T7.48 — Retire the orange accent.** The orange highlight on the render-launcher button doesn't
+      match anything else in the UI; replace it, and substitute out the orange `--accent` **everywhere
+      else it surfaces** (active-line tick, drag/drop cues, maximize/restore icon, dock-collapsed toggle,
+      export caret, etc.) for a cohesive treatment. *Open sub-decision (lock with a mockup):* the
+      replacement — re-key `--accent` to the calm `--select` blue, a neutral, or a new restrained hue.
+      Cohesion-pass work; pairs with the T7.34 elevation/palette foundation.
+
+*Workspace bugs:*
+
+- [ ] **T7.49 — Maximize reflow flash.** Maximizing a render tab shows a brief moment where the render
+      **reformats on its way to maximized** before settling — visually jarring. Make the render reach its
+      final width without the intermediate reflow (measure/settle before paint, or transition without an
+      interim relayout). *(Distinct from the T7.42 zoom/reformat bug; surfaced by T7.41's full-screen
+      maximize.)*
+- [ ] **T7.50 — Dock click should focus an already-open tab.** Clicking a file in the left dock doesn't
+      jump to its tab when that file is already open. Repro: open ctab A, open ctab B, click A's name in
+      the dock — it doesn't focus A's existing tab. The dock open-file path should **focus the existing
+      view if one is open** (like the render/preview launchers already do) instead of no-op'ing / reopening.
+
+*Render & notation:*
+
+- [ ] **T7.51 — Fix hammer-on / pull-off / bend rendering.** These technique marks don't render properly;
+      spend real time on the geometry (arcs/slurs for h/p, the bend arrow/curve) so they read correctly.
+      Likely spans layout (`layout.rs` path/mark placement) + the painter.
+- [ ] **T7.52 — Spacing after a begin-repeat `|:`.** The first note after the begin-repeat barline sits
+      right up against the `|:` symbol; add proper leading space after a repeat-start barline (mirrors the
+      first-measure leading pad).
+- [ ] **T7.53 — Stack fingering marks on a pinch.** When a pinch/chord carries multiple right-hand
+      fingerings it renders inline (e.g. `MT`); stack them vertically instead — thumb on top, then
+      middle/index beneath (T over M over I). Layout of the T/I/M marks for a multi-finger event.
+- [ ] **T7.54 — Render rests.** Rest events don't draw a visible rest glyph on the staff. Add rest
+      rendering (per-duration rest symbols) in the layout/painter. *(The model/beam-grouping handles rests
+      — T3.5f — but no glyph is drawn.)*
+- [ ] **T7.55 — Ending (volta) number placement.** The volta number is cramped between the top staff line
+      and the repeat/ending bracket above it, and collides with notes. Placing it above the bracket risks
+      colliding with bar numbers when those are on. *Open sub-decision (lock with a mockup):* how to place
+      the volta number so it clears both the top-line notes and the bar-number row.
+- [ ] **T7.56 — Preview header tempo collision.** In the print-preview page the tempo line rides up
+      against the circled-string tuning grid / header notes; re-space the preview header so the tempo
+      clears the tuning block. *(Preview header uses the same `build_header`; check whether it's
+      preview-only or also the live render.)*
 
 **DoD M7:** the Zed-style shell (dock, tabs, bottom bar, dockable render, preview) works on desktop
 + web; justified systems with a fixed page; **paginated PDF export (T7.19)** behind a unified export
