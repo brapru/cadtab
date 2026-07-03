@@ -798,9 +798,12 @@ render & notation (T7.51–T7.56).*
       confirmed live against `docs/bend-example.png` before building; geometry verified end-to-end
       through the real compile pipeline. *(Also corrected `examples/showcase.ctab`, accidentally
       committed in `fd521ae`, back to its pre-accident content; `bend(1:7)`→`bend(1:7, 1/2)`.)*
-- [ ] **T7.52 — Spacing after a begin-repeat `|:`.** The first note after the begin-repeat barline sits
+- [x] **T7.52 — Spacing after a begin-repeat `|:`.** The first note after the begin-repeat barline sits
       right up against the `|:` symbol; add proper leading space after a repeat-start barline (mirrors the
-      first-measure leading pad).
+      first-measure leading pad). *(Done — a repeat-start measure now reserves a `REPEAT_START_PAD`
+      (`2·REPEAT_GAP + DOT_R`, the `|:` glyph's reach) leading column in `plan_measure`, so the first note
+      clears the repeat dots by a full `MEASURE_PAD` like a plain barline; the time-sig column shifts past
+      it too when a meter mark coincides. See DESIGN changelog.)*
 - [ ] **T7.53 — Stack fingering marks on a pinch.** When a pinch/chord carries multiple right-hand
       fingerings it renders inline (e.g. `MT`); stack them vertically instead — thumb on top, then
       middle/index beneath (T over M over I). Layout of the T/I/M marks for a multi-finger event.

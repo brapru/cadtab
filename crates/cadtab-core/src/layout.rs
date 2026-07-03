@@ -137,6 +137,11 @@ const THICK_WEIGHT: f32 = 0.25;
 // Spacing of the thin line and dots that ornament a repeat barline.
 const REPEAT_GAP: f32 = 0.22;
 const DOT_R: f32 = 0.12;
+// How far a begin-repeat `|:` reaches past a measure's left edge (thin line at
+// REPEAT_GAP, dots centred at 2*REPEAT_GAP with radius DOT_R). A repeat-start
+// measure reserves this as extra leading space so its first note clears the
+// glyph by a full MEASURE_PAD, matching the clearance a plain barline gets.
+const REPEAT_START_PAD: f32 = 2.0 * REPEAT_GAP + DOT_R;
 // A stem connects an event to its rhythm: it hangs from a small gap below the
 // event's lowest fret number down to the beam line. STEM_NOTE_GAP is measured
 // from the number's center; a fret digit reaches ~0.45 below center, so 0.8
@@ -591,12 +596,22 @@ pub fn layout_gallery(
 /// Resolve one measure to its width and measure-relative event placement. A
 /// `meter_mark` reserves leading space for a time signature drawn at the left.
 fn plan_measure(measure: &Measure, meter_mark: Option<TimeSig>) -> MeasurePlan {
-    let lead = if meter_mark.is_some() {
+    let meter_lead = if meter_mark.is_some() {
         TIMESIG_WIDTH
     } else {
         0.0
     };
-    let mut x = MEASURE_PAD + lead;
+    // A begin-repeat `|:` sits at the measure's left edge; reserve room ahead of
+    // the normal padding so the first note clears its dots (mirrors the leading
+    // time-signature column above). The end-repeat `:|` needs no such lead — its
+    // dots sit to the *left*, in the closing measure, so the following measure is
+    // spaced like any ordinary measure.
+    let repeat_lead = if measure.repeat_start {
+        REPEAT_START_PAD
+    } else {
+        0.0
+    };
+    let mut x = repeat_lead + MEASURE_PAD + meter_lead;
     let mut events = Vec::with_capacity(measure.events.len());
     for event in &measure.events {
         events.push(PlacedEvent {
@@ -710,8 +725,14 @@ fn build_system(
             // Centre the glyph in its reserved column so it clears the left
             // barline and the first note each by the measure's leading pad: the
             // column spans [MEASURE_PAD, TIMESIG_WIDTH], the first event sits at
-            // MEASURE_PAD + TIMESIG_WIDTH (see plan_measure).
-            let tsx = mx0 + (MEASURE_PAD + TIMESIG_WIDTH) / 2.0;
+            // MEASURE_PAD + TIMESIG_WIDTH (see plan_measure). A repeat-start
+            // measure pushes the column past the `|:` glyph by the same lead.
+            let rep_lead = if measure.repeat_start {
+                REPEAT_START_PAD
+            } else {
+                0.0
+            };
+            let tsx = mx0 + rep_lead + (MEASURE_PAD + TIMESIG_WIDTH) / 2.0;
             prims.extend(time_signature(meter, tsx, staff_top, staff_height));
         }
         for (j, (placed, event)) in plan.events.iter().zip(&measure.events).enumerate() {
@@ -1932,6 +1953,24 @@ mod tests {
         let plain_w = plan_measure(&m, None).width;
         let marked_w = plan_measure(&m, Some(TimeSig::new(3, 4))).width;
         assert!((marked_w - plain_w - TIMESIG_WIDTH).abs() < 1e-3);
+    }
+
+    #[test]
+    fn a_repeat_start_reserves_leading_space() {
+        // A begin-repeat `|:` sits at the measure's left edge; the measure reserves
+        // extra leading space so its first note clears the repeat dots — mirroring
+        // the leading time-signature column. Tested pre-justification on the plan.
+        let mut m = Measure::new(vec![note(3, 0, 0)]);
+        let plain = plan_measure(&m, None);
+        m.repeat_start = true;
+        let repeated = plan_measure(&m, None);
+        // Both the plan width and the first event shift right by exactly the lead.
+        assert!((repeated.width - plain.width - REPEAT_START_PAD).abs() < 1e-3);
+        let d = repeated.events[0].rel_x - plain.events[0].rel_x;
+        assert!((d - REPEAT_START_PAD).abs() < 1e-3);
+        // The `|:` glyph reaches 2*REPEAT_GAP + DOT_R past the left edge; the note
+        // now clears it by a full leading pad (as a plain barline's note does).
+        assert!(repeated.events[0].rel_x - (2.0 * REPEAT_GAP + DOT_R) >= MEASURE_PAD - 1e-3);
     }
 
     /// The content of the first header text prim carrying `role`, if any.
