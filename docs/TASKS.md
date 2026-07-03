@@ -804,9 +804,15 @@ render & notation (T7.51–T7.56).*
       (`2·REPEAT_GAP + DOT_R`, the `|:` glyph's reach) leading column in `plan_measure`, so the first note
       clears the repeat dots by a full `MEASURE_PAD` like a plain barline; the time-sig column shifts past
       it too when a meter mark coincides. See DESIGN changelog.)*
-- [ ] **T7.53 — Stack fingering marks on a pinch.** When a pinch/chord carries multiple right-hand
-      fingerings it renders inline (e.g. `MT`); stack them vertically instead — thumb on top, then
-      middle/index beneath (T over M over I). Layout of the T/I/M marks for a multi-finger event.
+- [x] **T7.53 — Stack fingering marks on a pinch.** When a pinch/chord carries multiple right-hand
+      fingerings it renders inline (e.g. `MT`); stack them vertically instead. Layout of the T/I/M marks for
+      a multi-finger event. *(Done — a chord's right-hand marks now stack vertically at the event's x,
+      ordered **middle → index → thumb** top-to-bottom (M over I over T, independent of chord-note order;
+      order picked by the user), each row `FINGER_STACK` (1.0) below the last; the old horizontal
+      `RH_STAGGER` is gone. A new `stacked_rh_extra` reserves `(rows-1)·FINGER_STACK` below the staff in the
+      continuous/paginated/gallery cursor paths so a deep stack isn't clipped or overlapped by the next
+      system — zero for single/no-finger events, so those layouts (and snapshots) are unaffected. See DESIGN
+      changelog.)*
 - [ ] **T7.54 — Render rests.** Rest events don't draw a visible rest glyph on the staff. Add rest
       rendering (per-duration rest symbols) in the layout/painter. *(The model/beam-grouping handles rests
       — T3.5f — but no glyph is drawn.)*

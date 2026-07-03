@@ -5,7 +5,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
 {
   "meta": {
     "width": 80.0,
-    "height": 26.699999
+    "height": 27.699999
   },
   "header": [
     {
@@ -853,8 +853,8 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "text",
-              "x": 26.227184,
-              "y": 26.0,
+              "x": 25.727184,
+              "y": 27.0,
               "content": "T",
               "role": "finger",
               "span": {

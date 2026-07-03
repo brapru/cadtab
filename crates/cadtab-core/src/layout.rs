@@ -163,10 +163,11 @@ const FLAG_SPACING: f32 = 0.35;
 // Augmentation dots sit just right of a fret number, spaced along the line.
 const AUG_DOT_AFTER: f32 = 0.45;
 const AUG_DOT_GAP: f32 = 0.3;
-// Right-hand finger/strum marks sit in a row below the stems; chord members are
-// staggered so they do not overlap.
+// Right-hand finger/strum marks sit in a row below the stems. A pinch's marks
+// stack vertically (middle on top, then index, then thumb) at the event's x, each
+// row FINGER_STACK below the last.
 const RH_ROW_GAP: f32 = 0.6;
-const RH_STAGGER: f32 = 0.5;
+const FINGER_STACK: f32 = 1.0;
 // Fallback technique letter (a source-less h/p/sl) sits just above and right of
 // the note number; the real connecting cases draw a slur/line instead.
 const TECH_DX: f32 = 0.4;
@@ -339,6 +340,9 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
         let band_top = cursor;
         let staff_top = band_top + band_above(measures, prep.has_barnum);
         let staff_bottom = staff_top + prep.staff_height;
+        // Reserve room below the staff for a stacked pinch, so its lowest finger
+        // isn't clipped (last system) or overlapped by the next system.
+        let extra = stacked_rh_extra(measures);
         systems.push(build_system(
             measures,
             &prep.plans[start..end],
@@ -352,8 +356,8 @@ pub fn layout(score: &Score, config: LayoutConfig) -> RenderTree {
             prep.staff_height,
             prep.n_strings,
         ));
-        last_bottom = staff_bottom;
-        cursor = staff_bottom + SYSTEM_GAP;
+        last_bottom = staff_bottom + extra;
+        cursor = last_bottom + SYSTEM_GAP;
     }
 
     let height = last_bottom + BOTTOM_MARGIN;
@@ -443,7 +447,10 @@ pub fn paginate(score: &Score, config: PageConfig) -> PaginatedTree {
             let band_top = cursor;
             let staff_top = band_top + band_above(measures, prep.has_barnum);
             let staff_bottom = staff_top + prep.staff_height;
-            if !page_systems.is_empty() && staff_bottom + SYSTEM_GAP > geom.bottom_limit {
+            // A stacked pinch reaches further below the staff; count it against the
+            // page's bottom limit and the advance to the next system.
+            let extra = stacked_rh_extra(measures);
+            if !page_systems.is_empty() && staff_bottom + extra + SYSTEM_GAP > geom.bottom_limit {
                 break;
             }
             page_systems.push(build_system(
@@ -459,7 +466,7 @@ pub fn paginate(score: &Score, config: PageConfig) -> PaginatedTree {
                 prep.staff_height,
                 prep.n_strings,
             ));
-            cursor = staff_bottom + SYSTEM_GAP;
+            cursor = staff_bottom + extra + SYSTEM_GAP;
             i += 1;
         }
 
@@ -566,6 +573,7 @@ pub fn layout_gallery(
         for &(start, end) in &groups {
             let staff_top = cursor;
             let staff_bottom = staff_top + staff_height;
+            let extra = stacked_rh_extra(&def.measures[start..end]);
             systems.push(build_system(
                 &def.measures[start..end],
                 &plans[start..end],
@@ -579,8 +587,8 @@ pub fn layout_gallery(
                 staff_height,
                 n_strings,
             ));
-            last_bottom = staff_bottom;
-            cursor = staff_bottom + SYSTEM_GAP;
+            last_bottom = staff_bottom + extra;
+            cursor = last_bottom + SYSTEM_GAP;
         }
         cursor = last_bottom + GALLERY_DEF_GAP;
     }
@@ -1044,6 +1052,25 @@ fn rest_glyph(dur: Duration) -> &'static str {
     }
 }
 
+/// Extra vertical room a system needs below its staff for stacked right-hand
+/// marks. A pinch stacks one finger per row (M over I over T), so a stack of `k`
+/// reaches `(k-1) * FINGER_STACK` below the normal single-row finger position.
+/// Zero for ordinary single marks or none — so single-finger docs are unaffected
+/// and their layout (and snapshots) don't move.
+fn stacked_rh_extra(measures: &[Measure]) -> f32 {
+    let rows = measures
+        .iter()
+        .flat_map(|m| &m.events)
+        .map(|e| match &e.kind {
+            EventKind::Chord(c) => c.notes.iter().filter(|cn| cn.right_hand.is_some()).count(),
+            EventKind::Note(n) => usize::from(n.right_hand.is_some()),
+            EventKind::Rest(_) => 0,
+        })
+        .max()
+        .unwrap_or(0);
+    rows.saturating_sub(1) as f32 * FINGER_STACK
+}
+
 /// All marks an event draws: right-hand finger/strum marks, technique marks
 /// (hammer/pull slurs, slide lines, bend arrows), and a tie arc to the
 /// following note. Each carries the event's source span.
@@ -1081,15 +1108,29 @@ fn marks_for(
             }
         }
         EventKind::Chord(c) => {
-            for (i, cn) in c.notes.iter().enumerate() {
-                if let Some(rh) = cn.right_hand {
-                    out.push(rh_mark(rh, x + i as f32 * RH_STAGGER, rh_y, event.span));
-                }
+            // A pinch's right-hand marks stack vertically at the event's x —
+            // middle on top, then index, then thumb (M over I over T) — rather than
+            // crowding inline. Ordered by finger, independent of chord-note order.
+            let mut rhs: Vec<RightHand> = c.notes.iter().filter_map(|cn| cn.right_hand).collect();
+            rhs.sort_by_key(|rh| rh_stack_rank(*rh));
+            for (row, &rh) in rhs.iter().enumerate() {
+                out.push(rh_mark(rh, x, rh_y + row as f32 * FINGER_STACK, event.span));
             }
         }
         EventKind::Rest(_) => {}
     }
     out
+}
+
+/// Vertical order of a pinch's stacked right-hand marks: middle on top, then
+/// index, then thumb (M over I over T); any strum sinks below the fingers.
+fn rh_stack_rank(rh: RightHand) -> u8 {
+    match rh {
+        RightHand::Finger(Finger::Middle) => 0,
+        RightHand::Finger(Finger::Index) => 1,
+        RightHand::Finger(Finger::Thumb) => 2,
+        RightHand::Strum(_) => 3,
+    }
 }
 
 /// A right-hand finger letter (T/I/M) or strum arrow.
@@ -3059,6 +3100,82 @@ mod tests {
         );
         let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
         assert_eq!(texts_with(&tree, TextRole::Finger).len(), 2);
+    }
+
+    #[test]
+    fn a_pinch_stacks_fingers_index_over_thumb() {
+        // Source order is thumb-then-index, but the stack always orders index above
+        // thumb (M over I over T); both marks share the event's x (stacked
+        // vertically, not inline).
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4),
+                notes: vec![
+                    ChordNote {
+                        pos: Position::new(4, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Thumb)),
+                    },
+                    ChordNote {
+                        pos: Position::new(1, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Index)),
+                    },
+                ],
+            }),
+            Span::new(0, 7),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
+        let marks = texts_with(&tree, TextRole::Finger);
+        let find = |c: &str| {
+            marks
+                .iter()
+                .find_map(|p| match p {
+                    Primitive::Text { content, x, y, .. } if content == c => Some((*x, *y)),
+                    _ => None,
+                })
+                .unwrap()
+        };
+        let (tx, ty) = find("T");
+        let (ix, iy) = find("I");
+        // Same column; index sits above thumb (smaller y is higher on the page),
+        // one stack row apart.
+        assert!((tx - ix).abs() < 1e-6);
+        assert!(iy < ty);
+        assert!((ty - iy - FINGER_STACK).abs() < 1e-3);
+    }
+
+    #[test]
+    fn a_deep_pinch_reserves_room_so_its_lowest_finger_is_not_clipped() {
+        // A three-finger stack reaches well below the single-row finger position;
+        // the page height must contain it.
+        let chord = Event::new(
+            EventKind::Chord(Chord {
+                dur: Duration::from_denominator(4),
+                notes: vec![
+                    ChordNote {
+                        pos: Position::new(4, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Thumb)),
+                    },
+                    ChordNote {
+                        pos: Position::new(2, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Middle)),
+                    },
+                    ChordNote {
+                        pos: Position::new(1, 0),
+                        right_hand: Some(RightHand::Finger(Finger::Index)),
+                    },
+                ],
+            }),
+            Span::new(0, 11),
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![chord])]), cfg());
+        let lowest = texts_with(&tree, TextRole::Finger)
+            .iter()
+            .map(|p| match p {
+                Primitive::Text { y, .. } => *y,
+                _ => unreachable!(),
+            })
+            .fold(f32::MIN, f32::max);
+        assert!(tree.meta.height > lowest);
     }
 
     fn measures_of(n: u32) -> Vec<Measure> {
