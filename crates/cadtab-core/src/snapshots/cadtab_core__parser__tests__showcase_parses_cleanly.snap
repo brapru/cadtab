@@ -1259,29 +1259,57 @@ Program {
                                                                     end: 1165,
                                                                 },
                                                             },
+                                                            Expr {
+                                                                kind: Fraction(
+                                                                    Fraction {
+                                                                        num: IntLit {
+                                                                            value: 1,
+                                                                            span: Span {
+                                                                                start: 1167,
+                                                                                end: 1168,
+                                                                            },
+                                                                        },
+                                                                        den: IntLit {
+                                                                            value: 2,
+                                                                            span: Span {
+                                                                                start: 1169,
+                                                                                end: 1170,
+                                                                            },
+                                                                        },
+                                                                        span: Span {
+                                                                            start: 1167,
+                                                                            end: 1170,
+                                                                        },
+                                                                    },
+                                                                ),
+                                                                span: Span {
+                                                                    start: 1167,
+                                                                    end: 1170,
+                                                                },
+                                                            },
                                                         ],
                                                     },
                                                     span: Span {
                                                         start: 1157,
-                                                        end: 1166,
+                                                        end: 1171,
                                                     },
                                                 },
                                             ),
                                             span: Span {
                                                 start: 1157,
-                                                end: 1166,
+                                                end: 1171,
                                             },
                                         },
                                     ],
                                     span: Span {
                                         start: 1051,
-                                        end: 1170,
+                                        end: 1238,
                                     },
                                 },
                             ),
                             span: Span {
                                 start: 1043,
-                                end: 1170,
+                                end: 1238,
                             },
                         },
                     ],
@@ -1289,12 +1317,12 @@ Program {
             ),
             span: Span {
                 start: 199,
-                end: 1172,
+                end: 1249,
             },
         },
     ],
     span: Span {
         start: 0,
-        end: 1173,
+        end: 1250,
     },
 }

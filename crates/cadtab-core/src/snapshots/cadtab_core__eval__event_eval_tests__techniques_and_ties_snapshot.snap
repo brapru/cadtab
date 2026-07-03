@@ -63,14 +63,19 @@ Phrase {
                     },
                     right_hand: None,
                     technique: Some(
-                        Bend,
+                        Bend(
+                            BendAmount {
+                                num: 1,
+                                den: 2,
+                            },
+                        ),
                     ),
                     tie: false,
                 },
             ),
             span: Span {
                 start: 43,
-                end: 52,
+                end: 57,
             },
             chord: None,
         },
@@ -91,8 +96,8 @@ Phrase {
                 },
             ),
             span: Span {
-                start: 55,
-                end: 58,
+                start: 60,
+                end: 63,
             },
             chord: None,
         },
@@ -113,8 +118,8 @@ Phrase {
                 },
             ),
             span: Span {
-                start: 61,
-                end: 64,
+                start: 66,
+                end: 69,
             },
             chord: None,
         },

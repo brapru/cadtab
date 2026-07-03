@@ -58,6 +58,8 @@ enum Expect {
     Any,
     Phrase,
     Position,
+    /// A bend amount: a whole step (int) or a fraction of one.
+    Amount,
 }
 
 impl Expect {
@@ -66,6 +68,7 @@ impl Expect {
             Expect::Any => true,
             Expect::Phrase => ty.is_phrase_like(),
             Expect::Position => ty.is_position_like(),
+            Expect::Amount => matches!(ty, Ty::Int | Ty::Duration | Ty::Unknown),
         }
     }
 
@@ -74,6 +77,7 @@ impl Expect {
             Expect::Any => "any value",
             Expect::Phrase => "a phrase",
             Expect::Position => "a position",
+            Expect::Amount => "a bend amount (a whole number or fraction)",
         }
     }
 }
@@ -91,8 +95,9 @@ fn builtin_sig(name: &str) -> Option<FnSig> {
     Some(match name {
         // Connecting techniques annotate a target note.
         "hammer" | "pull" | "slide" => sig(vec![Expect::Position, Expect::Position], Ty::Phrase),
-        // Single-note techniques.
-        "bend" | "choke" | "ghost" => sig(vec![Expect::Position], Ty::Note),
+        // A bend carries a required amount; ghost annotates one note.
+        "bend" => sig(vec![Expect::Position, Expect::Amount], Ty::Note),
+        "ghost" => sig(vec![Expect::Position], Ty::Note),
         "len" => sig(vec![Expect::Phrase], Ty::Int),
         _ => return None,
     })
@@ -224,6 +229,7 @@ impl Checker {
     fn infer(&mut self, e: &Expr) -> Ty {
         match &e.kind {
             ExprKind::Int(_) => Ty::Int,
+            ExprKind::Fraction(_) => Ty::Duration,
             ExprKind::Str(_) => Ty::Str,
             ExprKind::Position(_) => Ty::Position,
             // A chord literal is an indexable, spreadable sequence.
@@ -453,9 +459,27 @@ score {
     #[test]
     fn technique_arity_is_checked() {
         assert_eq!(
-            messages("score { bend(1:7, 2:0) }"),
-            vec!["`bend` expects 1 argument, got 2"]
+            messages("score { ghost(1:7, 2:0) }"),
+            vec!["`ghost` expects 1 argument, got 2"]
         );
+    }
+
+    #[test]
+    fn a_bend_requires_an_amount() {
+        // The amount is required (arity 2)...
+        assert_eq!(
+            messages("score { bend(1:7) }"),
+            vec!["`bend` expects 2 arguments, got 1"]
+        );
+        // ...and must be a number or fraction, not a position.
+        assert_eq!(
+            messages("score { bend(1:7, 2:0) }"),
+            vec![
+                "argument 2 to `bend` should be a bend amount (a whole number or fraction), found a position"
+            ]
+        );
+        // A fraction amount type-checks cleanly.
+        assert!(messages("score { bend(1:7, 1/2) }").is_empty());
     }
 
     #[test]

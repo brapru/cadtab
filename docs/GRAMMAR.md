@@ -74,8 +74,10 @@ def  let
   not a reserved keyword elsewhere (so `r` could name nothing today, but the grammar treats a
   bare `r`/`r_N` in an event slot as a rest — see §3). **`[PROVISIONAL]`**: may be promoted to a
   reserved keyword if collisions arise.
-- Technique/utility functions (`hammer`, `pull`, `slide`, `bend`, `choke`, `ghost`, `len`) are
-  **ordinary identifiers** resolved by name (D8, D17), **not** keywords.
+- Technique/utility functions (`hammer`, `pull`, `slide`, `bend`, `ghost`, `len`) are
+  **ordinary identifiers** resolved by name (D8, D17), **not** keywords. `bend` takes a required
+  amount (`bend(pos, 1/2)`); the amount is a bare `num/den` fraction (or int `1`), a general
+  expression form usable anywhere.
 - Mark letters `t i m d u` are not reserved globally — they are only special immediately after a
   `.` in note/chord context (§4).
 

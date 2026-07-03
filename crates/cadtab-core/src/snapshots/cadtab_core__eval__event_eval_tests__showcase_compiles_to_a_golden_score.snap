@@ -653,14 +653,19 @@ Score {
                             },
                             right_hand: None,
                             technique: Some(
-                                Bend,
+                                Bend(
+                                    BendAmount {
+                                        num: 1,
+                                        den: 2,
+                                    },
+                                ),
                             ),
                             tie: false,
                         },
                     ),
                     span: Span {
                         start: 1157,
-                        end: 1166,
+                        end: 1171,
                     },
                     chord: None,
                 },

@@ -64,7 +64,7 @@ export function isMuted(role: TextRole): boolean {
   return MUTED_ROLES.has(role);
 }
 
-// Open curves (ties, slides, bends, choke arcs) stroke at a hairline weight.
+// Open curves (ties, slurs, slides, bend arrows) stroke at a hairline weight.
 export const PATH_STROKE_WIDTH = 0.07;
 
 // The tempo mark's leading note glyph (♩) renders smaller than its em, so the

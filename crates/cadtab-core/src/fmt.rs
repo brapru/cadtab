@@ -451,6 +451,11 @@ impl<'a> Formatter<'a> {
     fn expr(&mut self, e: &Expr) {
         match &e.kind {
             ExprKind::Int(n) => self.out.push_str(&n.to_string()),
+            ExprKind::Fraction(f) => {
+                self.out.push_str(&f.num.value.to_string());
+                self.out.push('/');
+                self.out.push_str(&f.den.value.to_string());
+            }
             ExprKind::Str(s) => {
                 self.out.push('"');
                 self.out.push_str(s);

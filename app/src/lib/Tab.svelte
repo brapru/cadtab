@@ -180,7 +180,7 @@
   .tab path {
     stroke: var(--tab-ink);
   }
-  /* Paths (ties, slides, bends, choke arcs) are open curves: stroke them at a
+  /* Paths (ties, slurs, slides, bend arrows) are open curves: stroke them at a
      hairline weight and never fill, or the arc reads as a filled blob. */
   .tab path {
     fill: none;

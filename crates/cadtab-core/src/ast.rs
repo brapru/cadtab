@@ -331,6 +331,8 @@ impl Expr {
 #[serde(rename_all = "camelCase")]
 pub enum ExprKind {
     Int(u32),
+    /// A bare `num/den` fraction, e.g. a bend amount `1/2`.
+    Fraction(Fraction),
     Str(String),
     Ident(String),
     Position(Position),

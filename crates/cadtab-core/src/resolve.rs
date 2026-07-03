@@ -18,7 +18,7 @@ use crate::diagnostics::Diagnostic;
 use crate::span::Span;
 
 /// Builtin functions always in scope: techniques plus phrase utilities.
-const BUILTINS: &[&str] = &["hammer", "pull", "slide", "bend", "choke", "ghost", "len"];
+const BUILTINS: &[&str] = &["hammer", "pull", "slide", "bend", "ghost", "len"];
 
 /// The outcome of resolution: diagnostics for unknown names and duplicate
 /// definitions.
@@ -181,8 +181,9 @@ impl Resolver {
                 }
             }
             ExprKind::Spread(inner) | ExprKind::Paren(inner) => self.resolve_expr(inner, scope),
-            // Int/Str/Position literals and chords carry no names to resolve.
+            // Int/fraction/Str/Position literals and chords carry no names.
             ExprKind::Int(_)
+            | ExprKind::Fraction(_)
             | ExprKind::Str(_)
             | ExprKind::Position(_)
             | ExprKind::Chord(_)

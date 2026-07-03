@@ -10,9 +10,9 @@ use crate::ast::{self, Def, Expr, ExprKind, Item, ItemKind, LoopBlock, Mark, Mar
 use crate::diagnostics::{Diagnostic, Severity};
 use crate::instrument::{Instrument, StringDef};
 use crate::model::{
-    BarNumbers, Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger, Measure, Note,
-    Phrase, Pitch, Position, RightHand, Score, ScoreMeta, SectionLabel, Strum, Technique, TimeSig,
-    split_measures,
+    BarNumbers, BendAmount, Chord, ChordNote, ChordSymbol, Duration, Event, EventKind, Finger,
+    Measure, Note, Phrase, Pitch, Position, RightHand, Score, ScoreMeta, SectionLabel, Strum,
+    Technique, TimeSig, split_measures,
 };
 use crate::span::Span;
 
@@ -515,6 +515,12 @@ impl Evaluator {
     fn eval_expr(&mut self, e: &Expr) -> Option<Value> {
         match &e.kind {
             ExprKind::Int(n) => Some(Value::Int(*n)),
+            // A bare `num/den` fraction carries a rational as a Duration value
+            // (the DSL's rational type); e.g. a bend amount `1/2`.
+            ExprKind::Fraction(f) => Some(Value::Duration(Duration::new(
+                f.num.value,
+                f.den.value.max(1),
+            ))),
             ExprKind::Position(p) => Some(Value::Position(self.eval_position(p))),
             // A chord literal in value position is a sequence of its members.
             ExprKind::Chord(c) => Some(Value::Phrase(self.chord_to_phrase(c))),
@@ -608,8 +614,7 @@ impl Evaluator {
             "pull" => self.connecting_technique(Technique::PullOff, args, span),
             "slide" => self.connecting_technique(Technique::SlideTo, args, span),
             // Single-note techniques annotate the one note.
-            "bend" => self.single_technique(Technique::Bend, args),
-            "choke" => self.single_technique(Technique::Choke, args),
+            "bend" => self.bend(args),
             "ghost" => self.single_technique(Technique::Ghost, args),
             _ => None,
         }
@@ -637,11 +642,27 @@ impl Evaluator {
         Some(Value::Phrase(phrase))
     }
 
-    /// `bend/choke/ghost(pos)`: one note (at the default duration) carrying the
-    /// technique mark.
+    /// `ghost(pos)`: one note (at the default duration) carrying the technique
+    /// mark.
     fn single_technique(&self, technique: Technique, args: &[Option<Value>]) -> Option<Value> {
         let pos = position_arg(args, 0)?;
         Some(Value::Note(self.technique_note(pos, Some(technique))))
+    }
+
+    /// `bend(pos, amount)`: one note carrying a bend of the given amount (a bare
+    /// fraction `1/2` or whole step `1`). The amount is required — the type
+    /// checker reports its absence — but a missing/invalid amount falls back to a
+    /// full step so the note still renders (best-effort partial render).
+    fn bend(&self, args: &[Option<Value>]) -> Option<Value> {
+        let pos = position_arg(args, 0)?;
+        let amount = match args.get(1) {
+            Some(Some(Value::Int(n))) => BendAmount::new(*n, 1),
+            Some(Some(Value::Duration(d))) => BendAmount::new(d.num, d.den),
+            _ => BendAmount::new(1, 1),
+        };
+        Some(Value::Note(
+            self.technique_note(pos, Some(Technique::Bend(amount))),
+        ))
     }
 
     fn technique_note(&self, pos: Position, technique: Option<Technique>) -> Note {
@@ -1735,16 +1756,33 @@ score {
 
     #[test]
     fn single_note_techniques_annotate_the_one_note() {
-        let (bend, diags) = eval_score("score { default 1/8\n bend(1:7) }");
+        let (bend, diags) = eval_score("score { default 1/8\n bend(1:7, 1/2) }");
         assert!(diags.is_empty());
         assert_eq!(positions(&bend), vec![Position::new(1, 7)]);
-        assert_eq!(techniques(&bend), vec![Some(Technique::Bend)]);
+        assert_eq!(
+            techniques(&bend),
+            vec![Some(Technique::Bend(BendAmount::new(1, 2)))]
+        );
         assert_eq!(durs(&bend), vec![Duration::new(1, 8)]);
 
-        let (choke, _) = eval_score("score { choke(1:5) }");
-        assert_eq!(techniques(&choke), vec![Some(Technique::Choke)]);
         let (ghost, _) = eval_score("score { ghost(3:0) }");
         assert_eq!(techniques(&ghost), vec![Some(Technique::Ghost)]);
+    }
+
+    #[test]
+    fn a_bend_carries_its_amount() {
+        // A whole-number amount is a full step; a fraction is a partial bend.
+        let (full, diags) = eval_score("score { bend(1:7, 1) }");
+        assert!(diags.is_empty());
+        assert_eq!(
+            techniques(&full),
+            vec![Some(Technique::Bend(BendAmount::new(1, 1)))]
+        );
+        let (quarter, _) = eval_score("score { bend(1:7, 1/4) }");
+        assert_eq!(
+            techniques(&quarter),
+            vec![Some(Technique::Bend(BendAmount::new(1, 4)))]
+        );
     }
 
     #[test]
@@ -1788,7 +1826,7 @@ score {
             "score {
   default 1/8
   hammer(3:0, 3:2)
-  bend(1:7)
+  bend(1:7, 1/2)
   3:2 ~ 3:2
 }",
         );

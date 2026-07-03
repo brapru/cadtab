@@ -33,6 +33,7 @@ score {
 
   measure { // explicit measure override
     hammer(3:0, 3:2) // technique as a function
-    bend(1:7)
+    bend(1:7, 1/2) // bend up a half step (1 = full, 1/4 = quarter tone)
   }
+
 }

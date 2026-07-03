@@ -230,9 +230,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "weight": 0.08
             },
             {
+              "kind": "path",
+              "cmds": "M 173.13573 7.6 Q 243.94644 6.9 314.75714 7.6",
+              "span": {
+                "start": 0,
+                "end": 3
+              }
+            },
+            {
               "kind": "text",
-              "x": 315.50714,
-              "y": 7.55,
+              "x": 243.94644,
+              "y": 6.75,
               "content": "h",
               "role": "technique",
               "span": {

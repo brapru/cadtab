@@ -200,6 +200,40 @@ pub enum RightHand {
     Strum(Strum),
 }
 
+/// How far a bend pushes the pitch, as a fraction of a whole step: `1/2` is a
+/// half-step, `1/1` a full step, `1/4` a quarter-tone. Drawn as a label above
+/// the bend arrow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BendAmount {
+    pub num: u32,
+    pub den: u32,
+}
+
+impl BendAmount {
+    /// A bend amount reduced to lowest terms (`den` clamped nonzero).
+    pub fn new(num: u32, den: u32) -> Self {
+        let d = Duration::new(num, den.max(1));
+        Self {
+            num: d.num,
+            den: d.den,
+        }
+    }
+
+    /// The label drawn above the arrow: a bare `1` for a whole step, a precomposed
+    /// vulgar-fraction glyph for the common quarters/half (¼ ½ ¾ — reliably present
+    /// in any font), else the ASCII `num/den` slash form.
+    pub fn label(self) -> String {
+        match (self.num, self.den) {
+            (n, 1) => n.to_string(),
+            (1, 4) => "\u{00BC}".to_string(), // ¼
+            (1, 2) => "\u{00BD}".to_string(), // ½
+            (3, 4) => "\u{00BE}".to_string(), // ¾
+            (n, d) => format!("{n}/{d}"),
+        }
+    }
+}
+
 /// A left-hand / expressive technique that draws a mark in the tab. Set only by
 /// the surface technique functions, never authored as a raw field.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -208,8 +242,7 @@ pub enum Technique {
     HammerOn,
     PullOff,
     SlideTo,
-    Bend,
-    Choke,
+    Bend(BendAmount),
     Ghost,
 }
 
@@ -524,6 +557,20 @@ mod tests {
     use proptest::prelude::*;
     use serde::de::DeserializeOwned;
     use std::fmt::Debug as DebugTrait;
+
+    #[test]
+    fn bend_amount_labels_use_glyphs_then_fall_back() {
+        // Reduced first, so 2/4 == ½; the common quarters/half get glyphs.
+        assert_eq!(BendAmount::new(1, 4).label(), "¼");
+        assert_eq!(BendAmount::new(2, 4).label(), "½");
+        assert_eq!(BendAmount::new(3, 4).label(), "¾");
+        // Whole steps are bare integers.
+        assert_eq!(BendAmount::new(1, 1).label(), "1");
+        assert_eq!(BendAmount::new(2, 1).label(), "2");
+        // Anything without a glyph falls back to the slash form.
+        assert_eq!(BendAmount::new(3, 2).label(), "3/2");
+        assert_eq!(BendAmount::new(1, 8).label(), "1/8");
+    }
 
     fn round_trip<T: Serialize + DeserializeOwned + PartialEq + DebugTrait>(value: &T) {
         let json = serde_json::to_string(value).unwrap();

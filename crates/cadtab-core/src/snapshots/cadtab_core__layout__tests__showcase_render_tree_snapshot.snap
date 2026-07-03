@@ -1198,9 +1198,17 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "weight": 0.08
             },
             {
+              "kind": "path",
+              "cmds": "M 66.32512 21.5 Q 67.89054 20.8 69.45596 21.5",
+              "span": {
+                "start": 1102,
+                "end": 1118
+              }
+            },
+            {
               "kind": "text",
-              "x": 70.20596,
-              "y": 21.449999,
+              "x": 67.89054,
+              "y": 20.65,
               "content": "h",
               "role": "technique",
               "span": {
@@ -1216,7 +1224,7 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
               "role": "fretNumber",
               "span": {
                 "start": 1157,
-                "end": 1166
+                "end": 1171
               }
             },
             {
@@ -1229,16 +1237,27 @@ expression: "serde_json::to_string_pretty(&tree).unwrap()"
             },
             {
               "kind": "path",
-              "cmds": "M 73.63681 19.9 Q 73.93681 18.9 74.23681 18.9",
+              "cmds": "M 73.63681 19.35 Q 74.18681 19.35 74.18681 17.95 M 74.00681 18.220001 L 74.18681 17.85 L 74.36681 18.220001",
               "span": {
                 "start": 1157,
-                "end": 1166
+                "end": 1171
+              }
+            },
+            {
+              "kind": "text",
+              "x": 74.18681,
+              "y": 17.35,
+              "content": "½",
+              "role": "technique",
+              "span": {
+                "start": 1157,
+                "end": 1171
               }
             }
           ],
           "span": {
             "start": 1102,
-            "end": 1166
+            "end": 1171
           }
         }
       ]

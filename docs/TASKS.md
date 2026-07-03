@@ -784,9 +784,20 @@ render & notation (T7.51–T7.56).*
 
 *Render & notation:*
 
-- [ ] **T7.51 — Fix hammer-on / pull-off / bend rendering.** These technique marks don't render properly;
-      spend real time on the geometry (arcs/slurs for h/p, the bend arrow/curve) so they read correctly.
-      Likely spans layout (`layout.rs` path/mark placement) + the painter.
+- [x] **T7.51 — Fix hammer-on / pull-off / bend rendering.** Reworked the technique geometry so each
+      reads as proper tab notation. **Hammer/pull** now draw a **slur arc** from the source note to the
+      target (the mark lives on the target, so `marks_for` threads `prev_x`) plus a small `h`/`p` letter
+      at the apex; a source-less one falls back to a bare letter. **Slide** is an angled line between the
+      two fret numbers (rising/falling toward the target fret, direction from `prev_fret`) with an `sl`
+      label. **Bend** is the right half of an upward parabola — flat at the note's foot, steepening to a
+      vertical arrowhead — carrying a **required amount** label. New DSL: **`bend(pos, amount)`** where
+      amount is a bare fraction/int (`1/2`→½, `1`→full, `1/4`→¼); added a general **bare-fraction
+      expression** primitive (`ExprKind::Fraction` → `Value::Duration`), `BendAmount` on
+      `Technique::Bend`, an `Expect::Amount` type-checker rule (arity 2, int-or-fraction). **Choke
+      dropped** (user: bends cover it) — removed the builtin/variant/render. Mocked with rsvg and
+      confirmed live against `docs/bend-example.png` before building; geometry verified end-to-end
+      through the real compile pipeline. *(Also corrected `examples/showcase.ctab`, accidentally
+      committed in `fd521ae`, back to its pre-accident content; `bend(1:7)`→`bend(1:7, 1/2)`.)*
 - [ ] **T7.52 — Spacing after a begin-repeat `|:`.** The first note after the begin-repeat barline sits
       right up against the `|:` symbol; add proper leading space after a repeat-start barline (mirrors the
       first-measure leading pad).

@@ -91,7 +91,7 @@ pub enum Primitive {
         role: TextRole,
         span: Option<Span>,
     },
-    /// A free-form path (SVG path data): ties, slides, bends, choke arcs. The
+    /// A free-form path (SVG path data): ties, slurs, slides, bend arrows. The
     /// thin painter draws `cmds` verbatim, so style is baked into the geometry.
     Path { cmds: String, span: Option<Span> },
 }

@@ -823,6 +823,21 @@ impl<'a> Parser<'a> {
                         }),
                         span,
                     )
+                } else if self.eat(TokenKind::Slash) {
+                    // A bare `num/den` fraction (e.g. a bend amount `1/2`). Nothing
+                    // else in expression position pairs an int with `/`.
+                    let den = self
+                        .parse_int_lit()
+                        .unwrap_or_else(|| IntLit::new(1, Span::point(self.prev_end())));
+                    let span = self.span_from(start);
+                    Expr::new(
+                        ExprKind::Fraction(Fraction {
+                            num: int,
+                            den,
+                            span,
+                        }),
+                        span,
+                    )
                 } else {
                     Expr::new(ExprKind::Int(int.value), int.span)
                 }

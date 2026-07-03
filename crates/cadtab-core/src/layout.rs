@@ -14,8 +14,8 @@ use crate::beam;
 use crate::eval::GalleryDef;
 use crate::instrument::Instrument;
 use crate::model::{
-    BarNumbers, Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum, Technique,
-    TimeSig,
+    BarNumbers, BendAmount, Duration, Event, EventKind, Finger, Measure, RightHand, Score, Strum,
+    Technique, TimeSig,
 };
 use crate::render::{
     LayoutMeta, MeasureBox, Page, PaginatedTree, Primitive, Rect, RenderTree, System, TextRole,
@@ -162,11 +162,36 @@ const AUG_DOT_GAP: f32 = 0.3;
 // staggered so they do not overlap.
 const RH_ROW_GAP: f32 = 0.6;
 const RH_STAGGER: f32 = 0.5;
-// Technique text (h/p/sl) sits just above and right of the note number.
+// Fallback technique letter (a source-less h/p/sl) sits just above and right of
+// the note number; the real connecting cases draw a slur/line instead.
 const TECH_DX: f32 = 0.4;
 const TECH_DY: f32 = 0.45;
 // A tie arcs above the two notes it joins.
 const TIE_HEIGHT: f32 = 0.8;
+// Hammer/pull draw a slur: a bowed arc from the source note to the target, with
+// a small italic letter at its apex. Endpoints inset from each note center and
+// lift just above the fret numbers; the control point rises further above.
+const SLUR_INSET: f32 = 0.35;
+const SLUR_LIFT: f32 = 0.4;
+const SLUR_HEIGHT: f32 = 0.7;
+const SLUR_LABEL_LIFT: f32 = 0.15;
+// A slide is a straight line linking the two fret numbers, angled toward the
+// target fret (rising when sliding higher, falling when lower), with a small
+// `sl` label above its midpoint.
+const SLIDE_INSET: f32 = 0.42;
+const SLIDE_RISE: f32 = 0.26;
+const SLIDE_LABEL_DY: f32 = 1.0;
+// A bend is the right half of an upward parabola: flat at the note's foot
+// (FOOT below the number's center), running RUN to the right and rising RISE to
+// a vertical tip. The arrowhead apex sits TIP past the curve end; its barbs drop
+// HEAD_DY and spread HEAD_DX. The amount label sits LABEL_GAP above the apex.
+const BEND_FOOT: f32 = 0.55;
+const BEND_RUN: f32 = 0.55;
+const BEND_RISE: f32 = 1.4;
+const BEND_TIP: f32 = 0.1;
+const BEND_HEAD_DX: f32 = 0.18;
+const BEND_HEAD_DY: f32 = 0.37;
+const BEND_LABEL_GAP: f32 = 0.5;
 
 /// An event placed at a measure-relative x: its fretted positions, that x, and
 /// the source span that produced it.
@@ -745,7 +770,26 @@ fn build_system(
                 prims.push(stem(x, stem_top, beam_y));
             }
             let next_x = plan.events.get(j + 1).map(|p| mx0 + p.rel_x * scale);
-            prims.extend(marks_for(event, x, next_x, staff_top, staff_bottom));
+            // The source of a connecting technique (hammer/pull/slide) is the
+            // preceding note in the same measure; its x anchors the slur/line and
+            // its fret angles the slide. None across a measure boundary → the
+            // target falls back to a bare letter (cross-measure slurs deferred).
+            let prev_x = j.checked_sub(1).map(|i| mx0 + plan.events[i].rel_x * scale);
+            let prev_fret = j
+                .checked_sub(1)
+                .and_then(|i| match &measure.events[i].kind {
+                    EventKind::Note(pn) => Some(pn.pos.fret),
+                    _ => None,
+                });
+            prims.extend(marks_for(
+                event,
+                x,
+                next_x,
+                prev_x,
+                prev_fret,
+                staff_top,
+                staff_bottom,
+            ));
         }
         // A group of two or more shares one flat beam across its stem ends; a
         // lone beamable note takes flags at its stem end instead. The beam's top
@@ -980,12 +1024,14 @@ fn rest_glyph(dur: Duration) -> &'static str {
 }
 
 /// All marks an event draws: right-hand finger/strum marks, technique marks
-/// (h/p/sl text, bend/choke paths), and a tie arc to the following note. Each
-/// carries the event's source span.
+/// (hammer/pull slurs, slide lines, bend arrows), and a tie arc to the
+/// following note. Each carries the event's source span.
 fn marks_for(
     event: &Event,
     x: f32,
     next_x: Option<f32>,
+    prev_x: Option<f32>,
+    prev_fret: Option<u8>,
     staff_top: f32,
     staff_bottom: f32,
 ) -> Vec<Primitive> {
@@ -998,7 +1044,16 @@ fn marks_for(
                 out.push(rh_mark(rh, x, rh_y, event.span));
             }
             if let Some(t) = n.technique {
-                out.extend(technique_mark(t, x, line_y(n.pos.string), event.span));
+                // A downward slide targets a lower fret than its source.
+                let slide_down = prev_fret.is_some_and(|pf| n.pos.fret < pf);
+                out.extend(technique_mark(
+                    t,
+                    x,
+                    line_y(n.pos.string),
+                    prev_x,
+                    slide_down,
+                    event.span,
+                ));
             }
             if let (true, Some(nx)) = (n.tie, next_x) {
                 out.push(tie_arc(x, nx, line_y(n.pos.string), event.span));
@@ -1034,10 +1089,21 @@ fn rh_mark(rh: RightHand, x: f32, y: f32, span: Span) -> Primitive {
     }
 }
 
-/// A left-hand technique mark: h/p/sl as text above the note; bend and choke as
-/// short path arcs rising from it. Ghost notes draw no mark here.
-fn technique_mark(t: Technique, x: f32, note_y: f32, span: Span) -> Vec<Primitive> {
-    let text = |content: &str| Primitive::Text {
+/// A left-hand technique mark. Connecting techniques (hammer/pull/slide) read as
+/// proper tab notation between their source and target notes: hammer/pull draw a
+/// slur arc plus a small h/p letter, a slide a line angled toward the target fret
+/// with an `sl` label. A bend draws a rising arrow labelled with its amount.
+/// Ghost notes draw no mark. A source-less connecting technique (no preceding
+/// note in the measure) falls back to a bare letter.
+fn technique_mark(
+    t: Technique,
+    x: f32,
+    note_y: f32,
+    prev_x: Option<f32>,
+    slide_down: bool,
+    span: Span,
+) -> Vec<Primitive> {
+    let letter = |content: &str| Primitive::Text {
         x: x + TECH_DX,
         y: note_y - TECH_DY,
         content: content.to_string(),
@@ -1045,25 +1111,101 @@ fn technique_mark(t: Technique, x: f32, note_y: f32, span: Span) -> Vec<Primitiv
         span: Some(span),
     };
     match t {
-        Technique::HammerOn => vec![text("h")],
-        Technique::PullOff => vec![text("p")],
-        Technique::SlideTo => vec![text("sl")],
-        Technique::Bend => vec![Primitive::Path {
-            cmds: format!(
-                "M {x} {note_y} Q {} {} {} {}",
-                x + 0.3,
-                note_y - 1.0,
-                x + 0.6,
-                note_y - 1.0
-            ),
-            span: Some(span),
-        }],
-        Technique::Choke => vec![Primitive::Path {
-            cmds: format!("M {x} {note_y} q 0.3 -0.9 0.6 0"),
-            span: Some(span),
-        }],
+        Technique::HammerOn => match prev_x {
+            Some(px) => slur(px, x, note_y, "h", span),
+            None => vec![letter("h")],
+        },
+        Technique::PullOff => match prev_x {
+            Some(px) => slur(px, x, note_y, "p", span),
+            None => vec![letter("p")],
+        },
+        Technique::SlideTo => match prev_x {
+            Some(px) => slide(px, x, note_y, slide_down, span),
+            None => vec![letter("sl")],
+        },
+        Technique::Bend(amount) => bend_arrow(x, note_y, amount, span),
         Technique::Ghost => vec![],
     }
+}
+
+/// A hammer/pull slur: a bowed arc from the source note to the target with a
+/// small italic letter (h/p) at its apex.
+fn slur(prev_x: f32, x: f32, note_y: f32, label: &str, span: Span) -> Vec<Primitive> {
+    let x0 = prev_x + SLUR_INSET;
+    let x1 = x - SLUR_INSET;
+    let mid = (prev_x + x) / 2.0;
+    let ye = note_y - SLUR_LIFT;
+    let yc = note_y - SLUR_LIFT - SLUR_HEIGHT;
+    vec![
+        Primitive::Path {
+            cmds: format!("M {x0} {ye} Q {mid} {yc} {x1} {ye}"),
+            span: Some(span),
+        },
+        Primitive::Text {
+            x: mid,
+            y: yc - SLUR_LABEL_LIFT,
+            content: label.to_string(),
+            role: TextRole::Technique,
+            span: Some(span),
+        },
+    ]
+}
+
+/// A slide: a straight line linking the two fret numbers, angled up toward a
+/// higher target fret or down toward a lower one, with a small `sl` label above.
+fn slide(prev_x: f32, x: f32, note_y: f32, down: bool, span: Span) -> Vec<Primitive> {
+    let x0 = prev_x + SLIDE_INSET;
+    let x1 = x - SLIDE_INSET;
+    let (y0, y1) = if down {
+        (note_y - SLIDE_RISE, note_y + SLIDE_RISE)
+    } else {
+        (note_y + SLIDE_RISE, note_y - SLIDE_RISE)
+    };
+    vec![
+        Primitive::Path {
+            cmds: format!("M {x0} {y0} L {x1} {y1}"),
+            span: Some(span),
+        },
+        Primitive::Text {
+            x: (prev_x + x) / 2.0,
+            y: note_y - SLIDE_LABEL_DY,
+            content: "sl".to_string(),
+            role: TextRole::Technique,
+            span: Some(span),
+        },
+    ]
+}
+
+/// A bend: an arrow shaped like the right half of an upward parabola — flat where
+/// it leaves the note (the vertex), steepening to vertical at the arrowhead —
+/// labelled with its amount above the tip. The head is two short strokes (paths
+/// never fill).
+fn bend_arrow(x: f32, note_y: f32, amount: BendAmount, span: Span) -> Vec<Primitive> {
+    // Quadratic vertex at the note's foot with a horizontal tangent (control
+    // level with the start), rising to a vertical tangent at the tip (control
+    // directly below it). The arrowhead apex sits just past the curve's end.
+    let sy = note_y - BEND_FOOT;
+    let cx = x + BEND_RUN;
+    let end_y = note_y - BEND_FOOT - BEND_RISE;
+    let apex_y = end_y - BEND_TIP;
+    let barb_y = end_y + BEND_HEAD_DY - BEND_TIP;
+    vec![
+        Primitive::Path {
+            cmds: format!(
+                "M {x} {sy} Q {cx} {sy} {cx} {end_y} M {} {barb_y} L {cx} {apex_y} L {} {barb_y}",
+                cx - BEND_HEAD_DX,
+                cx + BEND_HEAD_DX,
+            ),
+            span: Some(span),
+        },
+        Primitive::Text {
+            x: cx,
+            y: apex_y - BEND_LABEL_GAP,
+            content: amount.label(),
+            role: TextRole::Technique,
+            span: Some(span),
+        },
+    ]
 }
 
 /// A tie: a slur arc from one note to the next, bowed above the line.
@@ -1413,8 +1555,8 @@ mod tests {
     use super::*;
     use crate::instrument::Instrument;
     use crate::model::{
-        Chord, ChordNote, Duration, Event, EventKind, Finger, Note, Position, RightHand, ScoreMeta,
-        Strum, Technique, TimeSig,
+        BendAmount, Chord, ChordNote, Duration, Event, EventKind, Finger, Note, Position,
+        RightHand, ScoreMeta, Strum, Technique, TimeSig,
     };
     use serde::de::DeserializeOwned;
     use std::fmt::Debug as DebugTrait;
@@ -2755,7 +2897,9 @@ mod tests {
     }
 
     #[test]
-    fn technique_text_marks_render_hps() {
+    fn a_sourceless_connecting_technique_falls_back_to_a_letter() {
+        // A hammer/pull/slide with no preceding note in the measure can't draw a
+        // slur/line, so it degrades to a bare letter.
         for (t, want) in [
             (Technique::HammerOn, "h"),
             (Technique::PullOff, "p"),
@@ -2769,15 +2913,68 @@ mod tests {
                 Primitive::Text { content, .. } => assert_eq!(content, want),
                 _ => unreachable!(),
             }
+            // No slur path when there's no source note.
+            assert!(paths(&tree).is_empty());
         }
     }
 
     #[test]
-    fn bend_and_choke_are_paths() {
-        for t in [Technique::Bend, Technique::Choke] {
-            let n = marked_note(3, 0, None, Some(t), false);
-            let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+    fn a_hammer_or_pull_draws_a_slur_and_a_letter() {
+        for (t, want) in [(Technique::HammerOn, "h"), (Technique::PullOff, "p")] {
+            let m = Measure::new(vec![
+                marked_note(3, 0, None, None, false),
+                marked_note(3, 2, None, Some(t), false),
+            ]);
+            let tree = layout(&banjo_score(vec![m]), cfg());
+            // A slur path (from the source note to the target)...
             assert_eq!(paths(&tree).len(), 1);
+            // ...plus a small letter at its apex.
+            let techs = texts_with(&tree, TextRole::Technique);
+            assert_eq!(techs.len(), 1);
+            match techs[0] {
+                Primitive::Text { content, span, .. } => {
+                    assert_eq!(content, want);
+                    assert_eq!(*span, Some(Span::new(0, 3)));
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
+    fn a_slide_draws_a_line_and_an_sl_label() {
+        let m = Measure::new(vec![
+            marked_note(3, 5, None, None, false),
+            marked_note(3, 9, None, Some(Technique::SlideTo), false),
+        ]);
+        let tree = layout(&banjo_score(vec![m]), cfg());
+        assert_eq!(paths(&tree).len(), 1);
+        let techs = texts_with(&tree, TextRole::Technique);
+        assert_eq!(techs.len(), 1);
+        match techs[0] {
+            Primitive::Text { content, .. } => assert_eq!(content, "sl"),
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn a_bend_draws_an_arrow_and_its_amount_label() {
+        let n = marked_note(
+            3,
+            0,
+            None,
+            Some(Technique::Bend(BendAmount::new(1, 2))),
+            false,
+        );
+        let tree = layout(&banjo_score(vec![Measure::new(vec![n])]), cfg());
+        // The arrow (one path)...
+        assert_eq!(paths(&tree).len(), 1);
+        // ...plus the amount label.
+        let techs = texts_with(&tree, TextRole::Technique);
+        assert_eq!(techs.len(), 1);
+        match techs[0] {
+            Primitive::Text { content, .. } => assert_eq!(content, "½"),
+            _ => unreachable!(),
         }
     }
 

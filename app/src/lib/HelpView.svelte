@@ -112,8 +112,8 @@ score {
       <p>
         Techniques are functions over the notes they mark —
         <code>hammer(3:0, 3:2)</code>, <code>pull(…)</code>,
-        <code>slide(…)</code>,
-        <code>bend(1:7)</code>, <code>choke(…)</code>, <code>ghost(…)</code>.
+        <code>slide(…)</code>, <code>bend(1:7, 1/2)</code>,
+        <code>ghost(…)</code>.
       </p>
 
       <h3>Structure</h3>
