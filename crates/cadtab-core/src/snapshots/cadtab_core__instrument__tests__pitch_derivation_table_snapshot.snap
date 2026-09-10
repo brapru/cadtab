@@ -8,6 +8,12 @@ banjo openG
   string 3 (G): 55 56 57 58 59
   string 4 (D): 50 51 52 53 54
   string 5 (g): 67 68 69 70 71
+banjo openD
+  string 1 (D): 62 63 64 65 66
+  string 2 (A): 57 58 59 60 61
+  string 3 (F#): 54 55 56 57 58
+  string 4 (D): 50 51 52 53 54
+  string 5 (f#): 66 67 68 69 70
 banjo doubleC
   string 1 (D): 62 63 64 65 66
   string 2 (C): 60 61 62 63 64

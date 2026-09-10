@@ -49,6 +49,7 @@ struct Tuning {
 // Banjo numbering keeps the short 5th-string drone last even though it sounds
 // high; this matches standard tab.
 const BANJO_OPEN_G: TuningSpec = &[("D", 62), ("B", 59), ("G", 55), ("D", 50), ("g", 67)];
+const BANJO_OPEN_D: TuningSpec = &[("D", 62), ("A", 57), ("F#", 54), ("D", 50), ("f#", 66)];
 const BANJO_DOUBLE_C: TuningSpec = &[("D", 62), ("C", 60), ("G", 55), ("C", 48), ("g", 67)];
 const BANJO_SAWMILL: TuningSpec = &[("D", 62), ("C", 60), ("G", 55), ("D", 50), ("g", 67)];
 const GUITAR_STANDARD: TuningSpec = &[
@@ -85,6 +86,11 @@ const TUNINGS: &[Tuning] = &[
         key: "openG",
         display: "Open G",
         spec: BANJO_OPEN_G,
+    },
+    Tuning {
+        key: "openD",
+        display: "Open D",
+        spec: BANJO_OPEN_D,
     },
     Tuning {
         key: "doubleC",
@@ -286,6 +292,10 @@ mod tests {
         // sawmill: string 2 is C4 (60), string 4 stays D3 (50).
         let sawmill = banjo.with_tuning("sawmill", sp()).unwrap();
         assert_eq!(open_pitches(&sawmill), vec![62, 60, 55, 50, 67]);
+        // open D (f#DF#AD): every string is a D-chord tone, drone up to f#4 (66).
+        let open_d = banjo.with_tuning("openD", sp()).unwrap();
+        assert_eq!(open_pitches(&open_d), vec![62, 57, 54, 50, 66]);
+        assert_eq!(open_d.strings[2].label, "F#");
         // name is preserved across a retuning.
         assert_eq!(double_c.name, "banjo");
     }
@@ -318,6 +328,10 @@ mod tests {
                 .tuning
                 .as_deref(),
             Some("Sawmill")
+        );
+        assert_eq!(
+            banjo.with_tuning("openD", sp()).unwrap().tuning.as_deref(),
+            Some("Open D")
         );
     }
 
@@ -421,6 +435,13 @@ mod tests {
         let mut out = String::new();
         let cases: &[(&str, Option<Instrument>)] = &[
             ("banjo openG", Instrument::builtin("banjo")),
+            (
+                "banjo openD",
+                Instrument::builtin("banjo")
+                    .unwrap()
+                    .with_tuning("openD", sp())
+                    .ok(),
+            ),
             (
                 "banjo doubleC",
                 Instrument::builtin("banjo")
